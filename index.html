@@ -3,11 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>SeShat Hub</title>
 
 <style>
 :root{
     --bg:#0f172a;
+    --bg2:#1e293b;
     --card:#1e293b;
     --card-hover:#334155;
     --text:#f8fafc;
@@ -22,7 +24,7 @@
 }
 
 body{
-    background:linear-gradient(135deg,#0f172a,#1e293b);
+    background:linear-gradient(135deg,var(--bg),var(--bg2));
     color:var(--text);
     min-height:100vh;
     padding:30px;
@@ -35,24 +37,48 @@ header{
 
 header h1{
     font-size:3rem;
+    margin-bottom:10px;
 }
 
 header p{
     color:#cbd5e1;
-    margin-top:10px;
+}
+
+.stats{
+    display:flex;
+    justify-content:center;
+    gap:20px;
+    flex-wrap:wrap;
+    margin:30px 0;
+}
+
+.stat{
+    background:rgba(255,255,255,.05);
+    padding:20px;
+    border-radius:16px;
+    min-width:180px;
+    text-align:center;
+    backdrop-filter:blur(10px);
+}
+
+.stat-number{
+    font-size:2rem;
+    font-weight:bold;
+    color:var(--accent);
 }
 
 .search{
     max-width:600px;
-    margin:20px auto;
+    margin:0 auto 30px auto;
 }
 
 .search input{
     width:100%;
-    padding:14px;
-    border-radius:14px;
+    padding:15px;
     border:none;
+    border-radius:15px;
     font-size:16px;
+    outline:none;
 }
 
 .grid{
@@ -67,26 +93,27 @@ header p{
     border-radius:20px;
     text-decoration:none;
     color:white;
-    transition:.25s;
+    transition:.25s ease;
     border:1px solid rgba(255,255,255,.1);
 }
 
 .card:hover{
     transform:translateY(-5px);
     background:var(--card-hover);
-    box-shadow:0 10px 30px rgba(0,0,0,.4);
+    box-shadow:0 15px 30px rgba(0,0,0,.4);
 }
 
 .icon{
-    font-size:50px;
+    font-size:3rem;
     margin-bottom:15px;
 }
 
 .category{
     color:var(--accent);
-    font-size:13px;
+    font-size:.75rem;
     text-transform:uppercase;
     letter-spacing:1px;
+    font-weight:600;
 }
 
 .card h2{
@@ -95,33 +122,19 @@ header p{
 
 .card p{
     color:#cbd5e1;
+    line-height:1.5;
 }
 
 footer{
+    margin-top:50px;
     text-align:center;
-    margin-top:40px;
     color:#94a3b8;
 }
 
-.stats{
-    display:flex;
-    justify-content:center;
-    gap:20px;
-    margin-bottom:30px;
-    flex-wrap:wrap;
-}
-
-.stat{
-    background:#1e293b;
-    padding:15px 25px;
-    border-radius:15px;
-    text-align:center;
-}
-
-.stat-number{
-    font-size:24px;
-    font-weight:bold;
-    color:#38bdf8;
+@media(max-width:768px){
+    header h1{
+        font-size:2rem;
+    }
 }
 </style>
 </head>
@@ -129,89 +142,167 @@ footer{
 
 <header>
     <h1>🜃 SeShat Hub</h1>
-    <p>Your Personal Application Dashboard</p>
+    <p>All Your Applications In One Place</p>
 </header>
 
 <div class="stats">
+
     <div class="stat">
-        <div class="stat-number">4</div>
+        <div class="stat-number">5</div>
         <div>Applications</div>
     </div>
 
     <div class="stat">
-        <div class="stat-number">Finance</div>
-        <div>Tools</div>
+        <div class="stat-number">3</div>
+        <div>Finance Tools</div>
     </div>
+
+    <div class="stat">
+        <div class="stat-number">1</div>
+        <div>Household App</div>
+    </div>
+
+    <div class="stat">
+        <div class="stat-number">1</div>
+        <div>Vehicle App</div>
+    </div>
+
 </div>
 
 <div class="search">
     <input
         type="text"
         id="search"
-        placeholder="Search applications..."
-        onkeyup="filterApps()"
-    >
+        placeholder="🔍 Search applications..."
+        onkeyup="filterApps()">
 </div>
 
-<div class="grid" id="appGrid">
+<div class="grid">
 
-    <a class="card" href="https://baerxiii.github.io/SeShatBudgeter/" target="_blank">
+    <!-- Budgeter -->
+
+    <a class="card"
+       href="https://baerxiii.github.io/SeShatBudgeter/"
+       target="_blank">
+
         <div class="icon">💰</div>
         <div class="category">Finance</div>
+
         <h2>SeShat Budgeter</h2>
-        <p>Track spending, accounts, budgets, and financial goals.</p>
+
+        <p>
+            Personal finance tracker for budgeting,
+            account management, spending analysis,
+            and financial goal tracking.
+        </p>
+
     </a>
 
-    <a class="card" href="https://seshatpantry.ai.studio/" target="_blank">
+    <!-- Pantry -->
+
+    <a class="card"
+       href="https://seshatpantry.ai.studio/"
+       target="_blank">
+
         <div class="icon">🛒</div>
-        <div class="category">Grocery Management</div>
+        <div class="category">Household</div>
+
         <h2>SeShat Pantry</h2>
-        <p>Smart grocery list and pantry management application.</p>
+
+        <p>
+            Grocery list and pantry management system
+            to organize food purchases and inventory.
+        </p>
+
     </a>
 
-    <a class="card" href="https://seshatledger.ai.studio/" target="_blank">
+    <!-- Ledger -->
+
+    <a class="card"
+       href="https://seshatledger.ai.studio/"
+       target="_blank">
+
         <div class="icon">💵</div>
-        <div class="category">Pay Estimator</div>
+        <div class="category">Payroll</div>
+
         <h2>SeShat Ledger</h2>
-        <p>Estimate your paycheques and deductions.</p>
+
+        <p>
+            Estimate paycheques, deductions,
+            taxes, and take-home pay.
+        </p>
+
     </a>
 
-    <a class="card" href="https://baerxiii.github.io/seshatLedger/" target="_blank">
+    <!-- Budget Planner -->
+
+    <a class="card"
+       href="https://baerxiii.github.io/seshatLedger/"
+       target="_blank">
+
         <div class="icon">📊</div>
         <div class="category">Budget Planning</div>
+
         <h2>SeShat Budget Planner</h2>
-        <p>Allocate and organize your paycheques and monthly budget.</p>
+
+        <p>
+            Plan how paycheques are allocated between
+            bills, savings, investments, and spending.
+        </p>
+
+    </a>
+
+    <!-- Fuel Tracker -->
+
+    <a class="card"
+       href="https://fuel-flow-track-burrowing.base44.app/"
+       target="_blank">
+
+        <div class="icon">⛽</div>
+        <div class="category">Transportation</div>
+
+        <h2>Colonel Baer's Fuel Tracker</h2>
+
+        <p>
+            Track fuel purchases, maintenance,
+            vehicle expenses, fuel economy trends,
+            service intervals, and cost reports.
+        </p>
+
     </a>
 
 </div>
 
 <footer>
-    SeShat Hub • Built for Baerenger
+    <p>
+        SeShat Hub • Personal Application Dashboard
+    </p>
 </footer>
 
 <script>
+
 function filterApps() {
 
-    let input =
-    document.getElementById('search')
+    const search =
+    document.getElementById("search")
     .value.toLowerCase();
 
-    let cards =
-    document.querySelectorAll('.card');
+    const cards =
+    document.querySelectorAll(".card");
 
     cards.forEach(card => {
 
-        let text =
+        const text =
         card.textContent.toLowerCase();
 
-        if(text.includes(input)){
-            card.style.display="block";
-        }else{
-            card.style.display="none";
-        }
+        card.style.display =
+        text.includes(search)
+        ? "block"
+        : "none";
 
     });
 }
+
 </script>
 
 </body>
