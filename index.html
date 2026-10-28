@@ -1,310 +1,468 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <title>SeShat Hub</title>
-    
-    <style>
-    :root{
-        --bg:#0f172a;
-        --bg2:#1e293b;
-        --card:#1e293b;
-        --card-hover:#334155;
-        --text:#f8fafc;
-        --accent:#38bdf8;
-    }
-    
-    *{
-        margin:0;
-        padding:0;
-        box-sizing:border-box;
-        font-family:'Segoe UI',sans-serif;
-    }
-    
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SeShat Hub</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+:root{
+    --bg:#030712;
+    --bg2:#111827;
+    --card:rgba(255,255,255,.05);
+    --card-hover:rgba(255,255,255,.08);
+    --border:rgba(255,255,255,.1);
+    --text:#f8fafc;
+    --muted:#94a3b8;
+    --accent:#38bdf8;
+    --accent2:#8b5cf6;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Inter',sans-serif;
+    background:
+        radial-gradient(circle at top left,#1d4ed8 0%,transparent 25%),
+        radial-gradient(circle at bottom right,#7c3aed 0%,transparent 25%),
+        linear-gradient(135deg,var(--bg),var(--bg2));
+    color:var(--text);
+    min-height:100vh;
+    padding:30px;
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+}
+
+header{
+    text-align:center;
+    margin-bottom:30px;
+}
+
+header h1{
+    font-size:3.5rem;
+    font-weight:700;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+}
+
+header p{
+    color:var(--muted);
+    margin-top:10px;
+}
+
+.hero{
+    background:var(--card);
+    border:1px solid var(--border);
+    backdrop-filter:blur(16px);
+    border-radius:24px;
+    padding:35px;
+    margin-bottom:30px;
+}
+
+.hero h2{
+    font-size:2rem;
+    margin-bottom:8px;
+}
+
+.hero p{
+    color:var(--muted);
+}
+
+.quick-actions{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top:20px;
+}
+
+.quick-actions a{
+    text-decoration:none;
+    color:white;
+    padding:12px 20px;
+    border-radius:14px;
+    background:linear-gradient(135deg,var(--accent),#0ea5e9);
+    transition:.25s;
+    font-weight:600;
+}
+
+.quick-actions a:hover{
+    transform:translateY(-2px);
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:20px;
+    margin-bottom:35px;
+}
+
+.stat{
+    background:var(--card);
+    border:1px solid var(--border);
+    backdrop-filter:blur(12px);
+    border-radius:20px;
+    padding:25px;
+}
+
+.stat-title{
+    color:var(--muted);
+    margin-bottom:10px;
+}
+
+.stat-number{
+    font-size:2rem;
+    font-weight:700;
+    color:var(--accent);
+}
+
+.stat-sub{
+    color:var(--muted);
+    margin-top:5px;
+}
+
+.search{
+    margin-bottom:35px;
+}
+
+.search input{
+    width:100%;
+    padding:18px;
+    border-radius:18px;
+    border:none;
+    outline:none;
+    font-size:16px;
+    background:white;
+}
+
+.section-title{
+    margin:40px 0 20px;
+    font-size:1.5rem;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:20px;
+}
+
+.card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:24px;
+    padding:25px;
+    text-decoration:none;
+    color:white;
+    backdrop-filter:blur(12px);
+    transition:.3s;
+}
+
+.card:hover{
+    transform:translateY(-6px);
+    background:var(--card-hover);
+    box-shadow:0 20px 40px rgba(0,0,0,.35);
+}
+
+.icon{
+    font-size:3rem;
+    margin-bottom:15px;
+}
+
+.category{
+    color:var(--accent);
+    font-size:.75rem;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    font-weight:600;
+    margin-bottom:10px;
+}
+
+.card h2{
+    margin-bottom:10px;
+}
+
+.card p{
+    color:#cbd5e1;
+    line-height:1.6;
+}
+
+.coming-soon{
+    opacity:.85;
+}
+
+footer{
+    margin-top:60px;
+    text-align:center;
+    color:var(--muted);
+}
+
+@media(max-width:768px){
+
     body{
-        background:linear-gradient(135deg,var(--bg),var(--bg2));
-        color:var(--text);
-        min-height:100vh;
-        padding:30px;
-    }
-    
-    header{
-        text-align:center;
-        margin-bottom:40px;
-    }
-    
-    header h1{
-        font-size:3rem;
-        margin-bottom:10px;
-    }
-    
-    header p{
-        color:#cbd5e1;
-    }
-    
-    .stats{
-        display:flex;
-        justify-content:center;
-        gap:20px;
-        flex-wrap:wrap;
-        margin:30px 0;
-    }
-    
-    .stat{
-        background:rgba(255,255,255,.05);
-        padding:20px;
-        border-radius:16px;
-        min-width:180px;
-        text-align:center;
-        backdrop-filter:blur(10px);
-    }
-    
-    .stat-number{
-        font-size:2rem;
-        font-weight:bold;
-        color:var(--accent);
-    }
-    
-    .search{
-        max-width:600px;
-        margin:0 auto 30px auto;
-    }
-    
-    .search input{
-        width:100%;
         padding:15px;
-        border:none;
-        border-radius:15px;
-        font-size:16px;
-        outline:none;
     }
-    
-    .grid{
-        display:grid;
-        grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
-        gap:20px;
+
+    header h1{
+        font-size:2.5rem;
     }
-    
-    .card{
-        background:var(--card);
-        padding:25px;
-        border-radius:20px;
-        text-decoration:none;
-        color:white;
-        transition:.25s ease;
-        border:1px solid rgba(255,255,255,.1);
+
+    .hero h2{
+        font-size:1.5rem;
     }
-    
-    .card:hover{
-        transform:translateY(-5px);
-        background:var(--card-hover);
-        box-shadow:0 15px 30px rgba(0,0,0,.4);
-    }
-    
-    .icon{
-        font-size:3rem;
-        margin-bottom:15px;
-    }
-    
-    .category{
-        color:var(--accent);
-        font-size:.75rem;
-        text-transform:uppercase;
-        letter-spacing:1px;
-        font-weight:600;
-    }
-    
-    .card h2{
-        margin:10px 0;
-    }
-    
-    .card p{
-        color:#cbd5e1;
-        line-height:1.5;
-    }
-    
-    footer{
-        margin-top:50px;
-        text-align:center;
-        color:#94a3b8;
-    }
-    
-    @media(max-width:768px){
-        header h1{
-            font-size:2rem;
-        }
-    }
-    </style>
+
+}
+
+</style>
+
 </head>
 <body>
 
+<div class="container">
+
 <header>
     <h1>🜃 SeShat Hub</h1>
-    <p>All Your Applications In One Place</p>
+    <p>Your Personal Operating System</p>
 </header>
+
+<section class="hero">
+
+    <h2 id="greeting">Welcome Back</h2>
+
+    <p id="clock"></p>
+
+    <div class="quick-actions">
+
+        <a href="https://baerxiii.github.io/SeShatBudgeter/" target="_blank">
+            💰 Budgeter
+        </a>
+
+        <a href="https://baerxiii.github.io/seshatLedger/" target="_blank">
+            📊 Planner
+        </a>
+
+        <a href="https://baerxiii.github.io/stern-archive/" target="_blank">
+            🎙 Archive
+        </a>
+
+    </div>
+
+</section>
 
 <div class="stats">
 
     <div class="stat">
+        <div class="stat-title">Applications</div>
         <div class="stat-number">6</div>
-        <div>Applications</div>
+        <div class="stat-sub">Active Systems</div>
     </div>
 
     <div class="stat">
+        <div class="stat-title">Finance Suite</div>
         <div class="stat-number">3</div>
-        <div>Finance Tools</div>
+        <div class="stat-sub">Budget & Payroll Tools</div>
     </div>
 
     <div class="stat">
-        <div class="stat-number">1</div>
-        <div>Household App</div>
+        <div class="stat-title">Current Focus</div>
+        <div class="stat-number">MVP</div>
+        <div class="stat-sub">Dashboard Expansion</div>
     </div>
 
     <div class="stat">
-        <div class="stat-number">1</div>
-        <div>Vehicle App</div>
-    </div>
-
-    <div class="stat">
-        <div class="stat-number">1</div>
-        <div>Media App</div>
+        <div class="stat-title">Next Module</div>
+        <div class="stat-number">📈</div>
+        <div class="stat-sub">Net Worth Tracker</div>
     </div>
 
 </div>
 
 <div class="search">
-    <input
-        type="text"
-        id="search"
-        placeholder="🔍 Search applications..."
-        onkeyup="filterApps()">
+
+<input
+    type="text"
+    id="search"
+    placeholder="🔍 Search applications..."
+    onkeyup="filterApps()">
+
 </div>
+
+<h2 class="section-title">Applications</h2>
 
 <div class="grid">
 
-    <!-- Budgeter -->
+<a class="card"
+href="https://baerxiii.github.io/SeShatBudgeter/"
+target="_blank">
 
-    <a class="card"
-       href="https://baerxiii.github.io/SeShatBudgeter/"
-       target="_blank">
+<div class="icon">💰</div>
+<div class="category">Finance</div>
 
-        <div class="icon">💰</div>
-        <div class="category">Finance</div>
+<h2>SeShat Budgeter</h2>
 
-        <h2>SeShat Budgeter</h2>
+<p>
+Track spending, income, budgeting,
+account management and financial goals.
+</p>
 
-        <p>
-            Personal finance tracker for budgeting,
-            account management, spending analysis,
-            and financial goal tracking.
-        </p>
+</a>
 
-    </a>
+<a class="card"
+href="https://seshatpantry.ai.studio/"
+target="_blank">
 
-    <!-- Pantry -->
+<div class="icon">🛒</div>
+<div class="category">Household</div>
 
-    <a class="card"
-       href="https://seshatpantry.ai.studio/"
-       target="_blank">
+<h2>SeShat Pantry</h2>
 
-        <div class="icon">🛒</div>
-        <div class="category">Household</div>
+<p>
+Manage groceries, pantry stock
+and shopping organization.
+</p>
 
-        <h2>SeShat Pantry</h2>
+</a>
 
-        <p>
-            Grocery list and pantry management system
-            to organize food purchases and inventory.
-        </p>
+<a class="card"
+href="https://baerxiii.github.io/SeShatPayEstimator/"
+target="_blank">
 
-    </a>
+<div class="icon">💵</div>
+<div class="category">Payroll</div>
 
-    <!-- Ledger -->
+<h2>SeShat Ledger</h2>
 
-    <a class="card"
-       href="https://baerxiii.github.io/SeShatPayEstimator/"
-       target="_blank">
+<p>
+Estimate taxes, deductions,
+paycheques and take-home earnings.
+</p>
 
-        <div class="icon">💵</div>
-        <div class="category">Payroll</div>
+</a>
 
-        <h2>SeShat Ledger</h2>
+<a class="card"
+href="https://baerxiii.github.io/seshatLedger/"
+target="_blank">
 
-        <p>
-            Estimate paycheques, deductions,
-            taxes, and take-home pay.
-        </p>
+<div class="icon">📊</div>
+<div class="category">Budget Planning</div>
 
-    </a>
+<h2>SeShat Budget Planner</h2>
 
-    <!-- Budget Planner -->
+<p>
+Allocate income to bills,
+savings, investments and spending.
+</p>
 
-    <a class="card"
-       href="https://baerxiii.github.io/seshatLedger/"
-       target="_blank">
+</a>
 
-        <div class="icon">📊</div>
-        <div class="category">Budget Planning</div>
+<a class="card"
+href="https://fuel-flow-track-burrowing.base44.app/"
+target="_blank">
 
-        <h2>SeShat Budget Planner</h2>
+<div class="icon">⛽</div>
+<div class="category">Transportation</div>
 
-        <p>
-            Plan how paycheques are allocated between
-            bills, savings, investments, and spending.
-        </p>
+<h2>Fuel Tracker</h2>
 
-    </a>
+<p>
+Track fuel purchases,
+maintenance and operating costs.
+</p>
 
-    <!-- Fuel Tracker -->
+</a>
 
-    <a class="card"
-       href="https://fuel-flow-track-burrowing.base44.app/"
-       target="_blank">
+<a class="card"
+href="https://baerxiii.github.io/stern-archive/"
+target="_blank">
 
-        <div class="icon">⛽</div>
-        <div class="category">Transportation</div>
+<div class="icon">🎙️</div>
+<div class="category">Media</div>
 
-        <h2>Colonel Baer's Fuel Tracker</h2>
+<h2>Stern Archive</h2>
 
-        <p>
-            Track fuel purchases, maintenance,
-            vehicle expenses, fuel economy trends,
-            service intervals, and cost reports.
-        </p>
+<p>
+Browse and listen to archived
+Howard Stern collections.
+</p>
 
-    </a>
+</a>
 
-    <!-- Stern Archive -->
+</div>
 
-    <a class="card"
-       href="https://baerxiii.github.io/stern-archive/"
-       target="_blank">
+<h2 class="section-title">Planned Applications</h2>
 
-        <div class="icon">🎙️</div>
-        <div class="category">Media</div>
+<div class="grid">
 
-        <h2>Stern Archive</h2>
+<div class="card coming-soon">
+    <div class="icon">📈</div>
+    <div class="category">Finance</div>
+    <h2>Net Worth Tracker</h2>
+    <p>Track assets, liabilities and long-term wealth growth.</p>
+</div>
 
-        <p>
-            Browse and listen to archived Howard Stern episodes
-            and radio collections from Archive.org.
-        </p>
+<div class="card coming-soon">
+    <div class="icon">✅</div>
+    <div class="category">Productivity</div>
+    <h2>Task Manager</h2>
+    <p>Projects, reminders, goals and personal organization.</p>
+</div>
 
-    </a>
+<div class="card coming-soon">
+    <div class="icon">📁</div>
+    <div class="category">Documents</div>
+    <h2>Document Vault</h2>
+    <p>Store manuals, warranties, receipts and records.</p>
+</div>
 
 </div>
 
 <footer>
-    <p>
-        SeShat Hub • Personal Application Dashboard
-    </p>
+    <p>SeShat Hub • Personal Application Dashboard</p>
 </footer>
+
+</div>
 
 <script>
 
-function filterApps() {
+function updateClock(){
+
+    const now = new Date();
+
+    document.getElementById('clock').innerText =
+        now.toLocaleString();
+
+    const hour = now.getHours();
+
+    let greeting = 'Welcome Back';
+
+    if(hour < 12){
+        greeting = '☀️ Good Morning, Baerenger';
+    }
+    else if(hour < 18){
+        greeting = '🌤️ Good Afternoon, Baerenger';
+    }
+    else{
+        greeting = '🌙 Good Evening, Baerenger';
+    }
+
+    document.getElementById('greeting').innerText =
+        greeting;
+}
+
+setInterval(updateClock,1000);
+updateClock();
+
+function filterApps(){
 
     const search =
     document.getElementById("search")
