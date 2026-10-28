@@ -82,8 +82,8 @@ header p{
 
 .quick-actions{
     display:flex;
-    gap:12px;
     flex-wrap:wrap;
+    gap:12px;
     margin-top:20px;
 }
 
@@ -224,8 +224,8 @@ footer{
 }
 
 </style>
-
 </head>
+
 <body>
 
 <div class="container">
@@ -251,6 +251,10 @@ footer{
             📊 Planner
         </a>
 
+        <a href="https://baerxiii.github.io/SeShatTasks/" target="_blank">
+            ✅ Command
+        </a>
+
         <a href="https://baerxiii.github.io/stern-archive/" target="_blank">
             🎙 Archive
         </a>
@@ -263,7 +267,7 @@ footer{
 
     <div class="stat">
         <div class="stat-title">Applications</div>
-        <div class="stat-number">6</div>
+        <div class="stat-number">7</div>
         <div class="stat-sub">Active Systems</div>
     </div>
 
@@ -274,9 +278,9 @@ footer{
     </div>
 
     <div class="stat">
-        <div class="stat-title">Current Focus</div>
-        <div class="stat-number">MVP</div>
-        <div class="stat-sub">Dashboard Expansion</div>
+        <div class="stat-title">Productivity</div>
+        <div class="stat-number">1</div>
+        <div class="stat-sub">Command Center</div>
     </div>
 
     <div class="stat">
@@ -290,10 +294,10 @@ footer{
 <div class="search">
 
 <input
-    type="text"
-    id="search"
-    placeholder="🔍 Search applications..."
-    onkeyup="filterApps()">
+type="text"
+id="search"
+placeholder="🔍 Search applications..."
+onkeyup="filterApps()">
 
 </div>
 
@@ -366,6 +370,22 @@ savings, investments and spending.
 </a>
 
 <a class="card"
+href="https://baerxiii.github.io/SeShatTasks/"
+target="_blank">
+
+<div class="icon">✅</div>
+<div class="category">Productivity</div>
+
+<h2>SeShat Command</h2>
+
+<p>
+Manage tasks, goals, reminders and personal
+projects from a centralized command dashboard.
+</p>
+
+</a>
+
+<a class="card"
 href="https://fuel-flow-track-burrowing.base44.app/"
 target="_blank">
 
@@ -411,17 +431,17 @@ Howard Stern collections.
 </div>
 
 <div class="card coming-soon">
-    <div class="icon">✅</div>
-    <div class="category">Productivity</div>
-    <h2>Task Manager</h2>
-    <p>Projects, reminders, goals and personal organization.</p>
-</div>
-
-<div class="card coming-soon">
     <div class="icon">📁</div>
     <div class="category">Documents</div>
     <h2>Document Vault</h2>
-    <p>Store manuals, warranties, receipts and records.</p>
+    <p>Store manuals, warranties, receipts and important records.</p>
+</div>
+
+<div class="card coming-soon">
+    <div class="icon">🎯</div>
+    <div class="category">Goals</div>
+    <h2>Goal Tracker</h2>
+    <p>Monitor savings targets, milestones and personal objectives.</p>
 </div>
 
 </div>
@@ -438,50 +458,45 @@ function updateClock(){
 
     const now = new Date();
 
-    document.getElementById('clock').innerText =
+    document.getElementById("clock").innerText =
         now.toLocaleString();
 
     const hour = now.getHours();
 
-    let greeting = 'Welcome Back';
+    let greeting = "Welcome Back";
 
     if(hour < 12){
-        greeting = '☀️ Good Morning, Baerenger';
+        greeting = "☀️ Good Morning, Baerenger";
     }
     else if(hour < 18){
-        greeting = '🌤️ Good Afternoon, Baerenger';
+        greeting = "🌤️ Good Afternoon, Baerenger";
     }
     else{
-        greeting = '🌙 Good Evening, Baerenger';
+        greeting = "🌙 Good Evening, Baerenger";
     }
 
-    document.getElementById('greeting').innerText =
+    document.getElementById("greeting").innerText =
         greeting;
 }
 
 setInterval(updateClock,1000);
-updateClock();
-
-function filterApps(){
-
-    const search =
-    document.getElementById("search")
-    .value.toLowerCase();
+   .value.toLowerCase();
 
     const cards =
     document.querySelectorAll(".card");
 
-    cards.forEach(card => {
+    cards.forEach(card=>{
 
         const text =
         card.textContent.toLowerCase();
 
         card.style.display =
-        text.includes(search)
-        ? "block"
-        : "none";
+            text.includes(search)
+            ? "block"
+            : "none";
 
     });
+
 }
 
 </script>
