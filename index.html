@@ -580,6 +580,86 @@ setInterval(updateClock,1000);
 
 }
 
+const sb = window.seshat.supabase;
+
+async function signup() {
+
+    const email =
+        document.getElementById("email").value;
+
+    const password =
+        document.getElementById("password").value;
+
+    const { error } =
+        await sb.auth.signUp({
+            email,
+            password
+        });
+
+    document.getElementById("authMessage").innerText =
+        error
+            ? error.message
+            : "Check your email for verification.";
+}
+
+async function login() {
+
+    const email =
+        document.getElementById("email").value;
+
+    const password =
+        document.getElementById("password").value;
+
+    const { error } =
+        await sb.auth.signInWithPassword({
+            email,
+            password
+        });
+
+    if(error){
+
+        document.getElementById("authMessage").innerText =
+            error.message;
+
+        return;
+    }
+
+    showDashboard();
+}
+
+async function logout(){
+
+    await sb.auth.signOut();
+
+    location.reload();
+}
+
+function showDashboard(){
+
+    document.getElementById("loginScreen")
+        .style.display = "none";
+
+    document.querySelector(".container")
+        .style.display = "block";
+}
+
+async function checkSession(){
+
+    const {
+        data:{session}
+    } = await sb.auth.getSession();
+
+    if(session){
+
+        showDashboard();
+
+    } else {
+
+        document.querySelector(".container")
+            .style.display = "none";
+    }
+}
+    
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
