@@ -537,41 +537,51 @@ Howard Stern collections.
 
 </div>
 
-<script>
-
+<script>    
 function updateClock(){
 
-checkSession();
-    
     const now = new Date();
 
-    document.getElementById("clock").innerText =
-        now.toLocaleString();
-
-    const hour = now.getHours();
-
-    let greeting = "Welcome Back";
-
-    if(hour < 12){
-        greeting = "☀️ Good Morning, Baerenger";
-    }
-    else if(hour < 18){
-        greeting = "🌤️ Good Afternoon, Baerenger";
-    }
-    else{
-        greeting = "🌙 Good Evening, Baerenger";
+    const clock = document.getElementById("clock");
+    if(clock){
+        clock.innerText = now.toLocaleString();
     }
 
-    document.getElementById("greeting").innerText =
-        greeting;
+    const greetingEl =
+        document.getElementById("greeting");
+
+    if(greetingEl){
+
+        const hour = now.getHours();
+
+        let greeting = "Welcome Back";
+
+        if(hour < 12){
+            greeting = "☀️ Good Morning, Baerenger";
+        }
+        else if(hour < 18){
+            greeting = "🌤️ Good Afternoon, Baerenger";
+        }
+        else{
+            greeting = "🌙 Good Evening, Baerenger";
+        }
+
+        greetingEl.innerText = greeting;
+    }
 }
 
 setInterval(updateClock,1000);
-   function filterApps(){
+updateClock();
+
+function filterApps(){
+
+    const searchBox =
+        document.getElementById("search");
+
+    if(!searchBox) return;
 
     const search =
-        document.getElementById("search")
-        .value.toLowerCase();
+        searchBox.value.toLowerCase();
 
     const cards =
         document.querySelectorAll(".card");
@@ -583,28 +593,19 @@ setInterval(updateClock,1000);
 
         card.style.display =
             text.includes(search)
-                ? "block"
-                : "none";
+            ? "block"
+            : "none";
     });
 }
 
-    const cards =
-    document.querySelectorAll(".card");
+const sb = window.seshat?.supabase;
 
-    cards.forEach(card=>{
+async function signup(){
 
-        const text =
-        card.textContent.toLowerCase();
-
-        card.style.display =
-            text.includes(search)
-            ? "block"
-            : "none";
-
-    });
-const sb = window.seshat.supabase;
-
-async function signup() {
+    if(!sb){
+        alert("Supabase not loaded.");
+        return;
+    }
 
     const email =
         document.getElementById("email").value;
@@ -620,11 +621,16 @@ async function signup() {
 
     document.getElementById("authMessage").innerText =
         error
-            ? error.message
-            : "Check your email for verification.";
+        ? error.message
+        : "Check your email for verification.";
 }
 
-async function login() {
+async function login(){
+
+    if(!sb){
+        alert("Supabase not loaded.");
+        return;
+    }
 
     const email =
         document.getElementById("email").value;
@@ -661,14 +667,23 @@ function showDashboard(){
     document.getElementById("loginScreen")
         .style.display = "none";
 
-    document.querySelector(".container")
-        .style.display = "block";
+    const container =
+        document.querySelector(".container");
+
+    if(container){
+        container.style.display = "block";
+    }
 }
 
 async function checkSession(){
 
+    if(!sb){
+        console.error("Supabase not loaded.");
+        return;
+    }
+
     const {
-        data:{session}
+        data: { session }
     } = await sb.auth.getSession();
 
     if(session){
@@ -677,13 +692,17 @@ async function checkSession(){
 
     } else {
 
-        document.querySelector(".container")
-            .style.display = "none";
-    }
+        const container =
+            document.querySelector(".container");
 
+        if(container){
+            container.style.display = "none";
+        }
+    }
+}
 
 checkSession();
-    
+
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
