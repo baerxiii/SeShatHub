@@ -567,7 +567,26 @@ checkSession();
 }
 
 setInterval(updateClock,1000);
-   .value.toLowerCase();
+   function filterApps(){
+
+    const search =
+        document.getElementById("search")
+        .value.toLowerCase();
+
+    const cards =
+        document.querySelectorAll(".card");
+
+    cards.forEach(card => {
+
+        const text =
+            card.textContent.toLowerCase();
+
+        card.style.display =
+            text.includes(search)
+                ? "block"
+                : "none";
+    });
+}
 
     const cards =
     document.querySelectorAll(".card");
@@ -665,6 +684,8 @@ async function checkSession(){
             .style.display = "none";
     }
 }
+
+checkSession();
     
 </script>
 
