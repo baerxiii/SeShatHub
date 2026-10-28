@@ -1,15 +1,41 @@
 const SUPABASE_URL =
-'https://uzbbwvihkfzdvnowhglc.supabase.co';
+'https://cujvvxyadxvlfvhgzlki.supabase.co';
 
 const SUPABASE_ANON_KEY =
-'sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf';
+'YOUR_ANON_KEY';
 
-const supabaseClient =
-window.supabase.createClient(
+const sb =
+supabase.createClient(
     SUPABASE_URL,
     SUPABASE_ANON_KEY
 );
 
 window.seshat = {
-    supabase: supabaseClient
+
+    supabase: sb,
+
+    async getUser() {
+
+        const {
+            data:{user}
+        } = await sb.auth.getUser();
+
+        return user;
+    },
+
+    async getSession() {
+
+        const {
+            data:{session}
+        } = await sb.auth.getSession();
+
+        return session;
+    },
+
+    async signOut() {
+
+        await sb.auth.signOut();
+
+        location.href = "/";
+    }
 };
