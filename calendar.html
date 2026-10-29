@@ -245,7 +245,9 @@ textarea{
 
 <div class="card">
 
-    <h2>📅 Monthly Calendar</h2>
+    <h2 id="calendarMonth">
+    📅 Calendar
+</h2>
 
     <div id="calendarGrid"
          class="calendar-grid">
@@ -261,10 +263,6 @@ textarea{
 
 </button>
 
-<div class="card">
-
-    <h2>Create Event</h2>
-    
 <div class="card">    
         <h2>Create Event</h2>
 
@@ -453,6 +451,17 @@ function renderCalendar(events){
 
     const month =
         now.getMonth();
+    document.getElementById(
+    "calendarMonth"
+).innerText =
+    "📅 " +
+    now.toLocaleString(
+        "default",
+        {
+            month:"long",
+            year:"numeric"
+        }
+    );
 
     const daysInMonth =
         new Date(
