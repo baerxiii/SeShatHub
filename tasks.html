@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>SeShat Tasks</title>
 
@@ -20,14 +20,14 @@ body{
     min-height:100vh;
 
     background:
-        radial-gradient(circle at top left,#2563eb,#020617 40%),
-        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
+    radial-gradient(circle at top left,#2563eb,#020617 40%),
+    radial-gradient(circle at bottom right,#1e293b,#020617 70%);
 }
 
 .container{
     max-width:1200px;
-    margin:auto;
     padding:30px;
+    margin:auto;
 }
 
 .header{
@@ -37,72 +37,87 @@ body{
     margin-bottom:30px;
 }
 
-.back-btn{
-    text-decoration:none;
-    color:white;
-    background:#1d4ed8;
-    padding:12px 20px;
+.btn{
+    padding:12px 18px;
+    border:none;
     border-radius:12px;
+    cursor:pointer;
+}
+
+.dashboard-btn{
+    background:#2563eb;
+    color:white;
+    text-decoration:none;
 }
 
 .card{
     background:rgba(255,255,255,.08);
-    backdrop-filter:blur(20px);
     border:1px solid rgba(255,255,255,.12);
+    backdrop-filter:blur(20px);
     border-radius:20px;
     padding:25px;
     margin-bottom:20px;
 }
 
-.task-form{
-    display:flex;
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
     gap:12px;
 }
 
-.task-form input{
-    flex:1;
-    padding:14px;
+input,
+textarea,
+select{
+    width:100%;
+    padding:12px;
     border:none;
     border-radius:12px;
+    margin-top:8px;
 }
 
-.task-form button{
-    padding:14px 20px;
-    border:none;
-    border-radius:12px;
-    cursor:pointer;
+textarea{
+    min-height:90px;
+}
+
+.add-btn{
+    width:100%;
+    margin-top:15px;
     background:#2563eb;
     color:white;
 }
 
 .task{
+    background:rgba(255,255,255,.05);
+    border-radius:15px;
+    padding:18px;
+    margin-top:15px;
+}
+
+.task-header{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    padding:15px;
-    margin-top:10px;
-    border-radius:12px;
-    background:rgba(255,255,255,.05);
 }
 
-.completed{
-    text-decoration:line-through;
-    opacity:.6;
+.priority-high{
+    color:#ef4444;
+}
+
+.priority-medium{
+    color:#f59e0b;
+}
+
+.priority-low{
+    color:#22c55e;
 }
 
 .task-actions{
+    margin-top:15px;
     display:flex;
     gap:10px;
 }
 
-.task-actions button{
-    border:none;
-    cursor:pointer;
-    padding:8px 12px;
-    border-radius:8px;
-}
-
-.done-btn{
+.complete-btn{
     background:#16a34a;
     color:white;
 }
@@ -110,6 +125,23 @@ body{
 .delete-btn{
     background:#dc2626;
     color:white;
+}
+
+.completed{
+    opacity:.6;
+    text-decoration:line-through;
+}
+
+small{
+    color:#cbd5e1;
+}
+
+@media(max-width:768px){
+
+    .grid{
+        grid-template-columns:1fr;
+    }
+
 }
 
 </style>
@@ -120,11 +152,10 @@ body{
 
     <div class="header">
 
-        <h1>✅ Task Manager</h1>
+        <h1>✅ SeShat Tasks</h1>
 
-        <a
-            href="index.html"
-            class="back-btn">
+        <a href="index.html"
+           class="btn dashboard-btn">
             Dashboard
         </a>
 
@@ -132,17 +163,35 @@ body{
 
     <div class="card">
 
-        <div class="task-form">
+        <h2>New Task</h2>
+
+        <input
+            id="title"
+            placeholder="Task Title">
+
+        <textarea
+            id="notes"
+            placeholder="Notes"></textarea>
+
+        <div class="grid">
+
+            <select id="priority">
+                <option>High</option>
+                <option selected>Medium</option>
+                <option>Low</option>
+            </select>
 
             <input
-                id="taskInput"
-                placeholder="New Task">
-
-            <button onclick="addTask()">
-                Add Task
-            </button>
+                type="date"
+                id="duedate">
 
         </div>
+
+        <button
+            class="btn add-btn"
+            onclick="addTask()">
+            Add Task
+        </button>
 
     </div>
 
@@ -161,13 +210,15 @@ body{
 
 <script>
 
-const sb = window.seshat.supabase;
+function getSB(){
+    return window.seshat.supabase;
+}
 
 async function getUser(){
 
     const {
         data:{user}
-    } = await sb.auth.getUser();
+    } = await getSB().auth.getUser();
 
     if(!user){
 
@@ -178,6 +229,42 @@ async function getUser(){
     return user;
 }
 
+async function addTask(){
+
+    const user = await getUser();
+
+    if(!user) return;
+
+    const title =
+        document.getElementById("title").value;
+
+    if(!title.trim()) return;
+
+    await getSB()
+        .from("tasks")
+        .insert({
+
+            user_id:user.id,
+
+            title:title,
+
+            notes:
+            document.getElementById("notes").value,
+
+            priority:
+            document.getElementById("priority").value,
+
+            due_date:
+            document.getElementById("duedate").value
+
+        });
+
+    document.getElementById("title").value="";
+    document.getElementById("notes").value="";
+
+    loadTasks();
+}
+
 async function loadTasks(){
 
     const user =
@@ -186,54 +273,80 @@ async function loadTasks(){
     if(!user) return;
 
     const {data,error} =
-        await sb
-        .from("tasks")
-        .select("*")
-        .eq("user_id",user.id)
-        .order("created_at");
+        await getSB()
+            .from("tasks")
+            .select("*")
+            .eq("user_id",user.id)
+            .order("created_at",
+            {ascending:false});
 
     if(error){
+
         console.error(error);
         return;
     }
 
-    const list =
-        document.getElementById(
-            "taskList"
-        );
+    const taskList =
+        document.getElementById("taskList");
 
-    list.innerHTML="";
+    taskList.innerHTML="";
 
     data.forEach(task=>{
 
-        list.innerHTML += `
+        const priorityClass =
+            task.priority
+            ? "priority-" +
+              task.priority.toLowerCase()
+            : "priority-medium";
+
+        taskList.innerHTML += `
+
         <div class="task">
 
-            <div class="${
-                task.completed
-                ? "completed"
-                : ""
-            }">
+            <div class="task-header">
 
-                ${task.title}
+                <h3 class="${
+                    task.completed
+                    ? "completed"
+                    : ""
+                }">
+                    ${task.title}
+                </h3>
+
+                <strong class="${priorityClass}">
+                    ${task.priority || "Medium"}
+                </strong>
 
             </div>
+
+            <p>${task.notes || ""}</p>
+
+            <br>
+
+            <small>
+                Due:
+                ${task.due_date || "No deadline"}
+            </small>
 
             <div class="task-actions">
 
                 <button
-                    class="done-btn"
+                    class="btn complete-btn"
                     onclick="toggleTask(${task.id},${task.completed})">
 
-                    ✓
+                    ${
+                        task.completed
+                        ? "Undo"
+                        : "Complete"
+                    }
 
                 </button>
 
                 <button
-                    class="delete-btn"
+                    class="btn delete-btn"
                     onclick="deleteTask(${task.id})">
 
-                    ✕
+                    Delete
 
                 </button>
 
@@ -242,40 +355,12 @@ async function loadTasks(){
         </div>
         `;
     });
-}
 
-async function addTask(){
-
-    const user =
-        await getUser();
-
-    const title =
-        document
-        .getElementById(
-            "taskInput"
-        )
-        .value
-        .trim();
-
-    if(!title) return;
-
-    await sb
-        .from("tasks")
-        .insert({
-            user_id:user.id,
-            title:title
-        });
-
-    document.getElementById(
-        "taskInput"
-    ).value="";
-
-    loadTasks();
 }
 
 async function toggleTask(id,current){
 
-    await sb
+    await getSB()
         .from("tasks")
         .update({
             completed:!current
@@ -287,15 +372,13 @@ async function toggleTask(id,current){
 
 async function deleteTask(id){
 
-    await sb
+    if(!confirm("Delete task?"))
+        return;
+
+    await getSB()
         .from("tasks")
         .delete()
-        .eq("id",id);
-
-    loadTasks();
-}
-
-loadTasks();
+  ks();
 
 </script>
 
