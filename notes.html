@@ -317,16 +317,169 @@ async function editNote(note){
     const title =
         prompt("Title", note.title);
 
-    if(title===null) return;
+    if(title === null) return;
 
     const content =
         prompt("Content", note.content || "");
 
-    if(content===null) return;
+    if(content === null) return;
 
     await getSB()
         .from("notes")
         .update({
+            title:title,
+            content:content,
+            updated_at:new Date().toISOString()
+        })
+        .eq("id",note.id);
 
-            title,
-            
+    loadNotes();
+}
+
+async function togglePin(id,current){
+
+    await getSB()
+        .from("notes")
+        .update({
+            pinned:!current
+        })
+        .eq("id",id);
+
+    loadNotes();
+}
+
+async function deleteNote(id){
+
+    if(!confirm("Delete note?"))
+        return;
+
+    await getSB()
+        .from("notes")
+        .delete()
+        .eq("id",id);
+
+    loadNotes();
+}
+
+async function loadNotes(){
+
+    const user =
+        await getUser();
+
+    if(!user) return;
+
+    const search =
+        document.getElementById("searchBox")
+        .value
+        .toLowerCase();
+
+    const { data,error } =
+        await getSB()
+            .from("notes")
+            .select("*")
+            .eq("user_id",user.id)
+            .order("pinned",{ascending:false})
+            .order("updated_at",{ascending:false});
+
+    if(error){
+        console.error(error);
+        return;
+    }
+
+    const list =
+        document.getElementById("notesList");
+
+    list.innerHTML = "";
+
+    let total = 0;
+    let pinned = 0;
+
+    data.forEach(note=>{
+
+        if(
+            search &&
+            !note.title.toLowerCase().includes(search) &&
+            !(note.content || "")
+                .toLowerCase()
+                .includes(search)
+        ){
+            return;
+        }
+
+        total++;
+
+        if(note.pinned){
+            pinned++;
+        }
+
+        list.innerHTML += `
+        <div class="note-card ${note.pinned ? 'pinned' : ''}">
+
+            <div class="note-header">
+
+                <h3>
+                    ${note.pinned ? '📌 ' : ''}
+                    ${note.title}
+                </h3>
+
+                <small>${note.category}</small>
+
+            </div>
+
+            <div class="badge">
+                ${note.category}
+            </div>
+
+            <div class="note-content">
+                ${note.content || ""}
+            </div>
+
+            <div class="note-actions">
+
+                <button
+                    class="btn pin-btn"
+                    onclick="togglePin(${note.id},${note.pinned})">
+
+                    ${note.pinned ? 'Unpin' : 'Pin'}
+
+                </button>
+
+                <button
+                    class="btn edit-btn"
+                    onclick="editNote({
+                        id:${note.id},
+                        title:'${(note.title || '').replace(/'/g,'&#39;')}',
+                        content:'${(note.content || '').replace(/'/g,'&#39;')}'
+                    })">
+
+                    Edit
+
+                </button>
+
+                <button
+                    class="btn delete-btn"
+                    onclick="deleteNote(${note.id})">
+
+                    Delete
+
+                </button>
+
+            </div>
+
+        </div>
+        `;
+    });
+
+    document.getElementById("noteCount").innerText =
+        total;
+
+    document.getElementById("pinnedCount").innerText =
+        pinned;
+}
+
+loadNotes();
+
+</script>
+
+</body>
+</html>
