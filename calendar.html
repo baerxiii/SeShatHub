@@ -1,1 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<title>SeShat Calendar</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Segoe UI',sans-serif;
+    color:white;
+    min-height:100vh;
+
+    background:
+        radial-gradient(circle at top left,#2563eb,#020617 40%),
+        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+    padding:30px;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.dashboard-btn{
+    text-decoration:none;
+    background:#2563eb;
+    color:white;
+    padding:12px 18px;
+    border-radius:12px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.stat-card{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    padding:20px;
+}
+
+.card{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:20px;
+    padding:25px;
+    margin-bottom:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+}
+
+input,
+textarea,
+select{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:12px;
+    margin-top:10px;
+}
+
+textarea{
+    min-height:100px;
+}
+
+.btn{
+    border:none;
+    border-radius:10px;
+    padding:12px 16px;
+    cursor:pointer;
+    color:white;
+}
+
+.add-btn{
+    width:100%;
+    margin-top:15px;
+    background:#2563eb;
+}
+
+.event-card{
+    background:rgba(255,255,255,.05);
+    border-left:5px solid #60a5fa;
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:15px;
+}
+
+.event-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.badge{
+    display:inline-block;
+    margin-top:10px;
+    padding:5px 10px;
+    border-radius:10px;
+    background:#334155;
+}
+
+.event-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:15px;
+}
+
+.edit-btn{
+    background:#f59e0b;
+}
+
+.delete-btn{
+    background:#dc2626;
+}
+
+.search-box{
+    margin-bottom:15px;
+}
+
+@media(max-width:768px){
+
+    .grid{
+        grid-template-columns:1fr;
+    }
+
+    .header{
+        flex-direction:column;
+        gap:15px;
+    }
+
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="header">
+
+        <h1>📅 SeShat Calendar</h1>
+
+        <a href="index.html"
+           class="dashboard-btn">
+            Dashboard
+        </a>
+
+    </div>
+
+    <div class="stats">
+
+        <div class="stat-card">
+            <small>Today's Events</small>
+            <h2 id="todayCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>Upcoming Events</small>
+            <h2 id="upcomingCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>Total Events</small>
+            <h2 id="eventCount">0</h2>
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <h2>Create Event</h2>
+
+        <input
+            id="title"
+            placeholder="Event Title">
+
+        <textarea
+            id="description"
+            placeholder="Description"></textarea>
+
+        <div class="grid">
+
+            <select id="category">
+                <option>Work</option>
+                <option>Personal</option>
+                <option>Health</option>
+                <option>Finance</option>
+                <option>Family</option>
+                <option>Projects</option>
+            </select>
+
+            <input
+                id="location"
+                placeholder="Location">
+
+            <input
+                type="date"
+                id="event_date">
+
+            <input
+                type="time"
+                id="start_time">
+
+            <input
+                type="time"
+                id="end_time">
+
+        </div>
+
+        <button
+            class="btn add-btn"
+            onclick="addEvent()">
+
+            Add Event
+
+        </button>
+
+    </div>
+
+    <div class="card">
+
+        <input
+            id="searchBox"
+            class="search-box"
+            placeholder="🔍 Search Events"
+            onkeyup="loadEvents()">
+
+        <div id="eventList"></div>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="seshat-core.js"></script>
+
+<script>
+
+function getSB(){
+    return window.seshat.supabase;
+}
+
+async function getUser(){
+
+    const {
+        data:{user}
+    } = await getSB().auth.getUser();
+
+    return user;
+}
+
+async function addEvent(){
+
+    const user =
+        await getUser();
+
+    const { error } =
+    await getSB()
+        .from("calendar_events")
+        .insert({
+
+            user_id:user.id,
+
+            title:
+                document.getElementById("title").value,
+
+            description:
+                document.getElementById("description").value,
+
+            category:
+                document.getElementById("category").value,
+
+            location:
+                document.getElementById("location").value,
+
+            event_date:
+                document.getElementById("event_date").value,
+
+            start_time:
+                document.getElementById("start_time").value || null,
+
+            end_time:
+                document.getElementById("end_time").value || null
+
+        });
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    loadEvents();
+}
+
+async function editEvent(event){
+
+    const title =
+        prompt("Title",event.title);
+
+    if(title===null) return;
+
+    const description =
+        prompt("Description",event.description || "");
+
+    await getSB()
+        .from("calendar_events")
+        .update({
+            title,
+            description
+        })
+        .eq("id",event.id);
+
+    loadEvents();
+}
+
+async function deleteEvent(id){
+
+    if(!confirm("Delete event?"))
+        return;
+
+    await getSB()
+        .from("calendar_events")
+        .delete()
+        .eq("id",id);
+
+    loadEvents();
+}
+
+async function loadEvents(){
+
+    const user =
+        await getUser();
+
+    if(!user) return;
+
+    const search =
+        document.getElementById("searchBox")
+        .value
+        .toLowerCase();
+
+    const { data,error } =
+    await getSB()
+        .from("calendar_events")
+        .select("*")
+        .eq("user_id",user.id)
+        .order("event_date");
+
+    if(error){
+        console.error(error);
+        return;
+    }
+
+    const today =
+        new Date().toISOString().split("T")[0];
+
+    let todayCount = 0;
+    let upcomingCount = 0;
+
+    const eventList =
+        document.getElementById("eventList");
+
+    eventList.innerHTML = "";
+
+    data.forEach(event=>{
+
+        if(
+            search &&
+            !event.title.toLowerCase()
+                .includes(search)
+        ){
+            return;
+        }
+
+        if(event.event_date === today)
+            todayCount++;
+
+        if(event.event_date > today)
+            upcomingCount++;
+
+        eventList.innerHTML += `
+
+        <div class="event-card">
+
+            <div class="event-header">
+
+                <h3>${event.title}</h3>
+
+                <small>
+                    ${event.event_date}
+                </small>
+
+            </div>
+
+            <div class="badge">
+                ${event.category}
+            </div>
+
+            <p style="margin-top:10px;">
+                ${event.description || ""}
+            </p>
+
+            <p style="margin-top:10px;">
+                📍 ${event.location || "No Location"}
+            </p>
+
+            <p style="margin-top:5px;">
+                🕒 ${event.start_time || "--"}
+                -
+                ${event.end_time || "--"}
+            </p>
+
+            <div class="event-actions">
+
+                <button
+                    class="btn edit-btn"
+                    onclick='editEvent(${JSON.stringify({
+                        id:"__ID__",
+                        title:"__TITLE__",
+                        description:"__DESC__"
+                    })})'>
+
+                    Edit
+
+                </button>
+
+                <button
+                    class="btn delete-btn"
+                    onclick="deleteEvent(${event.id})">
+
+                    Delete
+
+                </button>
+
+            </div>
+
+        </div>
+
+        `
+        .replace('__ID__',event.id)
+        .replace('__TITLE__',(event.title || '').replace(/"/g,'&quot;'))
+        .replace('__DESC__',(event.description || '').replace(/"/g,'&quot;'));
+    });
+
+    document.getElementById("todayCount").innerText =
+        todayCount;
+
+    document.getElementById("upcomingCount").innerText =
+        upcomingCount;
+
+    document.getElementById("eventCount").innerText =
+        data.length;
+}
+
+loadEvents();
+
+</script>
+
+</body>
+</html>
