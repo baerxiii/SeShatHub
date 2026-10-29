@@ -322,8 +322,11 @@ await getSB()
         notes:document.getElementById("notes").value,
         priority:document.getElementById("priority").value,
         category:document.getElementById("category").value,
-        start_date:document.getElementById("start_date").value,
-        due_date:document.getElementById("due_date").value
+        start_date:
+    document.getElementById("start_date").value || null,
+
+due_date:
+    document.getElementById("due_date").value || null
     });
 
 console.log("DATA:", data);
