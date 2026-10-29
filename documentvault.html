@@ -1,1 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<title>SeShat Document Vault</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Segoe UI',sans-serif;
+    color:white;
+    min-height:100vh;
+
+    background:
+        radial-gradient(circle at top left,#2563eb,#020617 40%),
+        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+    padding:30px;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.dashboard-btn{
+    text-decoration:none;
+    background:#2563eb;
+    color:white;
+    padding:12px 18px;
+    border-radius:12px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.stat-card{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    padding:20px;
+}
+
+.card{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:20px;
+    padding:25px;
+    margin-bottom:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+}
+
+input,
+textarea,
+select{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:12px;
+    margin-top:10px;
+}
+
+textarea{
+    min-height:100px;
+}
+
+.btn{
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    cursor:pointer;
+}
+
+.add-btn{
+    width:100%;
+    margin-top:15px;
+    background:#2563eb;
+    color:white;
+}
+
+.doc-card{
+    background:rgba(255,255,255,.05);
+    border-left:5px solid #60a5fa;
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:15px;
+}
+
+.doc-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.badge{
+    display:inline-block;
+    margin-top:10px;
+    padding:5px 10px;
+    border-radius:10px;
+    background:#334155;
+}
+
+.doc-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:15px;
+}
+
+.open-btn{
+    background:#16a34a;
+    color:white;
+}
+
+.edit-btn{
+    background:#f59e0b;
+    color:white;
+}
+
+.delete-btn{
+    background:#dc2626;
+    color:white;
+}
+
+.search-box{
+    margin-bottom:15px;
+}
+
+@media(max-width:768px){
+
+    .grid{
+        grid-template-columns:1fr;
+    }
+
+    .header{
+        flex-direction:column;
+        gap:15px;
+    }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+
+        <h1>📂 Document Vault</h1>
+
+        <a href="index.html" class="dashboard-btn">
+            Dashboard
+        </a>
+
+    </div>
+
+    <div class="stats">
+
+        <div class="stat-card">
+            <small>Total Documents</small>
+            <h2 id="docCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>Vehicle Records</small>
+            <h2 id="vehicleCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>Insurance</small>
+            <h2 id="insuranceCount">0</h2>
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <h2>Add Document</h2>
+
+        <input
+            id="title"
+            placeholder="Document Title">
+
+        <div class="grid">
+
+            <select id="category">
+
+                <option>Vehicle</option>
+                <option>Home</option>
+                <option>Insurance</option>
+                <option>Medical</option>
+                <option>Taxes</option>
+                <option>Receipts</option>
+                <option>Manuals</option>
+                <option>Other</option>
+
+            </select>
+
+            <input
+                id="file_url"
+                placeholder="Document URL">
+
+        </div>
+
+        <textarea
+            id="notes"
+            placeholder="Notes"></textarea>
+
+        <button
+            class="btn add-btn"
+            onclick="addDocument()">
+
+            Save Document
+
+        </button>
+
+    </div>
+
+    <div class="card">
+
+        <input
+            id="searchBox"
+            class="search-box"
+            placeholder="🔍 Search Documents"
+            onkeyup="loadDocuments()">
+
+        <div id="documentList"></div>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase
