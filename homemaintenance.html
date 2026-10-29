@@ -1,1 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<title>SeShat Home Maintenance</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Segoe UI',sans-serif;
+    color:white;
+    min-height:100vh;
+
+    background:
+        radial-gradient(circle at top left,#2563eb,#020617 40%),
+        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+    padding:30px;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.dashboard-btn{
+    text-decoration:none;
+    background:#2563eb;
+    color:white;
+    padding:12px 18px;
+    border-radius:12px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.stat-card{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    padding:20px;
+}
+
+.card{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:20px;
+    padding:25px;
+    margin-bottom:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+}
+
+input,
+textarea,
+select{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:12px;
+    margin-top:10px;
+}
+
+textarea{
+    min-height:120px;
+}
+
+.btn{
+    padding:10px 14px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    color:white;
+}
+
+.add-btn{
+    width:100%;
+    margin-top:15px;
+    background:#2563eb;
+}
+
+.complete-btn{
+    background:#16a34a;
+}
+
+.edit-btn{
+    background:#f59e0b;
+}
+
+.delete-btn{
+    background:#dc2626;
+}
+
+.item-card{
+    background:rgba(255,255,255,.05);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:15px;
+    border-left:6px solid #60a5fa;
+}
+
+.priority-high{
+    border-left-color:#ef4444;
+}
+
+.priority-medium{
+    border-left-color:#f59e0b;
+}
+
+.priority-low{
+    border-left-color:#22c55e;
+}
+
+.overdue{
+    box-shadow:0 0 15px rgba(239,68,68,.4);
+}
+
+.maintenance-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:15px;
+}
+
+.badge{
+    display:inline-block;
+    padding:5px 10px;
+    background:#334155;
+    border-radius:10px;
+    margin-top:8px;
+}
+
+@media(max-width:768px){
+
+    .grid{
+        grid-template-columns:1fr;
+    }
+
+    .header{
+        flex-direction:column;
+        gap:15px;
+    }
+
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="header">
+
+        <h1>🏠 Home Maintenance</h1>
+
+        <a href="index.html"
+           class="dashboard-btn">
+
+            Dashboard
+
+        </a>
+
+    </div>
+
+    <div class="stats">
+
+        <div class="stat-card">
+            <small>Total Items</small>
+            <h2 id="totalCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>Due Soon</small>
+            <h2 id="dueSoonCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>Overdue</small>
+            <h2 id="overdueCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>High Priority</small>
+            <h2 id="highPriorityCount">0</h2>
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <h2>Add Maintenance Item</h2>
+
+        <input
+            id="item_name"
+            placeholder="Item Name">
+
+        <div class="grid">
+
+            <select id="category">
+                <option>HVAC</option>
+                <option>Electrical</option>
+                <option>Plumbing</option>
+                <option>Roofing</option>
+                <option>Appliance</option>
+                <option>Vehicle</option>
+                <option>Safety</option>
+                <option>Yard</option>
+                <option>Other</option>
+            </select>
+
+            <input
+                id="location"
+                placeholder="Location">
+
+            <input
+                type="number"
+                id="interval_days"
+                placeholder="Interval (Days)">
+
+            <select id="priority">
+                <option>High</option>
+                <option selected>Medium</option>
+                <option>Low</option>
+            </select>
+
+            <input
+                type="date"
+                id="last_completed">
+
+            <input
+                type="date"
+                id="next_due">
+
+        </div>
+
+        <textarea
+            id="notes"
+            placeholder="Notes"></textarea>
+
+        <button
+            class="btn add-btn"
+            onclick="addMaintenanceItem()">
+
+            Save Item
+
+        </button>
+
+    </div>
+
+    <div class="card">
+
+        <input
+            id="searchBox"
+            placeholder="🔍 Search Items"
+            onkeyup="loadItems()">
+
+        <br><br>
+
+        <div id="maintenanceList"></div>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="seshat-core.js"></script>
+
+<script>
+
+function getSB(){
+    return window.seshat.supabase;
+}
+
+async function getUser(){
+
+    const {
+        data:{user}
+    } = await getSB().auth.getUser();
+
+    return user;
+}
+
+async function addMaintenanceItem(){
+
+    const user =
+        await getUser();
+
+    const itemName =
+        document.getElementById(
+            "item_name"
+        ).value.trim();
+
+    if(!itemName){
+
+        alert(
+            "Item name required."
+        );
+
+        return;
+    }
+
+    const { error } =
+    await getSB()
+        .from("maintenance_items")
+        .insert({
+
+            user_id:user.id,
+
+            item_name:itemName,
+
+            category:
+                document.getElementById("category").value,
+
+            location:
+                document.getElementById("location").value,
+
+            interval_days:
+                Number(
+                    document.getElementById("interval_days").value
+                ) || null,
+
+            last_completed:
+                document.getElementById("last_completed").value || null,
+
+            next_due:
+                document.getElementById("next_due").value || null,
+
+            notes:
+                document.getElementById("notes").value,
+
+            priority:
+                document.getElementById("priority").value
+
+        });
+
+    if(error){
+
+        alert(error.message);
+        return;
+    }
+
+    document.getElementById("item_name").value="";
+    document.getElementById("location").value="";
+    document.getElementById("interval_days").value="";
+    document.getElementById("last_completed").value="";
+    document.getElementById("next_due").value="";
+    document.getElementById("notes").value="";
+
+    loadItems();
+}
+
+async function completeMaintenance(item){
+
+    const today =
+        new Date().toISOString().split("T")[0];
+
+    let nextDue = null;
+
+    if(item.interval_days){
+
+        const future =
+            new Date();
+
+        future.setDate(
+            future.getDate() +
+            Number(item.interval_days)
+        );
+
+        nextDue =
+            future
+            .toISOString()
+            .split("T")[0];
+    }
+
+    await getSB()
+        .from("maintenance_items")
+        .update({
+            last_completed:today,
+            next_due:nextDue
+        })
+        .eq("id",item.id);
+
+    loadItems();
+}
+
+async function editMaintenance(item){
+
+    const notes =
+        prompt(
+            "Notes",
+            item.notes || ""
+        );
+
+    if(notes===null)
+        return;
+
+    await getSB()
+        .from("maintenance_items")
+        .update({
+            notes
+        })
+        .eq("id",item.id);
+
+    loadItems();
+}
+
+async function deleteMaintenance(id){
+
+    if(
+        !confirm(
+            "Delete maintenance item?"
+        )
+    ){
+        return;
+    }
+
+    await getSB()
+        .from("maintenance_items")
+        .delete()
+        .eq("id",id);
+
+    loadItems();
+}
+
+async function loadItems(){
+
+    const user =
+        await getUser();
+
+    if(!user) return;
+
+    const search =
+        document.getElementById("searchBox")
+        .value
+        .toLowerCase();
+
+    const {
+        data,
+        error
+    } =
+    await getSB()
+        .from("maintenance_items")
+        .select("*")
+        .eq("user_id",user.id)
+        .order(
+            "next_due",
+            {ascending:true}
+        );
+
+    if(error){
+
+        console.error(error);
+        return;
+    }
+
+    let dueSoon = 0;
+    let overdue = 0;
+    let high = 0;
+
+    const today =
+        new Date();
+
+    const list =
+        document.getElementById(
+            "maintenanceList"
+        );
+
+    list.innerHTML="";
+
+    data.forEach(item=>{
+
+        if(
+            search &&
+            !item.item_name
+             .toLowerCase()
+             .includes(search)
+        ){
+            return;
+        }
+
+        if(item.priority==="High")
+            high++;
+
+        let overdueClass = "";
+        let dueText = "";
+
+        if(item.next_due){
+
+            const dueDate =
+                new Date(item.next_due);
+
+            const diff =
+                Math.floor(
+                    (dueDate - today)
+                    /
+                    (1000*60*60*24)
+                );
+
+            if(diff < 0){
+
+                overdue++;
+                overdueClass = "overdue";
+                dueText = "🚨 Overdue";
+
+            }else if(diff <= 30){
+
+                dueSoon++;
+                dueText =
+                    `⏳ Due in ${diff} days`;
+            }
+        }
+
+        const priorityClass =
+            "priority-" +
+            (item.priority || "Medium")
+            .toLowerCase();
+
+        list.innerHTML += `
+
+        <div class="item-card ${priorityClass} ${overdueClass}">
+
+            <h3>${item.item_name}</h3>
+
+            <div class="badge">
+
+                ${item.category}
+
+            </div>
+
+            <p style="margin-top:10px;">
+                📍 ${item.location || "-"}
+            </p>
+
+            <p>
+                📅 Last Completed:
+                ${item.last_completed || "-"}
+            </p>
+
+            <p>
+                📆 Next Due:
+                ${item.next_due || "-"}
+            </p>
+
+            <p>
+                🔁 Interval:
+                ${item.interval_days || "-"} days
+            </p>
+
+            <p>
+                ${dueText}
+            </p>
+
+            <p style="margin-top:10px;">
+                ${item.notes || ""}
+            </p>
+
+            <div class="maintenance-actions">
+
+                <button
+                    class="btn complete-btn"
+                    onclick='completeMaintenance(${JSON.stringify({
+                        id:"__ID__",
+                        interval_days:"__INTERVAL__"
+                    })})'>
+
+                    Complete
+
+                </button>
+
+                <button
+                    class="btn edit-btn"
+                    onclick='editMaintenance(${JSON.stringify({
+                        id:"__ID__",
+                        notes:"__NOTES__"
+                    })})'>
+
+                    Edit
+
+                </button>
+
+                <button
+                    class="btn delete-btn"
+                    onclick="deleteMaintenance(${item.id})">
+
+                    Delete
+
+                </button>
+
+            </div>
+
+        </div>
+
+        `
+        .replace("__ID__",item.id)
+        .replace("__INTERVAL__",item.interval_days || "")
+        .replace("__NOTES__",(item.notes||"").replace(/"/g,"&quot;"));
+    });
+
+    document.getElementById("totalCount").textContent =
+        data.length;
+
+    document.getElementById("dueSoonCount").textContent =
+        dueSoon;
+
+    document.getElementById("overdueCount").textContent =
+        overdue;
+
+    document.getElementById("highPriorityCount").textContent =
+        high;
+}
+
+loadItems();
+
+</script>
+
+</body>
+</html>
