@@ -1,1 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<title>SeShat Notes</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Segoe UI',sans-serif;
+    color:white;
+    min-height:100vh;
+
+    background:
+        radial-gradient(circle at top left,#2563eb,#020617 40%),
+        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+    padding:30px;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+}
+
+.dashboard-btn{
+    text-decoration:none;
+    color:white;
+    background:#2563eb;
+    padding:12px 18px;
+    border-radius:12px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.stat-card{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    padding:20px;
+}
+
+.card{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:20px;
+    padding:25px;
+    margin-bottom:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+}
+
+input,
+textarea,
+select{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:12px;
+    margin-top:10px;
+}
+
+textarea{
+    min-height:180px;
+    resize:vertical;
+}
+
+.btn{
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+    cursor:pointer;
+}
+
+.add-btn{
+    width:100%;
+    margin-top:15px;
+    background:#2563eb;
+    color:white;
+}
+
+.note-card{
+    background:rgba(255,255,255,.05);
+    border-radius:16px;
+    padding:18px;
+    margin-bottom:15px;
+    border-left:4px solid #60a5fa;
+}
+
+.pinned{
+    border-left:4px solid #f59e0b;
+}
+
+.note-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.badge{
+    display:inline-block;
+    margin-top:10px;
+    padding:5px 10px;
+    border-radius:10px;
+    background:#334155;
+}
+
+.note-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:15px;
+}
+
+.pin-btn{
+    background:#f59e0b;
+    color:white;
+}
+
+.edit-btn{
+    background:#2563eb;
+    color:white;
+}
+
+.delete-btn{
+    background:#dc2626;
+    color:white;
+}
+
+.search-box{
+    margin-bottom:15px;
+}
+
+.note-content{
+    margin-top:12px;
+    white-space:pre-wrap;
+}
+
+@media(max-width:768px){
+
+    .grid{
+        grid-template-columns:1fr;
+    }
+
+    .header{
+        flex-direction:column;
+        gap:15px;
+    }
+
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="header">
+
+        <h1>📝 SeShat Notes</h1>
+
+        <a href="index.html"
+           class="dashboard-btn">
+           Dashboard
+        </a>
+
+    </div>
+
+    <div class="stats">
+
+        <div class="stat-card">
+            <small>Total Notes</small>
+            <h2 id="noteCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>Pinned Notes</small>
+            <h2 id="pinnedCount">0</h2>
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <h2>Create Note</h2>
+
+        <input
+            id="title"
+            placeholder="Note Title">
+
+        <div class="grid">
+
+            <select id="category">
+                <option>Work</option>
+                <option>Personal</option>
+                <option>Projects</option>
+                <option>Reference</option>
+                <option>Ideas</option>
+            </select>
+
+            <select id="pinned">
+                <option value="false">Normal</option>
+                <option value="true">Pinned</option>
+            </select>
+
+        </div>
+
+        <textarea
+            id="content"
+            placeholder="Write your note..."></textarea>
+
+        <button
+            class="btn add-btn"
+            onclick="addNote()">
+
+            Save Note
+
+        </button>
+
+    </div>
+
+    <div class="card">
+
+        <input
+            id="searchBox"
+            class="search-box"
+            placeholder="🔍 Search Notes"
+            onkeyup="loadNotes()">
+
+        <div id="notesList"></div>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="seshat-core.js"></script>
+
+<script>
+
+function getSB(){
+    return window.seshat.supabase;
+}
+
+async function getUser(){
+
+    const {
+        data:{user}
+    } = await getSB().auth.getUser();
+
+    return user;
+}
+
+async function addNote(){
+
+    const user =
+        await getUser();
+
+    const { error } =
+    await getSB()
+        .from("notes")
+        .insert({
+
+            user_id:user.id,
+
+            title:
+                document.getElementById("title").value,
+
+            content:
+                document.getElementById("content").value,
+
+            category:
+                document.getElementById("category").value,
+
+            pinned:
+                document.getElementById("pinned").value === "true"
+
+        });
+
+    if(error){
+
+        alert(error.message);
+        return;
+    }
+
+    document.getElementById("title").value="";
+    document.getElementById("content").value="";
+
+    loadNotes();
+}
+
+async function editNote(note){
+
+    const title =
+        prompt("Title", note.title);
+
+    if(title===null) return;
+
+    const content =
+        prompt("Content", note.content || "");
+
+    if(content===null) return;
+
+    await getSB()
+        .from("notes")
+        .update({
+
+            title,
+            
