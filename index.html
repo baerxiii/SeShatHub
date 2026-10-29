@@ -537,6 +537,10 @@ Howard Stern collections.
 
 </div>
 
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="seshat-core.js"></script>
+    
 <script>    
 function updateClock(){
 
@@ -598,8 +602,10 @@ function filterApps(){
     });
 }
 
-const sb = window.seshat?.supabase;
-
+function getSB(){
+    return window.seshat?.supabase;
+}
+    
 async function signup(){
 
     if(!sb){
@@ -614,7 +620,7 @@ async function signup(){
         document.getElementById("password").value;
 
     const { error } =
-        await sb.auth.signUp({
+        await getSB().auth.signUp({
             email,
             password
         });
@@ -639,7 +645,7 @@ async function login(){
         document.getElementById("password").value;
 
     const { error } =
-        await sb.auth.signInWithPassword({
+        await getSB().auth.signInWithPassword({
             email,
             password
         });
@@ -657,7 +663,7 @@ async function login(){
 
 async function logout(){
 
-    await sb.auth.signOut();
+    await getSB().auth.signOut();
 
     location.reload();
 }
@@ -684,7 +690,7 @@ async function checkSession(){
 
     const {
         data: { session }
-    } = await sb.auth.getSession();
+    } = await getSB().auth.getSession();
 
     if(session){
 
@@ -704,9 +710,6 @@ async function checkSession(){
 checkSession();
 
 </script>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="seshat-core.js"></script>
     
 </body>
 </html>
