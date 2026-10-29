@@ -279,6 +279,43 @@ async function addEvent(){
     const user =
         await getUser();
 
+const title =
+    document.getElementById("title").value.trim();
+
+const eventDate =
+    document.getElementById("event_date").value;
+
+const startTime =
+    document.getElementById("start_time").value;
+
+const endTime =
+    document.getElementById("end_time").value;
+
+if(!title){
+
+    alert("Event title is required.");
+    return;
+}
+
+if(!eventDate){
+
+    alert("Event date is required.");
+    return;
+}
+
+if(
+    startTime &&
+    endTime &&
+    startTime > endTime
+){
+
+    alert(
+        "End time must be after start time."
+    );
+
+    return;
+}
+    
     const { error } =
     await getSB()
         .from("calendar_events")
@@ -310,11 +347,18 @@ async function addEvent(){
         });
 
     if(error){
-        alert(error.message);
-        return;
-    }
+    alert(error.message);
+    return;
+}
 
-    loadEvents();
+document.getElementById("title").value = "";
+document.getElementById("description").value = "";
+document.getElementById("location").value = "";
+document.getElementById("event_date").value = "";
+document.getElementById("start_time").value = "";
+document.getElementById("end_time").value = "";
+
+loadEvents();
 }
 
 async function editEvent(event){
