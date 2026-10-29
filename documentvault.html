@@ -18,6 +18,7 @@ body{
     font-family:'Segoe UI',sans-serif;
     color:white;
     min-height:100vh;
+
     background:
         radial-gradient(circle at top left,#2563eb,#020617 40%),
         radial-gradient(circle at bottom right,#1e293b,#020617 70%);
@@ -122,10 +123,10 @@ textarea{
 
 .badge{
     display:inline-block;
-    margin-top:8px;
     padding:5px 10px;
     border-radius:10px;
     background:#334155;
+    margin-top:8px;
 }
 
 .doc-actions{
@@ -133,6 +134,37 @@ textarea{
     flex-wrap:wrap;
     gap:8px;
     margin-top:15px;
+}
+
+.progress-container{
+
+    display:none;
+
+    margin-top:15px;
+}
+
+.progress-track{
+
+    height:20px;
+
+    border-radius:10px;
+
+    overflow:hidden;
+
+    background:#1e293b;
+
+    margin-top:8px;
+}
+
+.progress-bar{
+
+    width:0%;
+
+    height:100%;
+
+    background:#22c55e;
+
+    transition:width .3s ease;
 }
 
 @media(max-width:768px){
@@ -145,12 +177,10 @@ textarea{
         flex-direction:column;
         gap:15px;
     }
-
 }
 
 </style>
 </head>
-
 <body>
 
 <div class="container">
@@ -159,8 +189,9 @@ textarea{
 
         <h1>📂 Document Vault</h1>
 
-        <a href="index.html"
-           class="dashboard-btn">
+        <a
+            href="index.html"
+            class="dashboard-btn">
 
             Dashboard
 
@@ -176,12 +207,12 @@ textarea{
         </div>
 
         <div class="stat-card">
-            <small>Vehicle Documents</small>
+            <small>Vehicle Docs</small>
             <h2 id="vehicleCount">0</h2>
         </div>
 
         <div class="stat-card">
-            <small>Insurance Documents</small>
+            <small>Insurance Docs</small>
             <h2 id="insuranceCount">0</h2>
         </div>
 
@@ -219,6 +250,23 @@ textarea{
         <textarea
             id="notes"
             placeholder="Notes"></textarea>
+
+        <div
+            id="uploadContainer"
+            class="progress-container">
+
+            <strong>Uploading...</strong>
+
+            <div class="progress-track">
+
+                <div
+                    id="uploadBar"
+                    class="progress-bar">
+                </div>
+
+            </div>
+
+        </div>
 
         <button
             class="btn add-btn"
@@ -269,7 +317,8 @@ async function addDocument(){
         await getUser();
 
     const title =
-        document.getElementById("title")
+        document
+        .getElementById("title")
         .value
         .trim();
 
@@ -283,40 +332,106 @@ async function addDocument(){
     }
 
     const file =
-        document.getElementById(
+        document
+        .getElementById(
             "documentFile"
-        ).files[0];
+        )
+        .files[0];
 
-    let fileName = null;
-    let storagePath = null;
+    if(!file){
 
-    if(file){
+        alert(
+            "Please select a file."
+        );
 
-        fileName = file.name;
-
-        storagePath =
-            `${user.id}/${Date.now()}_${file.name}`;
-
-        const {
-            error:uploadError
-        } =
-        await getSB()
-            .storage
-            .from("documents")
-            .upload(
-                storagePath,
-                file
-            );
-
-        if(uploadError){
-
-            alert(
-                uploadError.message
-            );
-
-            return;
-        }
+        return;
     }
+
+    const allowedTypes = [
+
+        "application/pdf",
+
+        "image/png",
+
+        "image/jpeg",
+
+        "application/msword",
+
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+        "application/vnd.ms-excel",
+
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    ];
+
+    if(
+        !allowedTypes.includes(
+            file.type
+        )
+    ){
+
+        alert(
+            "Unsupported file type."
+        );
+
+        return;
+    }
+
+    const maxSize =
+        25 * 1024 * 1024;
+
+    if(file.size > maxSize){
+
+        alert(
+            "Maximum file size is 25 MB."
+        );
+
+        return;
+    }
+
+    const uploadContainer =
+        document.getElementById(
+            "uploadContainer"
+        );
+
+    const uploadBar =
+        document.getElementById(
+            "uploadBar"
+        );
+
+    uploadContainer.style.display =
+        "block";
+
+    uploadBar.style.width = "15%";
+
+    const storagePath =
+        `${user.id}/${Date.now()}_${file.name}`;
+
+    uploadBar.style.width = "40%";
+
+    const {
+        error:uploadError
+    } =
+    await getSB()
+        .storage
+        .from("documents")
+        .upload(
+            storagePath,
+            file
+        );
+
+    if(uploadError){
+
+        alert(uploadError.message);
+
+        uploadContainer.style.display =
+            "none";
+
+        return;
+    }
+
+    uploadBar.style.width = "80%";
 
     const {
         error
@@ -330,12 +445,16 @@ async function addDocument(){
             title:title,
 
             category:
-                document.getElementById("category").value,
+                document
+                .getElementById("category")
+                .value,
 
             notes:
-                document.getElementById("notes").value,
+                document
+                .getElementById("notes")
+                .value,
 
-            file_name:fileName,
+            file_name:file.name,
 
             storage_path:storagePath
 
@@ -344,12 +463,35 @@ async function addDocument(){
     if(error){
 
         alert(error.message);
+
+        uploadContainer.style.display =
+            "none";
+
         return;
     }
 
-    document.getElementById("title").value="";
-    document.getElementById("notes").value="";
-    document.getElementById("documentFile").value="";
+    uploadBar.style.width = "100%";
+
+    setTimeout(()=>{
+
+        uploadBar.style.width = "0%";
+
+        uploadContainer.style.display =
+            "none";
+
+    },500);
+
+    document.getElementById(
+        "title"
+    ).value = "";
+
+    document.getElementById(
+        "notes"
+    ).value = "";
+
+    document.getElementById(
+        "documentFile"
+    ).value = "";
 
     loadDocuments();
 }
@@ -383,9 +525,12 @@ async function openDocument(path){
 async function editDocument(doc){
 
     const title =
-        prompt("Title",doc.title);
+        prompt(
+            "Document Title",
+            doc.title
+        );
 
-    if(title===null)
+    if(title === null)
         return;
 
     const notes =
@@ -394,7 +539,7 @@ async function editDocument(doc){
             doc.notes || ""
         );
 
-    if(notes===null)
+    if(notes === null)
         return;
 
     await getSB()
@@ -410,8 +555,13 @@ async function editDocument(doc){
 
 async function deleteDocument(id){
 
-    if(!confirm("Delete document?"))
+    if(
+        !confirm(
+            "Delete document?"
+        )
+    ){
         return;
+    }
 
     await getSB()
         .from("documents")
@@ -429,7 +579,10 @@ async function loadDocuments(){
     if(!user) return;
 
     const search =
-        document.getElementById("searchBox")
+        document
+        .getElementById(
+            "searchBox"
+        )
         .value
         .toLowerCase();
 
@@ -441,8 +594,12 @@ async function loadDocuments(){
         .from("documents")
         .select("*")
         .eq("user_id",user.id)
-        .order("created_at",
-        {ascending:false});
+        .order(
+            "created_at",
+            {
+              ascending:false
+            }
+        );
 
     if(error){
 
@@ -465,8 +622,8 @@ async function loadDocuments(){
         if(
             search &&
             !doc.title
-            .toLowerCase()
-            .includes(search)
+                .toLowerCase()
+                .includes(search)
         ){
             return;
         }
@@ -484,28 +641,32 @@ async function loadDocuments(){
             <h3>${doc.title}</h3>
 
             <div class="badge">
+
                 ${doc.category}
+
             </div>
 
             <p style="margin-top:10px;">
+
+                📄 ${doc.file_name || "No File"}
+
+            </p>
+
+            <p style="margin-top:10px;">
+
                 ${doc.notes || ""}
+
             </p>
 
             <div class="doc-actions">
 
-                ${
-                    doc.storage_path
-                    ?
-                    `<button
-                        class="btn open-btn"
-                        onclick="openDocument('${doc.storage_path}')">
+                <button
+                    class="btn open-btn"
+                    onclick="openDocument('${doc.storage_path}')">
 
-                        Open
+                    Open
 
-                    </button>`
-                    :
-                    ""
-                }
+                </button>
 
                 <button
                     class="btn edit-btn"
@@ -532,18 +693,24 @@ async function loadDocuments(){
         </div>
 
         `
-        .replace('__ID__',doc.id)
-        .replace('__TITLE__',(doc.title||'').replace(/"/g,'&quot;'))
-        .replace('__NOTES__',(doc.notes||'').replace(/"/g,'&quot;'));
+        .replace("__ID__",doc.id)
+        .replace("__TITLE__",(doc.title||"").replace(/"/g,"&quot;"))
+        .replace("__NOTES__",(doc.notes||"").replace(/"/g,"&quot;"));
     });
 
-    document.getElementById("docCount").textContent =
+    document.getElementById(
+        "docCount"
+    ).textContent =
         data.length;
 
-    document.getElementById("vehicleCount").textContent =
+    document.getElementById(
+        "vehicleCount"
+    ).textContent =
         vehicle;
 
-    document.getElementById("insuranceCount").textContent =
+    document.getElementById(
+        "insuranceCount"
+    ).textContent =
         insurance;
 }
 
