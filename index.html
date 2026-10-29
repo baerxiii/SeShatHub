@@ -316,27 +316,39 @@ body{
 <section class="stats-grid">
 
     <div class="stat-card">
-        <span>✅ Tasks</span>
-        <h2>0</h2>
+        <span>✅ Open Tasks</span>
+        <h2 id="taskCount">0</h2>
         <small>Pending Tasks</small>
     </div>
 
     <div class="stat-card">
-        <span>📅 Calendar</span>
-        <h2>0</h2>
-        <small>Upcoming Events</small>
+        <span>📅 Upcoming Events</span>
+        <h2 id="eventCount">0</h2>
+        <small>Future Events</small>
     </div>
 
     <div class="stat-card">
         <span>📝 Notes</span>
-        <h2>0</h2>
+        <h2 id="noteCount">0</h2>
         <small>Saved Notes</small>
     </div>
 
     <div class="stat-card">
-        <span>💰 Budget</span>
-        <h2>$0</h2>
-        <small>Tracked Spending</small>
+        <span>🔐 Passwords</span>
+        <h2 id="passwordCount">0</h2>
+        <small>Stored Credentials</small>
+    </div>
+
+    <div class="stat-card">
+        <span>📂 Documents</span>
+        <h2 id="documentCount">0</h2>
+        <small>Uploaded Documents</small>
+    </div>
+
+    <div class="stat-card">
+        <span>🏠 Maintenance</span>
+        <h2 id="maintenanceCount">0</h2>
+        <small>Maintenance Items</small>
     </div>
 
 </section>
@@ -605,13 +617,15 @@ async function showDashboard(){
 
     if(user){
 
-        document.getElementById("userEmail")
-            .innerText = user.email;
+    document.getElementById("userEmail")
+        .innerText = user.email;
 
-        document.getElementById("greeting")
-            .innerText =
-            "Welcome, " + user.email;
-    }
+    document.getElementById("greeting")
+        .innerText =
+        "Welcome, " + user.email;
+
+    loadDashboardStats();
+}
 }
 
 async function checkSession(){
@@ -631,6 +645,90 @@ async function checkSession(){
         showDashboard();
     }
 }
+
+async function loadDashboardStats(){
+
+    const sb = getSB();
+
+    const {
+        data:{user}
+    } = await sb.auth.getUser();
+
+    if(!user) return;
+
+    const tasks =
+        await sb
+        .from("tasks")
+        .select("*",{count:"exact",head:true})
+        .eq("user_id",user.id)
+        .eq("completed",false);
+
+    document.getElementById(
+        "taskCount"
+    ).innerText =
+        tasks.count || 0;
+
+    const notes =
+        await sb
+        .from("notes")
+        .select("*",{count:"exact",head:true})
+        .eq("user_id",user.id);
+
+    document.getElementById(
+        "noteCount"
+    ).innerText =
+        notes.count || 0;
+
+    const passwords =
+        await sb
+        .from("passwords")
+        .select("*",{count:"exact",head:true})
+        .eq("user_id",user.id);
+
+    document.getElementById(
+        "passwordCount"
+    ).innerText =
+        passwords.count || 0;
+
+    const documents =
+        await sb
+        .from("documents")
+        .select("*",{count:"exact",head:true})
+        .eq("user_id",user.id);
+
+    document.getElementById(
+        "documentCount"
+    ).innerText =
+        documents.count || 0;
+
+    const maintenance =
+        await sb
+        .from("maintenance_items")
+        .select("*",{count:"exact",head:true})
+        .eq("user_id",user.id);
+
+    document.getElementById(
+        "maintenanceCount"
+    ).innerText =
+        maintenance.count || 0;
+
+    const today =
+        new Date()
+        .toISOString()
+        .split("T")[0];
+
+    const events =
+        await sb
+        .from("calendar_events")
+        .select("*",{count:"exact",head:true})
+        .eq("user_id",user.id)
+        .gte("event_date",today);
+
+    document.getElementById(
+        "eventCount"
+    ).innerText =
+        events.count || 0;
+}    
 
 checkSession();
 
