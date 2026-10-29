@@ -313,17 +313,26 @@ async function addTask(){
 
     if(!title) return;
 
-    await getSB()
-        .from("tasks")
-        .insert({
-            user_id:user.id,
-            title:title,
-            notes:document.getElementById("notes").value,
-            priority:document.getElementById("priority").value,
-            category:document.getElementById("category").value,
-            start_date:document.getElementById("start_date").value,
-            due_date:document.getElementById("due_date").value
-        });
+    const { data, error } =
+await getSB()
+    .from("tasks")
+    .insert({
+        user_id:user.id,
+        title:title,
+        notes:document.getElementById("notes").value,
+        priority:document.getElementById("priority").value,
+        category:document.getElementById("category").value,
+        start_date:document.getElementById("start_date").value,
+        due_date:document.getElementById("due_date").value
+    });
+
+console.log("DATA:", data);
+console.log("ERROR:", error);
+
+if(error){
+    alert(error.message);
+    return;
+}
 
     document.getElementById("title").value="";
     document.getElementById("notes").value="";
