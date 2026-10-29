@@ -197,6 +197,15 @@ textarea{
 
     font-size:.75rem;
 }
+
+.calendar-selected{
+
+    border:2px solid #60a5fa;
+
+    background:
+        rgba(37,99,235,.25);
+
+}
     
 </style>
 </head>
@@ -243,7 +252,30 @@ textarea{
     </div>
 
 </div>
-        
+
+<div class="card">
+
+    <h2>📅 Monthly Calendar</h2>
+
+    <div id="calendarGrid"
+         class="calendar-grid">
+    </div>
+
+</div>
+
+<button
+    class="btn add-btn"
+    onclick="clearDateFilter()">
+
+    Show All Events
+
+</button>
+
+<div class="card">
+
+    <h2>Create Event</h2>
+    
+<div class="card">    
         <h2>Create Event</h2>
 
         <input
@@ -408,6 +440,10 @@ document.getElementById("event_date").value = "";
 document.getElementById("start_time").value = "";
 document.getElementById("end_time").value = "";
 
+    loadEvents();
+
+}
+
 function renderCalendar(events){
 
     const grid =
@@ -457,29 +493,48 @@ function renderCalendar(events){
 
         grid.innerHTML += `
 
-        <div class="calendar-day">
+<div
+    class="calendar-day
+    ${
+        selectedDate === dateString
+        ? 'calendar-selected'
+        : ''
+    }"
+    onclick="filterByDate('${dateString}')">
 
-            <div class="calendar-number">
+    <div class="calendar-number">
 
-                ${day}
+        ${day}
 
-            </div>
+    </div>
 
-            <div class="calendar-count">
+    <div class="calendar-count">
 
-                ${count}
-                event${count === 1 ? '' : 's'}
+        ${count}
+        event${count === 1 ? '' : 's'}
 
-            </div>
+    </div>
 
-        </div>
-
-        `;
+</div>
+`;
     }
 }
+
+let selectedDate = null;
+
+function filterByDate(date){
+
+    selectedDate = date;
     
 loadEvents();
 }
+
+function clearDateFilter(){
+
+    selectedDate = null;
+
+    loadEvents();
+}    
 
 async function editEvent(event){
 
@@ -551,6 +606,13 @@ async function loadEvents(){
     eventList.innerHTML = "";
 
     data.forEach(event=>{
+
+        if(
+    selectedDate &&
+    event.event_date !== selectedDate
+){
+    return;
+}
 
         if(
             search &&
