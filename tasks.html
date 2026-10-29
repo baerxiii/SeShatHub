@@ -1,1 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<title>SeShat Tasks</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Segoe UI,sans-serif;
+    color:white;
+    min-height:100vh;
+
+    background:
+        radial-gradient(circle at top left,#2563eb,#020617 40%),
+        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
+}
+
+.container{
+    max-width:1200px;
+    margin:auto;
+    padding:30px;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:30px;
+}
+
+.back-btn{
+    text-decoration:none;
+    color:white;
+    background:#1d4ed8;
+    padding:12px 20px;
+    border-radius:12px;
+}
+
+.card{
+    background:rgba(255,255,255,.08);
+    backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:20px;
+    padding:25px;
+    margin-bottom:20px;
+}
+
+.task-form{
+    display:flex;
+    gap:12px;
+}
+
+.task-form input{
+    flex:1;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+}
+
+.task-form button{
+    padding:14px 20px;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    background:#2563eb;
+    color:white;
+}
+
+.task{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:15px;
+    margin-top:10px;
+    border-radius:12px;
+    background:rgba(255,255,255,.05);
+}
+
+.completed{
+    text-decoration:line-through;
+    opacity:.6;
+}
+
+.task-actions{
+    display:flex;
+    gap:10px;
+}
+
+.task-actions button{
+    border:none;
+    cursor:pointer;
+    padding:8px 12px;
+    border-radius:8px;
+}
+
+.done-btn{
+    background:#16a34a;
+    color:white;
+}
+
+.delete-btn{
+    background:#dc2626;
+    color:white;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="header">
+
+        <h1>✅ Task Manager</h1>
+
+        <a
+            href="index.html"
+            class="back-btn">
+            Dashboard
+        </a>
+
+    </div>
+
+    <div class="card">
+
+        <div class="task-form">
+
+            <input
+                id="taskInput"
+                placeholder="New Task">
+
+            <button onclick="addTask()">
+                Add Task
+            </button>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <h2>My Tasks</h2>
+
+        <div id="taskList"></div>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="seshat-core.js"></script>
+
+<script>
+
+const sb = window.seshat.supabase;
+
+async function getUser(){
+
+    const {
+        data:{user}
+    } = await sb.auth.getUser();
+
+    if(!user){
+
+        window.location.href="index.html";
+        return null;
+    }
+
+    return user;
+}
+
+async function loadTasks(){
+
+    const user =
+        await getUser();
+
+    if(!user) return;
+
+    const {data,error} =
+        await sb
+        .from("tasks")
+        .select("*")
+        .eq("user_id",user.id)
+        .order("created_at");
+
+    if(error){
+        console.error(error);
+        return;
+    }
+
+    const list =
+        document.getElementById(
+            "taskList"
+        );
+
+    list.innerHTML="";
+
+    data.forEach(task=>{
+
+        list.innerHTML += `
+        <div class="task">
+
+            <div class="${
+                task.completed
+                ? "completed"
+                : ""
+            }">
+
+                ${task.title}
+
+            </div>
+
+            <div class="task-actions">
+
+                <button
+                    class="done-btn"
+                    onclick="toggleTask(${task.id},${task.completed})">
+
+                    ✓
+
+                </button>
+
+                <button
+                    class="delete-btn"
+                    onclick="deleteTask(${task.id})">
+
+                    ✕
+
+                </button>
+
+            </div>
+
+        </div>
+        `;
+    });
+}
+
+async function addTask(){
+
+    const user =
+        await getUser();
+
+    const title =
+        document
+        .getElementById(
+            "taskInput"
+        )
+        .value
+        .trim();
+
+    if(!title) return;
+
+    await sb
+        .from("tasks")
+        .insert({
+            user_id:user.id,
+            title:title
+        });
+
+    document.getElementById(
+        "taskInput"
+    ).value="";
+
+    loadTasks();
+}
+
+async function toggleTask(id,current){
+
+    await sb
+        .from("tasks")
+        .update({
+            completed:!current
+        })
+        .eq("id",id);
+
+    loadTasks();
+}
+
+async function deleteTask(id){
+
+    await sb
+        .from("tasks")
+        .delete()
+        .eq("id",id);
+
+    loadTasks();
+}
+
+loadTasks();
+
+</script>
+
+</body>
+</html>
