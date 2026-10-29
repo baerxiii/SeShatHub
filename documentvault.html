@@ -405,8 +405,14 @@ async function addDocument(){
 
     uploadBar.style.width = "15%";
 
-    const storagePath =
-        `${user.id}/${Date.now()}_${file.name}`;
+const safeFileName =
+    file.name
+        .replace(/[^a-zA-Z0-9._-]/g,"_");
+
+const storagePath =
+    `${user.id}/${Date.now()}_${safeFileName}`;
+
+console.log("Storage Path:", storagePath);
 
     uploadBar.style.width = "40%";
 
