@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SeShat Tasks</title>
 
 <style>
@@ -15,43 +14,56 @@
 }
 
 body{
-    font-family:Segoe UI,sans-serif;
-    color:white;
+    font-family:'Segoe UI',sans-serif;
+    color:#fff;
     min-height:100vh;
-
     background:
-    radial-gradient(circle at top left,#2563eb,#020617 40%),
-    radial-gradient(circle at bottom right,#1e293b,#020617 70%);
+        radial-gradient(circle at top left,#2563eb,#020617 40%),
+        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
 }
 
 .container{
-    max-width:1200px;
-    padding:30px;
+    max-width:1400px;
     margin:auto;
+    padding:30px;
 }
 
 .header{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    margin-bottom:30px;
-}
-
-.btn{
-    padding:12px 18px;
-    border:none;
-    border-radius:12px;
-    cursor:pointer;
+    margin-bottom:25px;
 }
 
 .dashboard-btn{
+    text-decoration:none;
     background:#2563eb;
     color:white;
-    text-decoration:none;
+    padding:12px 18px;
+    border-radius:12px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.stat-card{
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.12);
+    backdrop-filter:blur(20px);
+    border-radius:18px;
+    padding:20px;
+}
+
+.stat-card h2{
+    margin-top:10px;
 }
 
 .card{
-    background:rgba(255,255,255,.08);
+    background:rgba(255,255,255,.07);
     border:1px solid rgba(255,255,255,.12);
     backdrop-filter:blur(20px);
     border-radius:20px;
@@ -72,25 +84,52 @@ select{
     padding:12px;
     border:none;
     border-radius:12px;
-    margin-top:8px;
+    margin-top:10px;
 }
 
 textarea{
-    min-height:90px;
+    min-height:100px;
 }
 
 .add-btn{
     width:100%;
     margin-top:15px;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
     background:#2563eb;
     color:white;
 }
 
+.filter-bar{
+    display:flex;
+    gap:10px;
+    margin-bottom:20px;
+}
+
 .task{
     background:rgba(255,255,255,.05);
-    border-radius:15px;
+    border-radius:16px;
     padding:18px;
-    margin-top:15px;
+    margin-bottom:15px;
+}
+
+.priority-high{
+    border-left:6px solid #ef4444;
+}
+
+.priority-medium{
+    border-left:6px solid #f59e0b;
+}
+
+.priority-low{
+    border-left:6px solid #22c55e;
+}
+
+.completed{
+    opacity:.55;
+    text-decoration:line-through;
 }
 
 .task-header{
@@ -99,26 +138,27 @@ textarea{
     align-items:center;
 }
 
-.priority-high{
-    color:#ef4444;
-}
-
-.priority-medium{
-    color:#f59e0b;
-}
-
-.priority-low{
-    color:#22c55e;
-}
-
 .task-actions{
     margin-top:15px;
     display:flex;
+    flex-wrap:wrap;
     gap:10px;
+}
+
+.btn{
+    padding:8px 14px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
 }
 
 .complete-btn{
     background:#16a34a;
+    color:white;
+}
+
+.edit-btn{
+    background:#2563eb;
     color:white;
 }
 
@@ -127,19 +167,20 @@ textarea{
     color:white;
 }
 
-.completed{
-    opacity:.6;
-    text-decoration:line-through;
-}
-
-small{
+.small{
     color:#cbd5e1;
+    margin-top:8px;
 }
 
 @media(max-width:768px){
 
     .grid{
         grid-template-columns:1fr;
+    }
+
+    .header{
+        flex-direction:column;
+        gap:15px;
     }
 
 }
@@ -151,45 +192,71 @@ small{
 <div class="container">
 
     <div class="header">
-
         <h1>✅ SeShat Tasks</h1>
 
-        <a href="index.html"
-           class="btn dashboard-btn">
+        <a href="index.html" class="dashboard-btn">
             Dashboard
         </a>
+    </div>
+
+    <div class="stats">
+
+        <div class="stat-card">
+            <small>Open Tasks</small>
+            <h2 id="openCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>Completed</small>
+            <h2 id="completedCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>High Priority</small>
+            <h2 id="highCount">0</h2>
+        </div>
+
+        <div class="stat-card">
+            <small>Overdue</small>
+            <h2 id="overdueCount">0</h2>
+        </div>
 
     </div>
 
     <div class="card">
 
-        <h2>New Task</h2>
+        <h2>Create Task</h2>
 
-        <input
-            id="title"
-            placeholder="Task Title">
+        <input id="title" placeholder="Task Name">
 
         <textarea
             id="notes"
-            placeholder="Notes"></textarea>
+            placeholder="Task Notes"></textarea>
 
         <div class="grid">
 
             <select id="priority">
-                <option>High</option>
-                <option selected>Medium</option>
-                <option>Low</option>
+                <option value="High">High</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="Low">Low</option>
             </select>
 
-            <input
-                type="date"
-                id="duedate">
+            <select id="category">
+                <option>Work</option>
+                <option>Personal</option>
+                <option>Home</option>
+                <option>Finance</option>
+                <option>Health</option>
+                <option>Projects</option>
+            </select>
+
+            <input type="date" id="start_date">
+
+            <input type="date" id="due_date">
 
         </div>
 
-        <button
-            class="btn add-btn"
-            onclick="addTask()">
+        <button class="add-btn" onclick="addTask()">
             Add Task
         </button>
 
@@ -197,7 +264,15 @@ small{
 
     <div class="card">
 
-        <h2>My Tasks</h2>
+        <div class="filter-bar">
+
+            <select id="filter" onchange="loadTasks()">
+                <option value="all">All</option>
+                <option value="open">Open</option>
+                <option value="completed">Completed</option>
+            </select>
+
+        </div>
 
         <div id="taskList"></div>
 
@@ -211,17 +286,15 @@ small{
 <script>
 
 function getSB(){
-    return window.seshat.supabase;
+    return window.seshat?.supabase;
 }
 
 async function getUser(){
 
-    const {
-        data:{user}
-    } = await getSB().auth.getUser();
+    const { data:{user} } =
+        await getSB().auth.getUser();
 
     if(!user){
-
         window.location.href="index.html";
         return null;
     }
@@ -236,27 +309,20 @@ async function addTask(){
     if(!user) return;
 
     const title =
-        document.getElementById("title").value;
+        document.getElementById("title").value.trim();
 
-    if(!title.trim()) return;
+    if(!title) return;
 
     await getSB()
         .from("tasks")
         .insert({
-
             user_id:user.id,
-
             title:title,
-
-            notes:
-            document.getElementById("notes").value,
-
-            priority:
-            document.getElementById("priority").value,
-
-            due_date:
-            document.getElementById("duedate").value
-
+            notes:document.getElementById("notes").value,
+            priority:document.getElementById("priority").value,
+            category:document.getElementById("category").value,
+            start_date:document.getElementById("start_date").value,
+            due_date:document.getElementById("due_date").value
         });
 
     document.getElementById("title").value="";
@@ -265,97 +331,21 @@ async function addTask(){
     loadTasks();
 }
 
-async function loadTasks(){
+async function editTask(id,current){
 
-    const user =
-        await getUser();
+    const updated =
+        prompt("Edit Task",current);
 
-    if(!user) return;
+    if(!updated) return;
 
-    const {data,error} =
-        await getSB()
-            .from("tasks")
-            .select("*")
-            .eq("user_id",user.id)
-            .order("created_at",
-            {ascending:false});
+    await getSB()
+        .from("tasks")
+        .update({
+            title:updated
+        })
+        .eq("id",id);
 
-    if(error){
-
-        console.error(error);
-        return;
-    }
-
-    const taskList =
-        document.getElementById("taskList");
-
-    taskList.innerHTML="";
-
-    data.forEach(task=>{
-
-        const priorityClass =
-            task.priority
-            ? "priority-" +
-              task.priority.toLowerCase()
-            : "priority-medium";
-
-        taskList.innerHTML += `
-
-        <div class="task">
-
-            <div class="task-header">
-
-                <h3 class="${
-                    task.completed
-                    ? "completed"
-                    : ""
-                }">
-                    ${task.title}
-                </h3>
-
-                <strong class="${priorityClass}">
-                    ${task.priority || "Medium"}
-                </strong>
-
-            </div>
-
-            <p>${task.notes || ""}</p>
-
-            <br>
-
-            <small>
-                Due:
-                ${task.due_date || "No deadline"}
-            </small>
-
-            <div class="task-actions">
-
-                <button
-                    class="btn complete-btn"
-                    onclick="toggleTask(${task.id},${task.completed})">
-
-                    ${
-                        task.completed
-                        ? "Undo"
-                        : "Complete"
-                    }
-
-                </button>
-
-                <button
-                    class="btn delete-btn"
-                    onclick="deleteTask(${task.id})">
-
-                    Delete
-
-                </button>
-
-            </div>
-
-        </div>
-        `;
-    });
-
+    loadTasks();
 }
 
 async function toggleTask(id,current){
@@ -378,7 +368,154 @@ async function deleteTask(id){
     await getSB()
         .from("tasks")
         .delete()
-  ks();
+        .eq("id",id);
+
+    loadTasks();
+}
+
+async function loadTasks(){
+
+    const user = await getUser();
+
+    if(!user) return;
+
+    const {data,error} =
+        await getSB()
+            .from("tasks")
+            .select("*")
+            .eq("user_id",user.id)
+            .order("created_at",{ascending:false});
+
+    if(error){
+        console.error(error);
+        return;
+    }
+
+    const filter =
+        document.getElementById("filter").value;
+
+    const taskList =
+        document.getElementById("taskList");
+
+    taskList.innerHTML="";
+
+    let open=0;
+    let complete=0;
+    let high=0;
+    let overdue=0;
+
+    const today =
+        new Date().toISOString().split("T")[0];
+
+    data.forEach(task=>{
+
+        if(task.completed)
+            complete++;
+        else
+            open++;
+
+        if(task.priority==="High")
+            high++;
+
+        if(
+            task.due_date &&
+            task.due_date < today &&
+            !task.completed
+        ){
+            overdue++;
+        }
+
+        if(
+            filter==="open" &&
+            task.completed
+        ){
+            return;
+        }
+
+        if(
+            filter==="completed" &&
+            !task.completed
+        ){
+            return;
+        }
+
+        const priorityClass =
+            "priority-" +
+            (task.priority || "medium")
+            .toLowerCase();
+
+        taskList.innerHTML += `
+        <div class="task ${priorityClass}">
+
+            <div class="task-header">
+
+                <h3 class="${
+                    task.completed
+                    ? 'completed'
+                    : ''
+                }">
+                    ${task.title}
+                </h3>
+
+                <strong>
+                    ${task.priority || 'Medium'}
+                </strong>
+
+            </div>
+
+            <div class="small">
+                Category: ${task.category || '-'}
+            </div>
+
+            <div class="small">
+                Start: ${task.start_date || '-'}
+            </div>
+
+            <div class="small">
+                Due: ${task.due_date || '-'}
+            </div>
+
+            <p style="margin-top:10px;">
+                ${task.notes || ''}
+            </p>
+
+            <div class="task-actions">
+
+                <button
+                    class="btn complete-btn"
+                    onclick="toggleTask(${task.id},${task.completed})">
+                    ${
+                        task.completed
+                        ? 'Undo'
+                        : 'Complete'
+                    }
+                </button>
+
+                <button
+                    class="btn edit-btn"
+                    onclick="editTask(${task.id},'${(task.title || '').replace(/'/g,"&#39;")}')">
+                    Edit
+                </button>
+
+                <button
+                    class="btn delete-btn"
+                    onclick="deleteTask(${task.id})">
+                    Delete
+                </button>
+
+            </div>
+
+        </div>
+        `;
+    });
+
+    document.getElementById("openCount").textContent=open;
+    document.getElementById("completedCount").textContent=complete;
+    document.getElementById("highCount").textContent=high;
+    document.getElementById("overdueCount").textContent=overdue;
+}
+
+loadTasks();
 
 </script>
 
