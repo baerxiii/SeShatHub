@@ -245,9 +245,35 @@ textarea{
 
 <div class="card">
 
-    <h2 id="calendarMonth">
-    📅 Calendar
-</h2>
+    <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:15px;">
+
+        <button
+            class="btn edit-btn"
+            onclick="previousMonth()">
+
+            ◀
+
+        </button>
+
+        <h2 id="calendarMonth">
+
+            Calendar
+
+        </h2>
+
+        <button
+            class="btn edit-btn"
+            onclick="nextMonth()">
+
+            ▶
+
+        </button>
+
+    </div>
 
     <div id="calendarGrid"
          class="calendar-grid">
@@ -432,6 +458,32 @@ document.getElementById("end_time").value = "";
 
 }
 
+function previousMonth(){
+
+    currentMonth--;
+
+    if(currentMonth < 0){
+
+        currentMonth = 11;
+        currentYear--;
+    }
+
+    loadEvents();
+}
+
+function nextMonth(){
+
+    currentMonth++;
+
+    if(currentMonth > 11){
+
+        currentMonth = 0;
+        currentYear++;
+    }
+
+    loadEvents();
+}
+    
 function renderCalendar(events){
 
     const grid =
@@ -443,19 +495,25 @@ function renderCalendar(events){
 
     grid.innerHTML = "";
 
-    const now =
-        new Date();
+const year =
+    currentYear;
 
-    const year =
-        now.getFullYear();
-
-    const month =
-        now.getMonth();
+const month =
+    currentMonth;
     document.getElementById(
     "calendarMonth"
 ).innerText =
     "📅 " +
-    now.toLocaleString(
+    new Date(
+        year,
+        month
+    ).toLocaleString(
+        "default",
+        {
+            month:"long",
+            year:"numeric"
+        }
+    );
         "default",
         {
             month:"long",
@@ -520,6 +578,14 @@ function renderCalendar(events){
 }
 
 let selectedDate = null;
+
+let currentDate = new Date();
+
+let currentMonth =
+    currentDate.getMonth();
+
+let currentYear =
+    currentDate.getFullYear();
 
 function filterByDate(date){
 
