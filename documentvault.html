@@ -18,7 +18,6 @@ body{
     font-family:'Segoe UI',sans-serif;
     color:white;
     min-height:100vh;
-
     background:
         radial-gradient(circle at top left,#2563eb,#020617 40%),
         radial-gradient(circle at bottom right,#1e293b,#020617 70%);
@@ -84,7 +83,7 @@ select{
 }
 
 textarea{
-    min-height:100px;
+    min-height:120px;
 }
 
 .btn{
@@ -92,13 +91,25 @@ textarea{
     border-radius:10px;
     padding:10px 14px;
     cursor:pointer;
+    color:white;
 }
 
 .add-btn{
     width:100%;
     margin-top:15px;
     background:#2563eb;
-    color:white;
+}
+
+.open-btn{
+    background:#16a34a;
+}
+
+.edit-btn{
+    background:#f59e0b;
+}
+
+.delete-btn{
+    background:#dc2626;
 }
 
 .doc-card{
@@ -109,15 +120,9 @@ textarea{
     margin-bottom:15px;
 }
 
-.doc-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-
 .badge{
     display:inline-block;
-    margin-top:10px;
+    margin-top:8px;
     padding:5px 10px;
     border-radius:10px;
     background:#334155;
@@ -128,25 +133,6 @@ textarea{
     flex-wrap:wrap;
     gap:8px;
     margin-top:15px;
-}
-
-.open-btn{
-    background:#16a34a;
-    color:white;
-}
-
-.edit-btn{
-    background:#f59e0b;
-    color:white;
-}
-
-.delete-btn{
-    background:#dc2626;
-    color:white;
-}
-
-.search-box{
-    margin-bottom:15px;
 }
 
 @media(max-width:768px){
@@ -173,8 +159,11 @@ textarea{
 
         <h1>📂 Document Vault</h1>
 
-        <a href="index.html" class="dashboard-btn">
+        <a href="index.html"
+           class="dashboard-btn">
+
             Dashboard
+
         </a>
 
     </div>
@@ -187,12 +176,12 @@ textarea{
         </div>
 
         <div class="stat-card">
-            <small>Vehicle Records</small>
+            <small>Vehicle Documents</small>
             <h2 id="vehicleCount">0</h2>
         </div>
 
         <div class="stat-card">
-            <small>Insurance</small>
+            <small>Insurance Documents</small>
             <h2 id="insuranceCount">0</h2>
         </div>
 
@@ -222,8 +211,8 @@ textarea{
             </select>
 
             <input
-                id="file_url"
-                placeholder="Document URL">
+                type="file"
+                id="documentFile">
 
         </div>
 
@@ -235,7 +224,7 @@ textarea{
             class="btn add-btn"
             onclick="addDocument()">
 
-            Save Document
+            Upload Document
 
         </button>
 
@@ -245,9 +234,10 @@ textarea{
 
         <input
             id="searchBox"
-            class="search-box"
             placeholder="🔍 Search Documents"
             onkeyup="loadDocuments()">
+
+        <br><br>
 
         <div id="documentList"></div>
 
@@ -255,4 +245,311 @@ textarea{
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="seshat-core.js"></script>
+
+<script>
+
+function getSB(){
+    return window.seshat.supabase;
+}
+
+async function getUser(){
+
+    const {
+        data:{user}
+    } = await getSB().auth.getUser();
+
+    return user;
+}
+
+async function addDocument(){
+
+    const user =
+        await getUser();
+
+    const title =
+        document.getElementById("title")
+        .value
+        .trim();
+
+    if(!title){
+
+        alert(
+            "Document title is required."
+        );
+
+        return;
+    }
+
+    const file =
+        document.getElementById(
+            "documentFile"
+        ).files[0];
+
+    let fileName = null;
+    let storagePath = null;
+
+    if(file){
+
+        fileName = file.name;
+
+        storagePath =
+            `${user.id}/${Date.now()}_${file.name}`;
+
+        const {
+            error:uploadError
+        } =
+        await getSB()
+            .storage
+            .from("documents")
+            .upload(
+                storagePath,
+                file
+            );
+
+        if(uploadError){
+
+            alert(
+                uploadError.message
+            );
+
+            return;
+        }
+    }
+
+    const {
+        error
+    } =
+    await getSB()
+        .from("documents")
+        .insert({
+
+            user_id:user.id,
+
+            title:title,
+
+            category:
+                document.getElementById("category").value,
+
+            notes:
+                document.getElementById("notes").value,
+
+            file_name:fileName,
+
+            storage_path:storagePath
+
+        });
+
+    if(error){
+
+        alert(error.message);
+        return;
+    }
+
+    document.getElementById("title").value="";
+    document.getElementById("notes").value="";
+    document.getElementById("documentFile").value="";
+
+    loadDocuments();
+}
+
+async function openDocument(path){
+
+    const {
+        data,
+        error
+    } =
+    await getSB()
+        .storage
+        .from("documents")
+        .createSignedUrl(
+            path,
+            60
+        );
+
+    if(error){
+
+        alert(error.message);
+        return;
+    }
+
+    window.open(
+        data.signedUrl,
+        "_blank"
+    );
+}
+
+async function editDocument(doc){
+
+    const title =
+        prompt("Title",doc.title);
+
+    if(title===null)
+        return;
+
+    const notes =
+        prompt(
+            "Notes",
+            doc.notes || ""
+        );
+
+    if(notes===null)
+        return;
+
+    await getSB()
+        .from("documents")
+        .update({
+            title,
+            notes
+        })
+        .eq("id",doc.id);
+
+    loadDocuments();
+}
+
+async function deleteDocument(id){
+
+    if(!confirm("Delete document?"))
+        return;
+
+    await getSB()
+        .from("documents")
+        .delete()
+        .eq("id",id);
+
+    loadDocuments();
+}
+
+async function loadDocuments(){
+
+    const user =
+        await getUser();
+
+    if(!user) return;
+
+    const search =
+        document.getElementById("searchBox")
+        .value
+        .toLowerCase();
+
+    const {
+        data,
+        error
+    } =
+    await getSB()
+        .from("documents")
+        .select("*")
+        .eq("user_id",user.id)
+        .order("created_at",
+        {ascending:false});
+
+    if(error){
+
+        console.error(error);
+        return;
+    }
+
+    let vehicle = 0;
+    let insurance = 0;
+
+    const list =
+        document.getElementById(
+            "documentList"
+        );
+
+    list.innerHTML = "";
+
+    data.forEach(doc=>{
+
+        if(
+            search &&
+            !doc.title
+            .toLowerCase()
+            .includes(search)
+        ){
+            return;
+        }
+
+        if(doc.category==="Vehicle")
+            vehicle++;
+
+        if(doc.category==="Insurance")
+            insurance++;
+
+        list.innerHTML += `
+
+        <div class="doc-card">
+
+            <h3>${doc.title}</h3>
+
+            <div class="badge">
+                ${doc.category}
+            </div>
+
+            <p style="margin-top:10px;">
+                ${doc.notes || ""}
+            </p>
+
+            <div class="doc-actions">
+
+                ${
+                    doc.storage_path
+                    ?
+                    `<button
+                        class="btn open-btn"
+                        onclick="openDocument('${doc.storage_path}')">
+
+                        Open
+
+                    </button>`
+                    :
+                    ""
+                }
+
+                <button
+                    class="btn edit-btn"
+                    onclick='editDocument(${JSON.stringify({
+                        id:"__ID__",
+                        title:"__TITLE__",
+                        notes:"__NOTES__"
+                    })})'>
+
+                    Edit
+
+                </button>
+
+                <button
+                    class="btn delete-btn"
+                    onclick="deleteDocument(${doc.id})">
+
+                    Delete
+
+                </button>
+
+            </div>
+
+        </div>
+
+        `
+        .replace('__ID__',doc.id)
+        .replace('__TITLE__',(doc.title||'').replace(/"/g,'&quot;'))
+        .replace('__NOTES__',(doc.notes||'').replace(/"/g,'&quot;'));
+    });
+
+    document.getElementById("docCount").textContent =
+        data.length;
+
+    document.getElementById("vehicleCount").textContent =
+        vehicle;
+
+    document.getElementById("insuranceCount").textContent =
+        insurance;
+}
+
+loadDocuments();
+
+</script>
+
+</body>
+</html>
