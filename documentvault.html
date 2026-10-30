@@ -559,6 +559,51 @@ async function editDocument(doc){
     loadDocuments();
 }
 
+    async function editDocumentById(id){
+
+    const {
+        data,
+        error
+    } =
+    await getSB()
+        .from("documents")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+    if(error){
+
+        alert(error.message);
+        return;
+    }
+
+    const title =
+        prompt(
+            "Document Title",
+            data.title
+        );
+
+    if(title === null) return;
+
+    const notes =
+        prompt(
+            "Notes",
+            data.notes || ""
+        );
+
+    if(notes === null) return;
+
+    await getSB()
+        .from("documents")
+        .update({
+            title,
+            notes
+        })
+        .eq("id", id);
+
+    loadDocuments();
+}
+
 async function deleteDocument(id){
 
     if(
@@ -675,16 +720,12 @@ async function loadDocuments(){
                 </button>
 
                 <button
-                    class="btn edit-btn"
-                    onclick='editDocument(${JSON.stringify({
-                        id:"__ID__",
-                        title:"__TITLE__",
-                        notes:"__NOTES__"
-                    })})'>
+    class="btn edit-btn"
+    onclick="editDocumentById(${doc.id})">
 
-                    Edit
+    Edit
 
-                </button>
+</button>
 
                 <button
                     class="btn delete-btn"
