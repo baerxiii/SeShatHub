@@ -206,6 +206,20 @@ textarea{
         rgba(37,99,235,.25);
 
 }
+
+.calendar-header{
+
+    text-align:center;
+
+    font-weight:bold;
+
+    padding:10px;
+
+    background:
+        rgba(37,99,235,.25);
+
+    border-radius:10px;
+}
     
 </style>
 </head>
@@ -495,6 +509,29 @@ function renderCalendar(events){
 
     grid.innerHTML = "";
 
+    const weekdays = [
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+];
+
+weekdays.forEach(day => {
+
+    grid.innerHTML += `
+
+    <div class="calendar-header">
+
+        ${day}
+
+    </div>
+
+    `;
+});
+
 const year =
     currentYear;
 
@@ -598,23 +635,70 @@ function clearDateFilter(){
 async function editEvent(event){
 
     const title =
-        prompt("Title",event.title);
+        prompt(
+            "Title",
+            event.title
+        );
 
-    if(title===null) return;
+    if(title === null)
+        return;
 
     const description =
-        prompt("Description",event.description || "");
+        prompt(
+            "Description",
+            event.description || ""
+        );
+
+    if(description === null)
+        return;
+
+    const eventDate =
+        prompt(
+            "Date (YYYY-MM-DD)",
+            event.event_date
+        );
+
+    if(eventDate === null)
+        return;
+
+    const startTime =
+        prompt(
+            "Start Time (HH:MM)",
+            event.start_time || ""
+        );
+
+    if(startTime === null)
+        return;
+
+    const endTime =
+        prompt(
+            "End Time (HH:MM)",
+            event.end_time || ""
+        );
+
+    if(endTime === null)
+        return;
 
     await getSB()
         .from("calendar_events")
         .update({
+
             title,
-            description
+
+            description,
+
+            event_date:eventDate,
+
+            start_time:startTime,
+
+            end_time:endTime
+
         })
         .eq("id",event.id);
 
     loadEvents();
 }
+
 
 async function deleteEvent(id){
 
@@ -721,17 +805,20 @@ async function loadEvents(){
 
             <div class="event-actions">
 
-                <button
-                    class="btn edit-btn"
-                    onclick='editEvent(${JSON.stringify({
-                        id:"__ID__",
-                        title:"__TITLE__",
-                        description:"__DESC__"
-                    })})'>
+ <button
+    class="btn edit-btn"
+    onclick='editEvent(${JSON.stringify({
+        id:"__ID__",
+        title:"__TITLE__",
+        description:"__DESC__",
+        event_date:"__DATE__",
+        start_time:"__START__",
+        end_time:"__END__"
+    })})'>
 
-                    Edit
+    Edit
 
-                </button>
+</button>
 
                 <button
                     class="btn delete-btn"
@@ -745,10 +832,13 @@ async function loadEvents(){
 
         </div>
 
-        `
+                `
         .replace('__ID__',event.id)
         .replace('__TITLE__',(event.title || '').replace(/"/g,'&quot;'))
-        .replace('__DESC__',(event.description || '').replace(/"/g,'&quot;'));
+        .replace('__DESC__',(event.description || '').replace(/"/g,'&quot;'))
+        .replace('__DATE__',event.event_date || '')
+        .replace('__START__',event.start_time || '')
+        .replace('__END__',event.end_time || '');
     });
 
 renderCalendar(data);
