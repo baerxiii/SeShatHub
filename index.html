@@ -1,359 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SeShat Hub</title>
-
-<style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
-
-body{
-    font-family:Arial, sans-serif;
-    background:#030712;
-    color:white;
-}
-
-/* LOGIN */
-
-.login-screen{
-    position:fixed;
-    inset:0;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background:#030712;
-    z-index:9999;
-}
-
-.login-card{
-    width:100%;
-    max-width:420px;
-    padding:30px;
-    border-radius:24px;
-    background:rgba(255,255,255,.05);
-    border:1px solid rgba(255,255,255,.1);
-}
-
-.login-card h1{
-    text-align:center;
-    margin-bottom:20px;
-}
-
-.login-card input{
-    width:100%;
-    padding:14px;
-    margin-bottom:12px;
-    border-radius:10px;
-    border:none;
-}
-
-.login-card button{
-    width:100%;
-    padding:14px;
-    margin-top:10px;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-}
-
-#authMessage{
-    margin-top:15px;
-    text-align:center;
-}
-
-/* DASHBOARD */
-
-.container{
-    display:none;
-    padding:30px;
-}
-
-.header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:30px;
-}
-
-.card{
-    background:rgba(255,255,255,.05);
-    border:1px solid rgba(255,255,255,.1);
-    border-radius:20px;
-    padding:20px;
-    margin-bottom:20px;
-}
-
-body{
-    background:
-        radial-gradient(circle at top left,#2563eb,#020617 40%),
-        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
-}
-
-.dashboard{
-    max-width:1400px;
-    margin:auto;
-}
-
-.topbar{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:30px;
-}
-
-.logo{
-    font-size:2rem;
-}
-
-.top-right{
-    display:flex;
-    align-items:center;
-    gap:15px;
-}
-
-.hero-card{
-    background:rgba(255,255,255,.08);
-    backdrop-filter:blur(24px);
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:24px;
-    padding:32px;
-    margin-bottom:30px;
-}
-
-.stats-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:20px;
-    margin-bottom:40px;
-}
-
-.stat-card{
-    padding:25px;
-    border-radius:20px;
-    background:rgba(255,255,255,.06);
-    backdrop-filter:blur(24px);
-    border:1px solid rgba(255,255,255,.12);
-}
-
-.stat-card h2{
-    margin:12px 0;
-    font-size:2rem;
-}
-
-.section-title{
-    margin-bottom:16px;
-}
-
-.apps-grid{
-    display:grid;
-    grid-template-columns:
-        repeat(auto-fit,minmax(260px,1fr));
-    gap:20px;
-}
-
-.app-card{
-    text-decoration:none;
-    color:white;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.12);
-    backdrop-filter:blur(24px);
-    border-radius:24px;
-    padding:24px;
-    transition:.25s ease;
-}
-
-.app-card:hover{
-    transform:translateY(-6px);
-    border-color:#60a5fa;
-}
-
-.icon{
-    font-size:2rem;
-    margin-bottom:15px;
-}
-
-.bottom-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:20px;
-    margin-top:40px;
-}
-
-.panel{
-    padding:24px;
-    border-radius:24px;
-    background:rgba(255,255,255,.06);
-    backdrop-filter:blur(24px);
-    border:1px solid rgba(255,255,255,.12);
-}
-
-.quick-btn{
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border:none;
-    border-radius:12px;
-    cursor:pointer;
-}
-
-.logout-btn{
-    padding:12px 18px;
-    border:none;
-    border-radius:12px;
-    cursor:pointer;
-    background:#ef4444;
-    color:white;
-}
-
-.activity-list{
-    margin-top:15px;
-    padding-left:20px;
-}
-
-@media(max-width:768px){
-
-    .topbar{
-        flex-direction:column;
-        gap:15px;
-    }
-
-    .bottom-grid{
-        grid-template-columns:1fr;
-    }
-}
-
-.category-section{
-    margin-bottom:40px;
-}
-
-.category-title{
-    margin-bottom:20px;
-    font-size:1.3rem;
-    color:#93c5fd;
-    border-left:4px solid #3b82f6;
-    padding-left:12px;
-}
-    
-</style>
-</head>
-<body>
-
-<!-- LOGIN -->
-
-<div id="loginScreen" class="login-screen">
-
-    <div class="login-card">
-
-        <h1>🜃 SeShat Hub</h1>
-
-        <input
-            type="email"
-            id="email"
-            placeholder="Email">
-
-        <input
-            type="password"
-            id="password"
-            placeholder="Password">
-
-        <button onclick="login()">
-            Login
-        </button>
-
-        <button onclick="signup()">
-            Create Account
-        </button>
-
-        <div id="authMessage"></div>
-
-    </div>
-
-</div>
-
-<!-- DASHBOARD -->
-
-<div class="container">
-
-<div class="dashboard">
-
-<header class="topbar">
-
-    <div>
-        <h1 class="logo">🜃 SeShat Hub</h1>
-        <p id="greeting">Welcome Back</p>
-    </div>
-
-    <div class="top-right">
-
-        <span id="userEmail"></span>
-
-        <button class="logout-btn"
-            onclick="logout()">
-            Logout
-        </button>
-
-    </div>
-
-</header>
-
-<section class="hero">
-
-    <div class="hero-card">
-        <h2>Welcome to SeShat Hub</h2>
-        <p>
-            Your personal productivity and life
-            management platform.
-        </p>
-    </div>
-
-</section>
-
-<section class="stats-grid">
-
-    <div class="stat-card">
-        <span>✅ Open Tasks</span>
-        <h2 id="taskCount">0</h2>
-        <small>Pending Tasks</small>
-    </div>
-
-    <div class="stat-card">
-        <span>📅 Upcoming Events</span>
-        <h2 id="eventCount">0</h2>
-        <small>Future Events</small>
-    </div>
-
-    <div class="stat-card">
-        <span>📝 Notes</span>
-        <h2 id="noteCount">0</h2>
-        <small>Saved Notes</small>
-    </div>
-
-    <div class="stat-card">
-        <span>🔐 Passwords</span>
-        <h2 id="passwordCount">0</h2>
-        <small>Stored Credentials</small>
-    </div>
-
-    <div class="stat-card">
-        <span>📂 Documents</span>
-        <h2 id="documentCount">0</h2>
-        <small>Uploaded Documents</small>
-    </div>
-
-    <div class="stat-card">
-        <span>🏠 Maintenance</span>
-        <h2 id="maintenanceCount">0</h2>
-        <small>Maintenance Items</small>
-    </div>
-
-</section>
-
 <h2 class="section-title">🜃 SeShat Applications</h2>
+
+<!-- CORE -->
 
 <section class="category-section">
 
@@ -376,7 +23,7 @@ body{
         <a href="passwordvault.html" class="app-card">
             <div class="icon">🔐</div>
             <h3>Password Vault</h3>
-            <p>Secure encrypted credential storage.</p>
+            <p>Secure credential storage.</p>
         </a>
 
         <a href="calendar.html" class="app-card">
@@ -401,6 +48,8 @@ body{
 
 </section>
 
+<!-- FINANCE -->
+
 <section class="category-section">
 
     <h3 class="category-title">💰 Finance</h3>
@@ -410,30 +59,91 @@ body{
         <a href="https://baerxiii.github.io/SeShatPayEstimator/"
            target="_blank"
            class="app-card">
+
             <div class="icon">💵</div>
-            <h3>SeShat Pay Estimator</h3>
-            <p>Estimate earnings, CPP, EI and deductions.</p>
+
+            <h3>Pay Estimator</h3>
+
+            <p>
+                Payroll, taxes and take-home pay estimates.
+            </p>
+
         </a>
 
         <a href="https://baerxiii.github.io/seshatLedger/"
            target="_blank"
            class="app-card">
+
             <div class="icon">🧾</div>
-            <h3>SeShat Ledger</h3>
-            <p>Income and expense tracking.</p>
+
+            <h3>Ledger</h3>
+
+            <p>
+                Income, expenses and budgeting.
+            </p>
+
         </a>
 
         <a href="https://baerxiii.github.io/SeShatBudgeter/"
            target="_blank"
            class="app-card">
+
             <div class="icon">💰</div>
-            <h3>SeShat Budgeter</h3>
-            <p>Budget planning and spending analysis.</p>
+
+            <h3>Budgeter</h3>
+
+            <p>
+                Budget planning and spending analysis.
+            </p>
+
         </a>
 
     </div>
 
 </section>
+
+<!-- HEALTH -->
+
+<section class="category-section">
+
+    <h3 class="category-title">🍁 Health & Nutrition</h3>
+
+    <div class="apps-grid">
+
+        <a href="https://canuckmacro-canadian-fast-food-nutrition-cost-tra.ai.studio/"
+           target="_blank"
+           class="app-card">
+
+            <div class="icon">🍁</div>
+
+            <h3>CanuckChow</h3>
+
+            <p>
+                Canadian fast-food nutrition,
+                calories, macros and cost tracking.
+            </p>
+
+        </a>
+
+        <a href="https://baerxiii.github.io/SargesSugars/"
+           target="_blank"
+           class="app-card">
+
+            <div class="icon">🩸</div>
+
+            <h3>Sarge's Sugars</h3>
+
+            <p>
+                Blood sugar and wellness tracking.
+            </p>
+
+        </a>
+
+    </div>
+
+</section>
+
+<!-- HOME & LIFE -->
 
 <section class="category-section">
 
@@ -444,30 +154,36 @@ body{
         <a href="https://seshatpantry.ai.studio/"
            target="_blank"
            class="app-card">
+
             <div class="icon">🥫</div>
+
             <h3>SeShat Pantry</h3>
-            <p>Pantry inventory and meal planning.</p>
+
+            <p>
+                Pantry inventory and meal planning.
+            </p>
+
         </a>
 
         <a href="https://fuel-flow-track-burrowing.base44.app/"
            target="_blank"
            class="app-card">
-            <div class="icon">⛽</div>
-            <h3>Colonel Baer's Fuel Tracker Spectacular</h3>
-            <p>Fuel consumption and vehicle expense tracking.</p>
-        </a>
 
-        <a href="https://baerxiii.github.io/SargesSugars/"
-           target="_blank"
-           class="app-card">
-            <div class="icon">🩸</div>
-            <h3>Sarge's Sugars</h3>
-            <p>Blood sugar and wellness tracking.</p>
+            <div class="icon">⛽</div>
+
+            <h3>Fuel Tracker</h3>
+
+            <p>
+                Track fuel usage and vehicle expenses.
+            </p>
+
         </a>
 
     </div>
 
 </section>
+
+<!-- MEDIA -->
 
 <section class="category-section">
 
@@ -478,261 +194,17 @@ body{
         <a href="https://baerxiii.github.io/stern-archive/"
            target="_blank"
            class="app-card">
+
             <div class="icon">📻</div>
-            <h3>Radio Internet Archive Player</h3>
-            <p>Browse and listen to archived radio content.</p>
+
+            <h3>Radio Archive Player</h3>
+
+            <p>
+                Browse and listen to archived radio content.
+            </p>
+
         </a>
 
     </div>
 
 </section>
-<section class="bottom-grid">
-
-    <div class="panel">
-
-        <h2>⚡ Quick Actions</h2>
-
-        <button class="quick-btn">+ Task</button>
-        <button class="quick-btn">+ Note</button>
-        <button class="quick-btn">+ Password</button>
-        <button class="quick-btn">+ Event</button>
-
-    </div>
-
-    <div class="panel">
-
-        <h2>📋 Recent Activity</h2>
-
-        <ul class="activity-list">
-            <li>System ready</li>
-            <li>Authentication connected</li>
-            <li>Supabase online</li>
-            <li>Dashboard active</li>
-        </ul>
-
-    </div>
-
-</section>
-
-</div>
-
-</div>
-
-<!-- LOAD SUPABASE FIRST -->
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="seshat-core.js"></script>
-
-<script>
-
-function getSB(){
-    return window.seshat?.supabase;
-}
-
-async function signup(){
-
-    const sb = getSB();
-
-    if(!sb){
-        document.getElementById("authMessage").innerText =
-            "Supabase not loaded";
-        return;
-    }
-
-    const email =
-        document.getElementById("email").value;
-
-    const password =
-        document.getElementById("password").value;
-
-    const { error } =
-        await sb.auth.signUp({
-            email,
-            password
-        });
-
-    document.getElementById("authMessage").innerText =
-        error
-        ? error.message
-        : "Check your email for verification.";
-}
-
-async function login(){
-
-    const sb = getSB();
-
-    if(!sb){
-        document.getElementById("authMessage").innerText =
-            "Supabase not loaded";
-        return;
-    }
-
-    const email =
-        document.getElementById("email").value;
-
-    const password =
-        document.getElementById("password").value;
-
-    const { error } =
-        await sb.auth.signInWithPassword({
-            email,
-            password
-        });
-
-    if(error){
-
-        document.getElementById("authMessage").innerText =
-            error.message;
-
-        return;
-    }
-
-    await showDashboard();
-}
-
-async function logout(){
-
-    const sb = getSB();
-
-    if(sb){
-        await sb.auth.signOut();
-    }
-
-    location.reload();
-}
-
-async function showDashboard(){
-
-    const sb = getSB();
-
-    const {
-        data:{user}
-    } = await sb.auth.getUser();
-
-    document.getElementById("loginScreen")
-        .style.display = "none";
-
-    document.querySelector(".container")
-        .style.display = "block";
-
-    if(user){
-
-    document.getElementById("userEmail")
-        .innerText = user.email;
-
-    document.getElementById("greeting")
-        .innerText =
-        "Welcome, " + user.email;
-
-    loadDashboardStats();
-}
-}
-
-async function checkSession(){
-
-    const sb = getSB();
-
-    if(!sb){
-        console.error("Supabase not loaded");
-        return;
-    }
-
-    const {
-        data:{session}
-    } = await sb.auth.getSession();
-
-    if(session){
-        showDashboard();
-    }
-}
-
-async function loadDashboardStats(){
-
-    const sb = getSB();
-
-    const {
-        data:{user}
-    } = await sb.auth.getUser();
-
-    if(!user) return;
-
-    const tasks =
-        await sb
-        .from("tasks")
-        .select("*",{count:"exact",head:true})
-        .eq("user_id",user.id)
-        .eq("completed",false);
-
-    document.getElementById(
-        "taskCount"
-    ).innerText =
-        tasks.count || 0;
-
-    const notes =
-        await sb
-        .from("notes")
-        .select("*",{count:"exact",head:true})
-        .eq("user_id",user.id);
-
-    document.getElementById(
-        "noteCount"
-    ).innerText =
-        notes.count || 0;
-
-    const passwords =
-        await sb
-        .from("passwords")
-        .select("*",{count:"exact",head:true})
-        .eq("user_id",user.id);
-
-    document.getElementById(
-        "passwordCount"
-    ).innerText =
-        passwords.count || 0;
-
-    const documents =
-        await sb
-        .from("documents")
-        .select("*",{count:"exact",head:true})
-        .eq("user_id",user.id);
-
-    document.getElementById(
-        "documentCount"
-    ).innerText =
-        documents.count || 0;
-
-    const maintenance =
-        await sb
-        .from("maintenance_items")
-        .select("*",{count:"exact",head:true})
-        .eq("user_id",user.id);
-
-    document.getElementById(
-        "maintenanceCount"
-    ).innerText =
-        maintenance.count || 0;
-
-    const today =
-        new Date()
-        .toISOString()
-        .split("T")[0];
-
-    const events =
-        await sb
-        .from("calendar_events")
-        .select("*",{count:"exact",head:true})
-        .eq("user_id",user.id)
-        .gte("event_date",today);
-
-    document.getElementById(
-        "eventCount"
-    ).innerText =
-        events.count || 0;
-}    
-
-checkSession();
-
-</script>
-
-</body>
-</html>
