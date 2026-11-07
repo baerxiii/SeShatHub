@@ -2,11 +2,11 @@ import { sendOneSignalReminder } from "./onesignal.ts";
 
 const config = { appId: "app-id", apiKey: "test-key" };
 const reminder = {
-  subscriptionIds: ["device-1", "device-1", "device-2"],
+  externalUserIds: ["user-1", "user-1", "user-2"],
   reminderId: "00000000-0000-4000-8000-000000000001",
   title: "Doctor appointment",
   body: "Your event is coming up.",
-  url: "https://baerxiii.github.io/SeShatHub/calendar.html",
+  url: "calendar.html",
 };
 
 Deno.test("sends a targeted idempotent reminder", async () => {
@@ -16,10 +16,12 @@ Deno.test("sends a targeted idempotent reminder", async () => {
     }
     const body = JSON.parse(String(init?.body));
     if (
+      body.app_id !== config.appId ||
+      body.target_channel !== "push" ||
       body.idempotency_key !== reminder.reminderId ||
-      JSON.stringify(body.include_subscription_ids) !==
-        JSON.stringify(["device-1", "device-2"]) ||
-      body.url !== reminder.url ||
+      JSON.stringify(body.include_aliases.external_id) !==
+        JSON.stringify(["user-1", "user-2"]) ||
+      body.url !== "https://baerxiii.github.io/SeShatHub/calendar.html" ||
       (init?.headers as Record<string, string>).Authorization !== "Key test-key"
     ) {
       throw new Error("Wrong notification request");

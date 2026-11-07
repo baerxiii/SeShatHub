@@ -1,5 +1,5 @@
 export interface OneSignalReminder {
-  subscriptionIds: string[];
+  externalUserIds: string[];
   reminderId: string;
   title: string;
   body: string;
@@ -20,13 +20,15 @@ export async function sendOneSignalReminder(
     throw new Error("OneSignal app ID and API key must be configured.");
   }
   if (
-    !reminder.reminderId || !reminder.subscriptionIds.length ||
-    reminder.subscriptionIds.some((id) => !id)
+    !reminder.reminderId || !reminder.externalUserIds.length ||
+    reminder.externalUserIds.some((id) => !id)
   ) {
-    throw new Error("OneSignal reminder ID and subscription IDs are required.");
+    throw new Error(
+      "OneSignal reminder ID and external user IDs are required.",
+    );
   }
 
-  const url = new URL(reminder.url);
+  const url = new URL(reminder.url, "https://baerxiii.github.io/SeShatHub/");
   if (
     url.origin !== "https://baerxiii.github.io" ||
     !url.pathname.startsWith("/SeShatHub/")
@@ -43,7 +45,9 @@ export async function sendOneSignalReminder(
     body: JSON.stringify({
       app_id: config.appId,
       target_channel: "push",
-      include_subscription_ids: [...new Set(reminder.subscriptionIds)],
+      include_aliases: {
+        external_id: [...new Set(reminder.externalUserIds)],
+      },
       idempotency_key: reminder.reminderId,
       headings: { en: reminder.title },
       contents: { en: reminder.body },

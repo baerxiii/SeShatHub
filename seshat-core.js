@@ -4,16 +4,72 @@ const SUPABASE_URL =
 const SUPABASE_ANON_KEY =
 'sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf';
 
+const ONESIGNAL_APP_ID = 'b98b2b98-8510-49b3-b263-3bdc12dd7c3c';
+
 const sb =
 supabase.createClient(
     SUPABASE_URL,
     SUPABASE_ANON_KEY
 );
 
+function initializeOneSignal() {
+    return new Promise((resolve, reject) => {
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async OneSignal => {
+            try {
+                await OneSignal.init({
+                    appId: ONESIGNAL_APP_ID,
+                    serviceWorkerPath: 'SeShatHub/onesignal/OneSignalSDKWorker.js',
+                    serviceWorkerParam: { scope: '/SeShatHub/onesignal/' }
+                });
+                const { data:{session} } = await sb.auth.getSession();
+                if (session?.user) {
+                    await OneSignal.login(session.user.id);
+                } else {
+                    await OneSignal.logout();
+                }
+                resolve(OneSignal);
+            } catch (error) {
+                reject(error);
+            }
+        });
+
+        const script = document.createElement('script');
+        script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+        script.async = true;
+        script.onerror = () => reject(new Error('Could not load the OneSignal SDK.'));
+        document.head.appendChild(script);
+    });
+}
+
+const oneSignalReady = initializeOneSignal();
+oneSignalReady.catch(error => {
+    console.error('Unable to initialize OneSignal:', error);
+});
+
+sb.auth.onAuthStateChange((event, session) => {
+    if (event !== 'SIGNED_IN' && event !== 'SIGNED_OUT') {
+        return;
+    }
+
+    oneSignalReady.then(async OneSignal => {
+        if (session?.user) {
+            await OneSignal.login(session.user.id);
+        } else {
+            await OneSignal.logout();
+        }
+    }).catch(error => {
+        console.error('Unable to update OneSignal account identity:', error);
+    });
+});
+
 window.seshat = {
 
     supabase: sb,
-    pushVapidPublicKey: 'REPLACE_WITH_VAPID_PUBLIC_KEY',
+
+    getOneSignal() {
+        return oneSignalReady;
+    },
 
     async registerServiceWorker() {
         if (!('serviceWorker' in navigator)) {

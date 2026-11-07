@@ -89,13 +89,6 @@ function setStatus(message){
     statusMessage.textContent = message;
 }
 
-function applicationServerKey(value){
-    const padding = "=".repeat((4 - value.length % 4) % 4);
-    const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
-    const raw = atob(base64);
-    return Uint8Array.from(raw, character => character.charCodeAt(0));
-}
-
 async function signedInUser(){
     return window.seshat.getUser();
 }
@@ -106,19 +99,8 @@ async function enableNotifications(){
         return;
     }
 
-    if(!window.seshat.pushVapidPublicKey || window.seshat.pushVapidPublicKey.startsWith("REPLACE_")){
-        setStatus("Push notifications need to be configured by the site administrator first.");
-        return;
-    }
-
     if(!signedIn){
         setStatus("Sign in on the Dashboard first, then return here to enable notifications.");
-        return;
-    }
-
-    const permission = await Notification.requestPermission();
-    if(permission !== "granted"){
-        setStatus("Notification permission was not granted. Check this site's browser permissions.");
         return;
     }
 
@@ -130,27 +112,12 @@ async function enableNotifications(){
     }
 
     try{
-        const registration = await window.seshat.registerServiceWorker();
-        const subscription = await registration.pushManager.getSubscription() ||
-            await registration.pushManager.subscribe({
-                userVisibleOnly:true,
-                applicationServerKey:applicationServerKey(window.seshat.pushVapidPublicKey)
-            });
-        const {error} = await window.seshat.supabase
-            .from("push_subscriptions")
-            .upsert({
-                user_id:user.id,
-                endpoint:subscription.endpoint,
-                subscription:subscription.toJSON(),
-                user_agent:navigator.userAgent
-            },{onConflict:"endpoint"});
-
-        if(error){
-            await subscription.unsubscribe();
-            throw error;
-        }
-
-        setStatus("Notifications are enabled on this device.");
+        const OneSignal = await window.seshat.getOneSignal();
+        await OneSignal.login(user.id);
+        await OneSignal.User.PushSubscription.optIn();
+        setStatus(OneSignal.User.PushSubscription.optedIn
+            ? "Notifications are enabled on this device."
+            : "Complete the browser permission prompt to enable notifications.");
     }catch(error){
         console.error("Unable to enable push notifications:",error);
         setStatus("Could not enable notifications: " + error.message);
@@ -165,23 +132,13 @@ async function disableNotifications(){
     }
 
     try{
-        const registration = await window.seshat.registerServiceWorker();
-        const subscription = await registration.pushManager.getSubscription();
-        if(!subscription){
+        const OneSignal = await window.seshat.getOneSignal();
+        if(!OneSignal.User.PushSubscription.optedIn){
             setStatus("Notifications are not enabled on this device.");
             return;
         }
 
-        const {error} = await window.seshat.supabase
-            .from("push_subscriptions")
-            .delete()
-            .eq("user_id",user.id)
-            .eq("endpoint",subscription.endpoint);
-        if(error){
-            throw error;
-        }
-
-        await subscription.unsubscribe();
+        await OneSignal.User.PushSubscription.optOut();
         setStatus("Notifications are turned off on this device.");
     }catch(error){
         console.error("Unable to disable push notifications:",error);
@@ -206,21 +163,8 @@ disableButton.addEventListener("click",() => disableNotifications().catch(error 
     }
     signedIn = true;
 
-    const {data,error} = await window.seshat.supabase
-        .from("push_subscriptions")
-        .select("endpoint")
-        .eq("user_id",user.id);
-    if(error){
-        console.error("Unable to read notification settings:",error);
-        setStatus("Could not load notification settings: " + error.message);
-        return;
-    }
-
-    const registration = await window.seshat.registerServiceWorker();
-    const currentSubscription = await registration.pushManager.getSubscription();
-    const enabledForThisDevice = currentSubscription &&
-        data.some(subscription => subscription.endpoint === currentSubscription.endpoint);
-    setStatus(enabledForThisDevice
+    const OneSignal = await window.seshat.getOneSignal();
+    setStatus(OneSignal.User.PushSubscription.optedIn
         ? "Notifications are enabled on this device."
         : "Notifications are not enabled on this device.");
 })().catch(error => {

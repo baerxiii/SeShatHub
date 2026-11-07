@@ -1,45 +1,27 @@
 # SeShatHub
 The terminal hub for the SeShat Suite of apps
 
-## Notification setup (in progress)
+## Push notifications
 
-The existing self-hosted push setup below is not active. A OneSignal integration
-is being prepared as its replacement; the OneSignal service worker and delivery
-adapter are present, but subscription enrollment, secure account linking, and
-the scheduled sender are not connected. Do not configure both systems to send
-the same reminders.
+The site uses OneSignal Web Push with the public App ID
+`b98b2b98-8510-49b3-b263-3bdc12dd7c3c`. The SDK links each opted-in browser to
+the signed-in Supabase user ID; the server targets that external ID. The
+OneSignal REST API key is server-only and must never be added to the website or
+committed to Git.
 
-To prepare OneSignal, create an app at https://onesignal.com/ and choose Web Push
-with the site URL `https://baerxiii.github.io/SeShatHub/`. The public App ID can
-be shared with the developer to finish configuration. Keep the REST API key
-private; it belongs only in server-side secrets, never in the website or a
-GitHub commit. The worker is at `/SeShatHub/onesignal/OneSignalSDKWorker.js`;
-the future Web SDK integration must configure its path and scope explicitly.
-On iOS, users must add the site to their Home Screen before enabling web push.
+To activate reminders:
 
-### Previous self-hosted push setup
+1. In OneSignal, configure Web Push using **Custom Code** for the site origin
+   `https://baerxiii.github.io` (GitHub Pages subfolder sites use the origin,
+   not the repository path). The SDK initialization in `seshat-core.js`
+   configures the worker path and scope. Ensure this is the same app as the App
+   ID above, and copy its REST API key.
+2. In the Supabase Dashboard, open **Edge Functions** secrets for the project
+   and add `ONESIGNAL_REST_API_KEY` with the OneSignal REST API key as its
+   value. Do not paste the key into chat, website code, or a GitHub file.
 
-The Hub is hosted as a static GitHub Pages site, so push delivery needs the
-Supabase database migration, the `send-reminders` Edge Function, and a scheduled
-invocation. Until these are configured, reminder selections can be saved only
-after the migration is applied; push messages will not be sent. The selected
-Deno-compatible [Web Push library](https://github.com/negrel/webpush) states
-that its cryptography has not been reviewed by cryptography experts; this is
-a tradeoff of the self-hosted approach.
-
-1. Generate VAPID keys in a trusted local environment with
-   `deno run https://raw.githubusercontent.com/negrel/webpush/v0.5.0/cmd/generate-vapid-keys.ts`.
-   Save the JSON output's `publicKey` and `privateKey` JWK objects. The command
-   also prints an application-server public key; keep that value for the next
-   step. Set the two JWK objects as the Supabase Edge Function secrets
-   `VAPID_PUBLIC_JWK` and `VAPID_PRIVATE_JWK`, plus `VAPID_SUBJECT` (a contact
-   such as `mailto:you@example.com`). Supabase provides `SUPABASE_URL` and
-   `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions.
-2. Replace `REPLACE_WITH_VAPID_PUBLIC_KEY` in `seshat-core.js` with the
-   application-server public key. This public key is safe to include in the
-   site; never commit the private JWK or service-role key.
 3. Apply `supabase/migrations/20261107000000_push_reminders.sql` to the
-   Supabase project, then deploy the function:
+   Supabase project and deploy the Edge Function:
    `supabase functions deploy send-reminders`
 4. In the Supabase SQL Editor, store the function URL and service-role key in
    Vault, replacing the placeholders:
@@ -79,10 +61,11 @@ a tradeoff of the self-hosted approach.
    ```
 
    Supabase Cron and `pg_net` must be enabled for the project. Apply the
-   migration before scheduling the function.
-6. Deploy the site over HTTPS. Sign in, open **Settings**, and enable
-   notifications on each device. On mobile, install SeShat Hub to the home
-   screen if the browser requires it for push notifications.
+   migration and deploy the function before scheduling it.
+6. Publish the site over HTTPS. Sign in, open **Settings**, and enable
+   notifications on each device. On iOS, add the site to the Home Screen first.
+   Send a test notification from OneSignal and confirm a scheduled reminder
+   arrives before relying on it.
 
 Task reminders default to one day before, at 9:00 a.m. in the device's local
 time zone. Calendar reminders default to one day before the event; events
