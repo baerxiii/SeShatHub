@@ -13,6 +13,125 @@ supabase.createClient(
 window.seshat = {
 
     supabase: sb,
+    pushVapidPublicKey: 'REPLACE_WITH_VAPID_PUBLIC_KEY',
+
+    async registerServiceWorker() {
+        if (!('serviceWorker' in navigator)) {
+            return null;
+        }
+
+        return navigator.serviceWorker.register('./service-worker.js');
+    },
+
+    async scheduleReminders({ itemType, itemId, dueDate, dueTime, url, offsets }) {
+        const user = await this.getUser();
+        if (!user) {
+            throw new Error('You must be signed in to schedule reminders.');
+        }
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate) ||
+            !/^\d{2}:\d{2}(?::\d{2})?$/.test(dueTime)) {
+            throw new Error('The due date or time is invalid.');
+        }
+
+        const [year, month, day] = dueDate.split('-').map(Number);
+        const [hours, minutes] = dueTime.split(':').map(Number);
+        const dueAt = new Date(year, month - 1, day, hours, minutes);
+        if (Number.isNaN(dueAt.getTime()) || dueAt.getFullYear() !== year ||
+            dueAt.getMonth() !== month - 1 || dueAt.getDate() !== day ||
+            dueAt.getHours() !== hours || dueAt.getMinutes() !== minutes) {
+            throw new Error('The due date or time is invalid.');
+        }
+
+        const { error: deleteError } = await sb
+            .from('push_reminders')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('item_type', itemType)
+            .eq('item_id', String(itemId));
+
+        if (deleteError) {
+            throw deleteError;
+        }
+
+        const reminders = [...new Set(offsets.map(Number))]
+            .filter(offset => Number.isInteger(offset) && offset > 0 && offset <= 525600)
+            .map(offset => ({
+                remindAt: offset === 1440
+                    ? new Date(year, month - 1, day - 1, hours, minutes)
+                    : new Date(dueAt.getTime() - offset * 60000),
+                offset
+            }))
+            .map(({ offset, remindAt }) => ({
+                user_id: user.id,
+                item_type: itemType,
+                item_id: String(itemId),
+                offset_minutes: offset,
+                due_on: dueDate,
+                due_time: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
+                due_at: dueAt.toISOString(),
+                remind_at: remindAt.toISOString(),
+                url
+            }))
+            .filter(reminder => new Date(reminder.remind_at) > new Date());
+
+        if (reminders.length === 0) {
+            return;
+        }
+
+        const { error } = await sb.from('push_reminders').insert(reminders);
+        if (error) {
+            throw error;
+        }
+    },
+
+    async getReminderOffsets(itemType, itemId) {
+        const user = await this.getUser();
+        if (!user) {
+            throw new Error('You must be signed in to manage reminders.');
+        }
+
+        const { data, error } = await sb
+            .from('push_reminders')
+            .select('offset_minutes')
+            .eq('user_id', user.id)
+            .eq('item_type', itemType)
+            .eq('item_id', String(itemId));
+
+        if (error) {
+            throw error;
+        }
+
+        return [...new Set((data || []).map(reminder => reminder.offset_minutes))];
+    },
+
+    readReminderOffsets() {
+        const offsets = [...document.querySelectorAll('input[name="reminder-offset"]:checked')]
+            .map(input => Number(input.value));
+        const custom = Number(document.getElementById('customReminderMinutes')?.value);
+        if (Number.isInteger(custom) && custom > 0 && custom <= 525600) {
+            offsets.push(custom);
+        }
+        return [...new Set(offsets)];
+    },
+
+    async clearReminders(itemType, itemId) {
+        const user = await this.getUser();
+        if (!user) {
+            throw new Error('You must be signed in to manage reminders.');
+        }
+
+        const { error } = await sb
+            .from('push_reminders')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('item_type', itemType)
+            .eq('item_id', String(itemId));
+
+        if (error) {
+            throw error;
+        }
+    },
 
     async getUser() {
 
@@ -39,3 +158,7 @@ window.seshat = {
         location.href = "/";
     }
 };
+
+window.seshat.registerServiceWorker().catch(error => {
+    console.error('Unable to register the notification service worker:', error);
+});

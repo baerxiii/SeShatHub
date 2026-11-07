@@ -1,1 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#030712">
+<link rel="manifest" href="./manifest.json">
+<title>SeShat Hub Settings</title>
+<style>
+*{box-sizing:border-box}
+body{
+    margin:0;
+    min-height:100vh;
+    padding:30px;
+    font-family:'Segoe UI',sans-serif;
+    color:white;
+    background:
+        radial-gradient(circle at top left,#2563eb,#020617 40%),
+        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
+}
+.container{max-width:900px;margin:auto}
+.header,.card{
+    padding:24px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:20px;
+    background:rgba(255,255,255,.07);
+}
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:16px;
+    margin-bottom:20px;
+}
+.card{margin-bottom:20px}
+a,.button{
+    display:inline-block;
+    padding:12px 16px;
+    border:0;
+    border-radius:10px;
+    background:#2563eb;
+    color:white;
+    font:inherit;
+    text-decoration:none;
+    cursor:pointer;
+}
+.button.secondary{background:#475569}
+.button:disabled{opacity:.5;cursor:not-allowed}
+#notificationStatus{min-height:1.5em;margin-top:16px}
+.help{color:#cbd5e1;line-height:1.5}
+@media(max-width:600px){
+    body{padding:16px}
+    .header{align-items:flex-start;flex-direction:column}
+}
+</style>
+</head>
+<body>
+<main class="container">
+    <header class="header">
+        <div>
+            <h1>⚙️ Settings</h1>
+            <p>Manage SeShat Hub notifications on this device.</p>
+        </div>
+        <a href="index.html">Dashboard</a>
+    </header>
 
+    <section class="card" aria-labelledby="notificationHeading">
+        <h2 id="notificationHeading">Task and calendar reminders</h2>
+        <p class="help">
+            Enable browser notifications on each device where you want reminders.
+            Reminder titles appear in notifications. Your browser may also need
+            SeShat Hub to be installed on mobile.
+        </p>
+        <button id="enableNotifications" class="button" type="button">Enable notifications on this device</button>
+        <button id="disableNotifications" class="button secondary" type="button">Turn off on this device</button>
+        <p id="notificationStatus" role="status" aria-live="polite"></p>
+    </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="seshat-core.js"></script>
+<script>
+const statusMessage = document.getElementById("notificationStatus");
+const enableButton = document.getElementById("enableNotifications");
+const disableButton = document.getElementById("disableNotifications");
+let signedIn = false;
+
+function setStatus(message){
+    statusMessage.textContent = message;
+}
+
+function applicationServerKey(value){
+    const padding = "=".repeat((4 - value.length % 4) % 4);
+    const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = atob(base64);
+    return Uint8Array.from(raw, character => character.charCodeAt(0));
+}
+
+async function signedInUser(){
+    return window.seshat.getUser();
+}
+
+async function enableNotifications(){
+    if(!("Notification" in window) || !("PushManager" in window) || !("serviceWorker" in navigator)){
+        setStatus("Push notifications are not supported by this browser.");
+        return;
+    }
+
+    if(!window.seshat.pushVapidPublicKey || window.seshat.pushVapidPublicKey.startsWith("REPLACE_")){
+        setStatus("Push notifications need to be configured by the site administrator first.");
+        return;
+    }
+
+    if(!signedIn){
+        setStatus("Sign in on the Dashboard first, then return here to enable notifications.");
+        return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if(permission !== "granted"){
+        setStatus("Notification permission was not granted. Check this site's browser permissions.");
+        return;
+    }
+
+    const user = await signedInUser();
+    if(!user){
+        signedIn = false;
+        setStatus("Your session expired. Sign in on the Dashboard and try again.");
+        return;
+    }
+
+    try{
+        const registration = await window.seshat.registerServiceWorker();
+        const subscription = await registration.pushManager.getSubscription() ||
+            await registration.pushManager.subscribe({
+                userVisibleOnly:true,
+                applicationServerKey:applicationServerKey(window.seshat.pushVapidPublicKey)
+            });
+        const {error} = await window.seshat.supabase
+            .from("push_subscriptions")
+            .upsert({
+                user_id:user.id,
+                endpoint:subscription.endpoint,
+                subscription:subscription.toJSON(),
+                user_agent:navigator.userAgent
+            },{onConflict:"endpoint"});
+
+        if(error){
+            await subscription.unsubscribe();
+            throw error;
+        }
+
+        setStatus("Notifications are enabled on this device.");
+    }catch(error){
+        console.error("Unable to enable push notifications:",error);
+        setStatus("Could not enable notifications: " + error.message);
+    }
+}
+
+async function disableNotifications(){
+    const user = await signedInUser();
+    if(!user){
+        setStatus("Sign in on the Dashboard first to manage notifications.");
+        return;
+    }
+
+    try{
+        const registration = await window.seshat.registerServiceWorker();
+        const subscription = await registration.pushManager.getSubscription();
+        if(!subscription){
+            setStatus("Notifications are not enabled on this device.");
+            return;
+        }
+
+        const {error} = await window.seshat.supabase
+            .from("push_subscriptions")
+            .delete()
+            .eq("user_id",user.id)
+            .eq("endpoint",subscription.endpoint);
+        if(error){
+            throw error;
+        }
+
+        await subscription.unsubscribe();
+        setStatus("Notifications are turned off on this device.");
+    }catch(error){
+        console.error("Unable to disable push notifications:",error);
+        setStatus("Could not turn off notifications: " + error.message);
+    }
+}
+
+enableButton.addEventListener("click",() => enableNotifications().catch(error => {
+    console.error("Unable to enable push notifications:",error);
+    setStatus("Could not enable notifications: " + error.message);
+}));
+disableButton.addEventListener("click",() => disableNotifications().catch(error => {
+    console.error("Unable to disable push notifications:",error);
+    setStatus("Could not turn off notifications: " + error.message);
+}));
+
+(async function initialize(){
+    const user = await signedInUser();
+    if(!user){
+        setStatus("Sign in on the Dashboard before enabling notifications.");
+        return;
+    }
+    signedIn = true;
+
+    const {data,error} = await window.seshat.supabase
+        .from("push_subscriptions")
+        .select("endpoint")
+        .eq("user_id",user.id);
+    if(error){
+        console.error("Unable to read notification settings:",error);
+        setStatus("Could not load notification settings: " + error.message);
+        return;
+    }
+
+    const registration = await window.seshat.registerServiceWorker();
+    const currentSubscription = await registration.pushManager.getSubscription();
+    const enabledForThisDevice = currentSubscription &&
+        data.some(subscription => subscription.endpoint === currentSubscription.endpoint);
+    setStatus(enabledForThisDevice
+        ? "Notifications are enabled on this device."
+        : "Notifications are not enabled on this device.");
+})().catch(error => {
+    console.error("Unable to initialize notification settings:",error);
+    setStatus("Could not load notification settings: " + error.message);
+});
+</script>
+</body>
+</html>

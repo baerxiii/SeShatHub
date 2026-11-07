@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#030712">
+<link rel="manifest" href="./manifest.json">
 <title>SeShat Hub</title>
 
 <style>
@@ -114,6 +116,19 @@ body{
     display:flex;
     align-items:center;
     gap:15px;
+}
+
+.settings-link{
+    color:white;
+    text-decoration:none;
+    padding:10px 14px;
+    border-radius:10px;
+    background:rgba(255,255,255,.12);
+}
+
+.settings-link:hover,
+.settings-link:focus-visible{
+    background:rgba(255,255,255,.2);
 }
 
 .hero-card{
@@ -301,6 +316,7 @@ body{
 
     <div class="top-right">
 
+        <a class="settings-link" href="settings.html">⚙️ Settings</a>
         <span id="userEmail"></span>
 
         <button class="logout-btn"

@@ -83,6 +83,26 @@ select{
     margin-top:10px;
 }
 
+.reminder-options{
+    margin-top:16px;
+}
+
+.reminder-options label{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin:10px 16px 0 0;
+}
+
+.reminder-options input[type="checkbox"]{
+    width:auto;
+    margin:0;
+}
+
+.reminder-options input[type="number"]{
+    max-width:180px;
+}
+
 textarea{
     min-height:100px;
 }
@@ -343,6 +363,15 @@ textarea{
 
         </div>
 
+        <fieldset class="reminder-options">
+            <legend>Reminders (events without a start time default to 9:00 a.m.)</legend>
+            <label><input type="checkbox" name="reminder-offset" value="1440" checked> 1 day before</label>
+            <label><input type="checkbox" name="reminder-offset" value="60"> 1 hour before</label>
+            <label><input type="checkbox" name="reminder-offset" value="15"> 15 minutes before</label>
+            <label for="customReminderMinutes">Custom minutes before</label>
+            <input id="customReminderMinutes" type="number" min="1" max="525600" step="1" placeholder="e.g. 30">
+        </fieldset>
+
         <button
             class="btn add-btn"
             onclick="addEvent()">
@@ -390,6 +419,11 @@ async function addEvent(){
     const user =
         await getUser();
 
+    if(!user){
+        alert("Please sign in before adding an event.");
+        return;
+    }
+
 const title =
     document.getElementById("title").value.trim();
 
@@ -427,7 +461,7 @@ if(
     return;
 }
     
-    const { error } =
+    const { data:event,error } =
     await getSB()
         .from("calendar_events")
         .insert({
@@ -454,11 +488,26 @@ if(
             end_time:
                 document.getElementById("end_time").value || null
 
-        });
+        })
+        .select("id")
+        .single();
 
     if(error){
     alert(error.message);
     return;
+}
+
+try{
+    await window.seshat.scheduleReminders({
+        itemType:"event",
+        itemId:event.id,
+        dueDate:eventDate,
+        dueTime:startTime || "09:00",
+        url:"calendar.html",
+        offsets:window.seshat.readReminderOffsets()
+    });
+}catch(error){
+    alert("Event saved, but its reminders could not be scheduled: " + error.message);
 }
 
 document.getElementById("title").value = "";
@@ -706,7 +755,15 @@ async function editEvent(event){
     if(endTime === null)
         return;
 
-    await getSB()
+    let reminderOffsets;
+    try{
+        reminderOffsets = await window.seshat.getReminderOffsets("event",event.id);
+    }catch(error){
+        alert("Unable to load event reminders: " + error.message);
+        return;
+    }
+
+    const {error} = await getSB()
         .from("calendar_events")
         .update({
 
@@ -723,6 +780,24 @@ async function editEvent(event){
         })
         .eq("id",event.id);
 
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    try{
+        await window.seshat.scheduleReminders({
+            itemType:"event",
+            itemId:event.id,
+            dueDate:eventDate,
+            dueTime:startTime || "09:00",
+            url:"calendar.html",
+            offsets:reminderOffsets
+        });
+    }catch(error){
+        alert("Event updated, but its reminders could not be rescheduled: " + error.message);
+    }
+
     loadEvents();
 }
 
@@ -732,10 +807,21 @@ async function deleteEvent(id){
     if(!confirm("Delete event?"))
         return;
 
-    await getSB()
+    const {error} = await getSB()
         .from("calendar_events")
         .delete()
         .eq("id",id);
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    try{
+        await window.seshat.clearReminders("event",id);
+    }catch(error){
+        console.error("Unable to clear event reminders:",error);
+    }
 
     loadEvents();
 }

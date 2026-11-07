@@ -82,6 +82,26 @@ select{
     margin-top:10px;
 }
 
+.reminder-options{
+    margin-top:16px;
+}
+
+.reminder-options label{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin:10px 16px 0 0;
+}
+
+.reminder-options input[type="checkbox"]{
+    width:auto;
+    margin:0;
+}
+
+.reminder-options input[type="number"]{
+    max-width:180px;
+}
+
 textarea{
     min-height:100px;
 }
@@ -260,6 +280,15 @@ textarea{
 
         </div>
 
+        <fieldset class="reminder-options">
+            <legend>Reminders (task due date defaults to 9:00 a.m. local time)</legend>
+            <label><input type="checkbox" name="reminder-offset" value="1440" checked> 1 day before</label>
+            <label><input type="checkbox" name="reminder-offset" value="60"> 1 hour before</label>
+            <label><input type="checkbox" name="reminder-offset" value="15"> 15 minutes before</label>
+            <label for="customReminderMinutes">Custom minutes before</label>
+            <input id="customReminderMinutes" type="number" min="1" max="525600" step="1" placeholder="e.g. 30">
+        </fieldset>
+
         <button class="add-btn" onclick="addTask()">
             Add Task
         </button>
@@ -313,16 +342,27 @@ async function getUser(){
 async function addTask(){
 
     const user = await getUser();
+    if(!user){
+        alert("Please sign in before adding a task.");
+        return;
+    }
 
-    const { error } =
+    const title = document.getElementById("title").value.trim();
+    if(!title){
+        alert("Task title is required.");
+        return;
+    }
+
+    const dueDate = document.getElementById("due_date").value;
+
+    const { data:task, error } =
     await getSB()
         .from('tasks')
         .insert({
 
             user_id:user.id,
 
-            title:
-            document.getElementById("title").value,
+            title,
 
             notes:
             document.getElementById("notes").value,
@@ -337,9 +377,11 @@ async function addTask(){
             document.getElementById("start_date").value || null,
 
             due_date:
-            document.getElementById("due_date").value || null
+            dueDate || null
 
-        });
+        })
+        .select("id")
+        .single();
 
     if(error){
 
@@ -347,6 +389,24 @@ async function addTask(){
         return;
     }
 
+    if(dueDate){
+        try{
+            await window.seshat.scheduleReminders({
+                itemType:"task",
+                itemId:task.id,
+                dueDate,
+                dueTime:"09:00",
+                url:"tasks.html",
+                offsets:window.seshat.readReminderOffsets()
+            });
+        }catch(error){
+            alert("Task saved, but its reminders could not be scheduled: " + error.message);
+        }
+    }
+
+    document.getElementById("title").value="";
+    document.getElementById("notes").value="";
+    document.getElementById("due_date").value="";
     loadTasks();
 }
 
@@ -384,10 +444,21 @@ async function deleteTask(id){
     if(!confirm("Delete task?"))
         return;
 
-    await getSB()
+    const {error} = await getSB()
         .from("tasks")
         .delete()
         .eq("id",id);
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    try{
+        await window.seshat.clearReminders("task",id);
+    }catch(error){
+        console.error("Unable to clear task reminders:",error);
+    }
 
     loadTasks();
 }
