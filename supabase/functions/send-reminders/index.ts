@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendOneSignalReminder } from "../_shared/onesignal.ts";
-
-const oneSignalAppId = "b98b2b98-8510-49b3-b263-3bdc12dd7c3c";
+import webpush from "web-push";
+import { validPushSubscription } from "../_shared/webpush.ts";
 
 type Reminder = {
   id: string;
@@ -17,13 +16,18 @@ type Reminder = {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const oneSignalApiKey = Deno.env.get("ONESIGNAL_REST_API_KEY");
+const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+const vapidSubject = Deno.env.get("VAPID_SUBJECT");
 
-if (!supabaseUrl || !serviceRoleKey || !oneSignalApiKey) {
-  throw new Error(
-    "Missing required Supabase or OneSignal environment variables.",
-  );
+if (
+  !supabaseUrl || !serviceRoleKey || !vapidPublicKey || !vapidPrivateKey ||
+  !vapidSubject
+) {
+  throw new Error("Missing required Supabase or VAPID environment variables.");
 }
+
+webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false },
@@ -48,6 +52,18 @@ Deno.serve(async (request) => {
   const expectedAuthorization = "Bearer " + serviceRoleKey;
   if (request.headers.get("authorization") !== expectedAuthorization) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  const { data: config, error: configError } = await supabase
+    .from("push_config").select("vapid_public_key").eq("id", true)
+    .maybeSingle();
+  if (configError || !config || config.vapid_public_key !== vapidPublicKey) {
+    console.error(
+      "Push public key is missing or does not match the function configuration.",
+    );
+    return Response.json({ error: "Push configuration is invalid." }, {
+      status: 503,
+    });
   }
 
   const { data: reminders, error: claimError } = await supabase
@@ -103,29 +119,84 @@ Deno.serve(async (request) => {
         continue;
       }
 
-      const notificationId = await sendOneSignalReminder({
-        appId: oneSignalAppId,
-        apiKey: oneSignalApiKey,
-      }, {
-        externalUserIds: [reminder.user_id],
-        reminderId: reminder.id,
+      const { data: subscriptions, error: subscriptionError } = await supabase
+        .from("push_subscriptions")
+        .select("id,endpoint,subscription")
+        .eq("user_id", reminder.user_id);
+      if (subscriptionError) throw subscriptionError;
+      if (!subscriptions?.length) {
+        await updateReminder(reminder.id, {
+          status: "failed",
+          last_error: "No registered push subscription.",
+        });
+        continue;
+      }
+
+      const payload = JSON.stringify({
         title: title ||
           (reminder.item_type === "task" ? "Task due soon" : "Event coming up"),
         body: reminder.item_type === "task"
           ? "Your task is due soon."
           : "Your event is coming up.",
         url: reminder.url,
+        tag: `${reminder.item_type}-${reminder.item_id}-${reminder.due_at}`,
       });
-
+      let accepted = 0;
+      let failed = 0;
+      for (const row of subscriptions) {
+        if (!validPushSubscription(row.subscription, row.endpoint)) {
+          console.error(`Invalid push subscription ${row.id}.`);
+          failed++;
+          continue;
+        }
+        try {
+          await webpush.sendNotification(row.subscription, payload, {
+            TTL: Math.max(
+              0,
+              Math.min(
+                86400,
+                Math.floor((Date.parse(reminder.due_at) - Date.now()) / 1000),
+              ),
+            ),
+            urgency: "high",
+            timeout: 10000,
+            topic: reminder.id.replaceAll("-", ""),
+          });
+          accepted++;
+        } catch (error) {
+          const status = error instanceof Error && "statusCode" in error &&
+              typeof error.statusCode === "number"
+            ? error.statusCode
+            : undefined;
+          if (status === 404 || status === 410) {
+            const { error: deleteError } = await supabase
+              .from("push_subscriptions").delete().eq("id", row.id);
+            if (deleteError) throw deleteError;
+          } else {
+            failed++;
+            console.error(
+              `Push delivery failed for subscription ${row.id}:`,
+              status || "network error",
+            );
+          }
+        }
+      }
+      if (!accepted) {
+        if (failed) {
+          throw new Error("Push delivery failed for all active devices.");
+        }
+        await updateReminder(reminder.id, {
+          status: "failed",
+          last_error: "No active push subscriptions.",
+        });
+        continue;
+      }
       await updateReminder(reminder.id, {
         status: "sent",
         sent_at: new Date().toISOString(),
         retry_at: null,
-        last_error: null,
+        last_error: failed ? "Delivery failed for one or more devices." : null,
       });
-      console.info(
-        `Delivered reminder ${reminder.id} via OneSignal ${notificationId}.`,
-      );
       sent++;
     } catch (error) {
       console.error(`Unable to deliver reminder ${reminder.id}:`, error);

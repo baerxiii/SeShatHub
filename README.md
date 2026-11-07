@@ -1,43 +1,48 @@
 # SeShatHub
-The terminal hub for the SeShat Suite of apps
+The terminal hub for the SeShat Suite of apps.
 
-## Push notifications
+## Browser push reminders
 
-The site uses OneSignal Web Push with the public App ID
-`b98b2b98-8510-49b3-b263-3bdc12dd7c3c`. The SDK links each opted-in browser to
-the signed-in Supabase user ID; the server targets that external ID. The
-OneSignal REST API key is server-only and must never be added to the website or
-committed to Git.
+The Hub uses standard Web Push, not OneSignal. Each authenticated user can
+manage only their own browser subscriptions through Supabase row-level
+security. Notification titles contain the task or event name and may appear
+on the device's lock screen.
 
-To activate reminders:
+**Reminders do not work until the steps below are completed and a real
+end-to-end reminder is tested.** Supabase usage limits and pricing still apply.
+The prior OneSignal `send-reminders` function must be replaced before scheduling
+the new one. Do not schedule both senders.
 
-1. In OneSignal, configure Web Push using **Custom Code** for the site origin
-   `https://baerxiii.github.io` (GitHub Pages subfolder sites use the origin,
-   not the repository path). The SDK initialization in `seshat-core.js`
-   configures the worker path and scope. Ensure this is the same app as the App
-   ID above, and copy its REST API key.
-2. In the Supabase Dashboard, open **Edge Functions** secrets for the project
-   and add `ONESIGNAL_REST_API_KEY` with the OneSignal REST API key as its
-   value. Do not paste the key into chat, website code, or a GitHub file.
-
-3. Apply `supabase/migrations/20261107000000_push_reminders.sql` to the
-   Supabase project and deploy the Edge Function:
-   `supabase functions deploy send-reminders`
-4. In the Supabase SQL Editor, store the function URL and service-role key in
-   Vault, replacing the placeholders:
+1. Apply `supabase/migrations/20261107000000_push_reminders.sql` if it is not
+   already applied. Apply `supabase/migrations/20261107010000_push_config.sql`
+   as well. The first migration is not safe to run a second time.
+2. Visit `/SeShatHub/push-key-setup.html` on the deployed site and generate
+   keys once. Copy them directly from the page into Supabase; never put the
+   private key in chat, SQL, a public file, or Git.
+3. In Supabase Edge Function secrets, add `VAPID_PUBLIC_KEY` and
+   `VAPID_PRIVATE_KEY` using their matching values. Set `VAPID_SUBJECT` to an
+   administrator's contact URL or `mailto:` address. Supabase supplies
+   `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions.
+4. In Supabase SQL Editor, replace `<public-key>` below with **only the public
+   key** and run it:
 
    ```sql
-   select vault.create_secret(
-     'https://<project-ref>.supabase.co/functions/v1/send-reminders',
-     'seshat_push_function_url'
-   );
-   select vault.create_secret(
-     '<service-role-key>',
-     'seshat_service_role_key'
-   );
+   insert into public.push_config (id, vapid_public_key)
+   values (true, '<public-key>')
+   on conflict (id) do update set vapid_public_key = excluded.vapid_public_key;
    ```
 
-5. Schedule the sender to run every minute:
+   The public key in the table must match `VAPID_PUBLIC_KEY`. Keep the same
+   key pair; rotating it requires existing devices to resubscribe.
+5. Deploy the new `send-reminders` Edge Function:
+   `supabase functions deploy send-reminders`. This replaces the earlier
+   OneSignal function. The sender requires the service-role bearer token and
+   validates push service endpoints before making network requests.
+6. In Supabase Vault, create secrets named `seshat_push_function_url` containing
+   `https://<project-ref>.supabase.co/functions/v1/send-reminders`, and
+   `seshat_service_role_key` containing the legacy service-role key. Do not put
+   that key in chat or Git. Enable Supabase Cron and `pg_net`, then schedule the
+   sender once:
 
    ```sql
    select cron.schedule(
@@ -60,18 +65,19 @@ To activate reminders:
    );
    ```
 
-   Supabase Cron and `pg_net` must be enabled for the project. Apply the
-   migration and deploy the function before scheduling it.
-6. Publish the site over HTTPS. Sign in, open **Settings**, and enable
+7. Publish the site over HTTPS. Sign in, open **Settings**, and enable
    notifications on each device. On iOS, add the site to the Home Screen first.
-   Send a test notification from OneSignal and confirm a scheduled reminder
-   arrives before relying on it.
+   Create an upcoming task or event with a reminder and confirm it arrives.
+   Browser push subscriptions are not transferable between accounts; turn off
+   notifications before switching accounts on a shared browser.
 
 Task reminders default to one day before, at 9:00 a.m. in the device's local
 time zone. Calendar reminders default to one day before the event; events
 without a start time use 9:00 a.m. Users can select additional one-hour,
-15-minute, and custom-minute reminders. Notification titles contain the task
-or event name.
+15-minute, and custom-minute reminders.
+The sender marks a reminder sent when at least one push service accepts it; a
+failure on another device is recorded in `last_error`. Acceptance does not
+guarantee that a device displayed the notification.
 
 ## Projects
 - Stern Archive: https://github.com/baerxiii/stern-archive
