@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generate push notification keys</title>
+<style>
+body{font-family:Arial,sans-serif;background:#030712;color:white;max-width:720px;margin:40px auto;padding:0 20px;line-height:1.5}
+button{background:#2563eb;color:white;border:0;border-radius:8px;padding:12px;cursor:pointer}
+input{width:100%;box-sizing:border-box;padding:10px;font:inherit}
+label{display:block;margin:20px 0}
+.warning{color:#fde68a}
+</style>
+</head>
+<body>
+<h1>Generate push notification keys</h1>
+<p>Generate these once when setting up notifications. Keys are created in your browser and are not sent anywhere by this page.</p>
+<p class="warning">Keep the private key secret. Never share it in chat, commit it to GitHub, or save it in the public key field. Generating new keys later requires every device to subscribe again.</p>
+<button id="generate" type="button">Generate keys</button>
+<div id="result" hidden>
+  <label>Public key <input id="publicKey" readonly></label>
+  <label>Private key <input id="privateKey" readonly></label>
+</div>
+<p id="status" role="status"></p>
+<script>
+document.getElementById("generate").addEventListener("click", async () => {
+    try {
+        const keyPair = await crypto.subtle.generateKey(
+            {name:"ECDSA", namedCurve:"P-256"}, true, ["sign", "verify"]
+        );
+        const publicKey = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+        const privateKey = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+        const encoded = btoa(String.fromCharCode(...new Uint8Array(publicKey)))
+            .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+        document.getElementById("publicKey").value = encoded;
+        document.getElementById("privateKey").value = privateKey.d;
+        document.getElementById("result").hidden = false;
+        document.getElementById("generate").disabled = true;
+        document.getElementById("status").textContent = "Keys generated. Keep this page open while you save them.";
+    } catch(error) {
+        console.error("Unable to generate push keys:",error);
+        document.getElementById("status").textContent = "Could not generate keys: " + error.message;
+    }
+});
+</script>
+</body>
+</html>
