@@ -1,7 +1,23 @@
 # SeShatHub
 The terminal hub for the SeShat Suite of apps
 
-## Push reminders setup
+## Notification setup (in progress)
+
+The existing self-hosted push setup below is not active. A OneSignal integration
+is being prepared as its replacement; the OneSignal service worker and delivery
+adapter are present, but subscription enrollment, secure account linking, and
+the scheduled sender are not connected. Do not configure both systems to send
+the same reminders.
+
+To prepare OneSignal, create an app at https://onesignal.com/ and choose Web Push
+with the site URL `https://baerxiii.github.io/SeShatHub/`. The public App ID can
+be shared with the developer to finish configuration. Keep the REST API key
+private; it belongs only in server-side secrets, never in the website or a
+GitHub commit. The worker is at `/SeShatHub/onesignal/OneSignalSDKWorker.js`;
+the future Web SDK integration must configure its path and scope explicitly.
+On iOS, users must add the site to their Home Screen before enabling web push.
+
+### Previous self-hosted push setup
 
 The Hub is hosted as a static GitHub Pages site, so push delivery needs the
 Supabase database migration, the `send-reminders` Edge Function, and a scheduled
