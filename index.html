@@ -193,12 +193,23 @@ body{
 }
 
 .quick-btn{
+    display:block;
     width:100%;
     padding:12px;
     margin-top:10px;
     border:none;
     border-radius:12px;
     cursor:pointer;
+    background:#2563eb;
+    color:white;
+    font:inherit;
+    text-align:center;
+    text-decoration:none;
+}
+
+.quick-btn:hover,
+.quick-btn:focus-visible{
+    background:#1d4ed8;
 }
 
 .logout-btn{
@@ -513,10 +524,10 @@ body{
 
         <h2>⚡ Quick Actions</h2>
 
-        <button class="quick-btn">+ Task</button>
-        <button class="quick-btn">+ Note</button>
-        <button class="quick-btn">+ Password</button>
-        <button class="quick-btn">+ Event</button>
+        <a class="quick-btn" href="tasks.html#create-task">+ Task</a>
+        <a class="quick-btn" href="notes.html#create-note">+ Note</a>
+        <a class="quick-btn" href="passwordvault.html#add-password">+ Password</a>
+        <a class="quick-btn" href="calendar.html#create-event">+ Event</a>
 
     </div>
 
