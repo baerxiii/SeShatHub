@@ -1,0 +1,30 @@
+{
+  "name": "SeShat Document Vault",
+  "short_name": "Documents",
+  "id": "./documentvault.html",
+  "start_url": "./documentvault.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "icons": [
+    {
+      "src": "./page-icons/documentvault-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./page-icons/documentvault-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./page-icons/documentvault.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "SeShat Tasks",
+  "short_name": "Tasks",
+  "id": "./tasks.html",
+  "start_url": "./tasks.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "icons": [
+    {
+      "src": "./page-icons/tasks-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./page-icons/tasks-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./page-icons/tasks.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
