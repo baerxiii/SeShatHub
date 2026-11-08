@@ -14,10 +14,29 @@ async function run(){
         ];
         window.confirm = () => window.allowDelete;
         window.allowDelete = true;
+        window.attachmentRows = [];
+        window.objects = {};
         window.seshat = {supabase:{
             auth:{getUser:async () => ({data:{user:window.signedOut ? null : {id:"user"}},error:null})},
+            storage:{from:bucket => {
+                if(bucket !== "seshat-recipe-attachments") throw Error("Unexpected bucket");
+                return {
+                    upload:async (path,file) => {
+                        if(window.fail === "upload") return {error:{message:"offline"}};
+                        window.objects[path] = file.name;
+                        return {error:null};
+                    },
+                    remove:async paths => {
+                        if(window.fail === "storage-delete") return {error:{message:"offline"}};
+                        paths.forEach(path => delete window.objects[path]);
+                        return {error:null};
+                    },
+                    createSignedUrl:async path => ({data:{signedUrl:"https://example.test/" + path},error:null})
+                };
+            }},
             from:table => {
-                if(table !== "seshat_hub_recipes") throw Error("Unexpected table: " + table);
+                if(!["seshat_hub_recipes","seshat_hub_recipe_attachments"].includes(table)) throw Error("Unexpected table: " + table);
+                const attachmentTable = table === "seshat_hub_recipe_attachments";
                 let op = "select", values, filters = [];
                 const query = {
                     select:() => query,
@@ -27,18 +46,20 @@ async function run(){
                     eq:(key,value) => {filters.push([key,value]); return query;},
                     order:() => query,
                     then:(resolve,reject) => {
-                        const matched = window.rows.filter(row => filters.every(([key,value]) => row[key] === value));
+                        const rows = attachmentTable ? window.attachmentRows : window.rows;
+                        const matched = rows.filter(row => filters.every(([key,value]) => row[key] === value));
                         let result;
-                        if(window.fail === op) result = {data:null,error:{message:"offline"}};
+                        if(window.fail === (attachmentTable ? "attachment-" + op : op)) result = {data:null,error:{message:"offline"}};
                         else if(op === "select") result = {data:matched.map(row => ({...row})),error:null};
                         else if(op === "insert"){
-                            window.rows.push({id:"new-id",...values});
+                            rows.push({id:attachmentTable ? "attachment-" + (rows.length + 1) : "new-id",...values});
                             result = {data:null,error:null};
                         }else if(op === "update"){
                             matched.forEach(row => Object.assign(row,values));
                             result = {data:matched.map(row => ({id:row.id})),error:null};
                         }else{
-                            window.rows = window.rows.filter(row => !matched.includes(row));
+                            if(attachmentTable) window.attachmentRows = rows.filter(row => !matched.includes(row));
+                            else window.rows = rows.filter(row => !matched.includes(row));
                             result = {data:matched.map(row => ({id:row.id})),error:null};
                         }
                         return Promise.resolve(result).then(resolve,reject);
@@ -108,18 +129,49 @@ async function run(){
         get("#recipeForm").requestSubmit();
         await wait(() => !get("#recipeDialog").open && win.rows.some(row => row.title === "Updated"),type + " updated");
         await wait(() => get(".recipe-card h2").textContent === "Updated",type + " update refresh");
+        const choose = files => {
+            const transfer = new win.DataTransfer();
+            for(const file of files) transfer.items.add(file);
+            get(".attachment-input").files = transfer.files;
+        };
+        choose([new win.File(["bad"],"invalid.txt",{type:"text/plain"})]);
+        get(".upload-attachment").click();
+        check(get(".attachment-message").textContent.includes("use a PDF"),type + " invalid file rejected");
+        check(win.attachmentRows.length === 0,type + " invalid file not uploaded");
+        choose([new win.File(["PDF"],"recipe.pdf",{type:"application/pdf"})]);
+        win.fail = "attachment-insert";
+        get(".upload-attachment").click();
+        await wait(() => get("#listMessage").textContent.includes("offline"),type + " metadata failure");
+        check(Object.keys(win.objects).length === 0,type + " metadata failure cleans up upload");
+        choose([new win.File(["PDF"],"recipe.pdf",{type:"application/pdf"}),
+            new win.File(["image"],"recipe.png",{type:"image/png"})]);
+        win.fail = "upload";
+        get(".upload-attachment").click();
+        await wait(() => get("#listMessage").textContent.includes("offline"),type + " upload failure");
+        check(win.attachmentRows.length === 0,type + " failed upload has no metadata");
+        win.fail = "";
+        choose([new win.File(["PDF"],"recipe.pdf",{type:"application/pdf"}),
+            new win.File(["image"],"recipe.png",{type:"image/png"})]);
+        get(".upload-attachment").click();
+        await wait(() => doc.querySelectorAll(".remove-attachment").length === 2,type + " upload");
+        check(win.attachmentRows.length === 2 && Object.keys(win.objects).length === 2,type + " uploaded files");
+        check(win.attachmentRows.every(row => row.storage_path.startsWith("user/" + row.recipe_id + "/")),type + " storage ownership");
+        get(".remove-attachment").click();
+        await wait(() => doc.querySelectorAll(".remove-attachment").length === 1,type + " remove attachment");
+        check(win.attachmentRows.length === 1 && Object.keys(win.objects).length === 1,type + " removed file");
         win.allowDelete = false;
-        get(".delete-button").click();
+        get(".recipe-actions .delete-button").click();
         check(win.rows.length === 4,type + " cancelled delete");
         win.allowDelete = true;
         win.fail = "delete";
-        get(".delete-button").click();
+        get(".recipe-actions .delete-button").click();
         await wait(() => get("#listMessage").textContent.includes("offline"),type + " delete error");
         check(win.rows.length === 4,type + " failed delete");
         win.fail = "";
-        get(".delete-button").click();
+        get(".recipe-actions .delete-button").click();
         await wait(() => win.rows.length === 3,type + " deleted");
         check(win.rows.some(row => row.id === "other-id"),type + " other account unaffected");
+        check(win.attachmentRows.length === 0 && Object.keys(win.objects).length === 0,type + " recipe deletion removes files");
         check(original.length > 0,type + " edit prefilled");
         frame.remove();
     }

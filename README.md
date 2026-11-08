@@ -99,5 +99,13 @@ through the project's normal migration process. The migration creates the
 changing any existing `recipes` table; it must only be applied once. Deploy the
 site files after applying it.
 
+To enable image and PDF attachments, also apply
+`supabase/migrations/20261108010000_recipe_attachments.sql` once, after the
+recipes migration. It creates a private Storage bucket and per-user access
+policies; Supabase Storage usage limits and pricing apply. Save a recipe first,
+then use its **Upload files** control to attach JPEG, PNG, GIF, WebP or PDF
+files up to 10 MB each. Attachments can be opened or removed from the recipe.
+Deleting a recipe through the page also deletes its attachments.
+
 ## Projects
 - Stern Archive: https://github.com/baerxiii/stern-archive
