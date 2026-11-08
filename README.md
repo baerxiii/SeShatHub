@@ -21,8 +21,9 @@ the new one. Do not schedule both senders.
    private key in chat, SQL, a public file, or Git.
 3. In Supabase Edge Function secrets, add `VAPID_PUBLIC_KEY` and
    `VAPID_PRIVATE_KEY` using their matching values. Set `VAPID_SUBJECT` to an
-   administrator's contact URL or `mailto:` address. Supabase supplies
-   `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions.
+   administrator's contact URL or `mailto:` address. The sender uses
+   Supabase's default secret key for service authentication and its
+   administrator client.
 4. In Supabase SQL Editor, replace `<public-key>` below with **only the public
    key** and run it:
 
@@ -36,11 +37,12 @@ the new one. Do not schedule both senders.
    key pair; rotating it requires existing devices to resubscribe.
 5. Deploy the new `send-reminders` Edge Function:
    `supabase functions deploy send-reminders`. This replaces the earlier
-   OneSignal function. The sender requires the service-role bearer token and
-   validates push service endpoints before making network requests.
+   OneSignal function. The sender requires the default Supabase secret key in
+   the `apikey` header and validates push service endpoints before making
+   network requests.
 6. In Supabase Vault, create secrets named `seshat_push_function_url` containing
    `https://<project-ref>.supabase.co/functions/v1/send-reminders`, and
-   `seshat_service_role_key` containing the legacy service-role key. Do not put
+   `seshat_secret_key` containing the project's default secret key. Do not put
    that key in chat or Git. Enable Supabase Cron and `pg_net`, then schedule the
    sender once:
 
@@ -54,9 +56,9 @@ the new one. Do not schedule both senders.
                where name = 'seshat_push_function_url'),
        headers := jsonb_build_object(
          'Content-Type', 'application/json',
-         'Authorization', 'Bearer ' || (
+         'apikey', (
            select decrypted_secret from vault.decrypted_secrets
-           where name = 'seshat_service_role_key'
+           where name = 'seshat_secret_key'
          )
        ),
        body := '{}'::jsonb
