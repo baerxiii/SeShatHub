@@ -6,6 +6,7 @@
 
 <title>SeShat Tasks</title>
 
+<link rel="stylesheet" href="item-dialog.css">
 <style>
 
 *{
@@ -267,32 +268,32 @@ textarea{
         class="add-btn create-task-btn"
         id="showTaskForm"
         aria-controls="create-task"
-        aria-expanded="false"
         onclick="openTaskForm()">
 
         Create Task
 
     </button>
 
-    <div class="card" id="create-task" hidden>
+    <dialog class="item-dialog" id="create-task" aria-labelledby="createTaskHeading">
+        <form id="createTaskForm">
 
-        <h2>Create Task</h2>
+        <h2 id="createTaskHeading">Create Task</h2>
 
-        <input id="title" placeholder="Task Title">
+        <input id="title" placeholder="Task Title" aria-label="Task title" required>
 
         <textarea
             id="notes"
-            placeholder="Task Notes"></textarea>
+            placeholder="Task Notes" aria-label="Task notes"></textarea>
 
         <div class="grid">
 
-            <select id="priority">
+            <select id="priority" aria-label="Priority">
                 <option>High</option>
                 <option selected>Medium</option>
                 <option>Low</option>
             </select>
 
-            <select id="category">
+            <select id="category" aria-label="Category">
                 <option>Work</option>
                 <option>Personal</option>
                 <option>Home</option>
@@ -301,9 +302,9 @@ textarea{
                 <option>Projects</option>
             </select>
 
-            <input type="date" id="start_date">
+            <input type="date" id="start_date" aria-label="Start date">
 
-            <input type="date" id="due_date">
+            <input type="date" id="due_date" aria-label="Due date">
 
         </div>
 
@@ -316,15 +317,27 @@ textarea{
             <input id="customReminderMinutes" type="number" min="1" max="525600" step="1" placeholder="e.g. 30">
         </fieldset>
 
-        <button class="add-btn" onclick="addTask()">
+        <p class="dialog-message" role="alert"></p>
+        <button class="add-btn" type="submit">
             Add Task
         </button>
 
-        <button class="cancel-btn" onclick="closeTaskForm()">
+        <button class="cancel-btn" type="button" data-cancel>
             Cancel
         </button>
 
-    </div>
+        </form>
+    </dialog>
+
+    <dialog class="item-dialog" id="editTaskDialog" aria-labelledby="editTaskHeading">
+        <form>
+            <h2 id="editTaskHeading">Edit Task</h2>
+            <label>Task title <input id="editTaskTitle" required></label>
+            <p class="dialog-message" role="alert"></p>
+            <button class="btn edit-btn" type="submit">Save changes</button>
+            <button class="btn cancel-btn" type="button" data-cancel>Cancel</button>
+        </form>
+    </dialog>
 
     <div class="card">
 
@@ -354,6 +367,7 @@ textarea{
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="seshat-core.js"></script>
+<script src="item-dialog.js"></script>
 
 <script>
 
@@ -370,31 +384,20 @@ async function getUser(){
     return user;
 }
 
-function openTaskForm(){
-    document.getElementById("create-task").hidden = false;
-    document.getElementById("showTaskForm").hidden = true;
-    document.getElementById("showTaskForm").setAttribute("aria-expanded","true");
-    document.getElementById("title").focus();
-}
-
-function closeTaskForm(){
-    document.getElementById("create-task").hidden = true;
-    document.getElementById("showTaskForm").hidden = false;
-    document.getElementById("showTaskForm").setAttribute("aria-expanded","false");
-}
+const createTaskDialog = itemDialog("create-task",addTask);
+function openTaskForm(){ createTaskDialog.open(); }
+openDialogFromHash("#create-task",openTaskForm);
 
 async function addTask(){
 
     const user = await getUser();
     if(!user){
-        alert("Please sign in before adding a task.");
-        return;
+        throw new Error("Please sign in before adding a task.");
     }
 
     const title = document.getElementById("title").value.trim();
     if(!title){
-        alert("Task title is required.");
-        return;
+        throw new Error("Task title is required.");
     }
 
     const dueDate = document.getElementById("due_date").value;
@@ -429,8 +432,7 @@ async function addTask(){
 
     if(error){
 
-        alert(error.message);
-        return;
+        throw error;
     }
 
     if(dueDate){
@@ -448,28 +450,26 @@ async function addTask(){
         }
     }
 
-    document.getElementById("title").value="";
-    document.getElementById("notes").value="";
-    document.getElementById("due_date").value="";
-    closeTaskForm();
-    loadTasks();
+    document.getElementById("createTaskForm").reset();
+    loadTasks().catch(error => alert("Task saved, but the list could not be refreshed: " + error.message));
 }
 
-async function editTask(id,current){
-
-    const updated =
-    prompt("Edit Task",current);
-
-    if(!updated) return;
-
-    await getSB()
+let editingTaskId;
+const editTaskDialog = itemDialog("editTaskDialog",async () => {
+    const title = document.getElementById("editTaskTitle").value.trim();
+    if(!title) throw new Error("Task title is required.");
+    const {error} = await getSB()
         .from("tasks")
-        .update({
-            title:updated
-        })
-        .eq("id",id);
-
-    loadTasks();
+        .update({title})
+        .eq("id",editingTaskId);
+    if(error) throw error;
+    loadTasks().catch(error => alert("Task updated, but the list could not be refreshed: " + error.message));
+});
+function editTask(task){
+    if(editTaskDialog.openState) return;
+    editingTaskId = task.id;
+    document.getElementById("editTaskTitle").value = task.title;
+    editTaskDialog.open();
 }
 
 async function toggleTask(id,current){
@@ -596,9 +596,10 @@ async function loadTasks(){
 
         const priorityClass =
             "priority-" +
-            task.priority.toLowerCase();
+            escapeItemText(task.priority.toLowerCase());
 
-        taskList.innerHTML += `
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = `
         <div class="task ${priorityClass} ${overdueClass}">
 
             <div class="task-header">
@@ -608,33 +609,33 @@ async function loadTasks(){
                     ? "completed"
                     : ""
                 }">
-                    ${task.title}
+                    ${escapeItemText(task.title)}
                 </h3>
 
                 <strong>
-                    ${task.priority}
+                    ${escapeItemText(task.priority)}
                 </strong>
 
             </div>
 
             <div class="category-badge">
-                ${task.category}
+                ${escapeItemText(task.category)}
             </div>
 
             <p style="margin-top:10px;">
-                ${task.notes || ""}
+                ${escapeItemText(task.notes)}
             </p>
 
             <p style="margin-top:10px;">
                 📅 Due:
-                ${task.due_date || "None"}
+                ${escapeItemText(task.due_date || "None")}
             </p>
 
             <div class="task-actions">
 
                 <button
                     class="btn complete-btn"
-                    onclick="toggleTask(${task.id},${task.completed})">
+                    type="button">
 
                     ${
                         task.completed
@@ -646,7 +647,7 @@ async function loadTasks(){
 
                 <button
                     class="btn edit-btn"
-                    onclick="editTask(${task.id},'${task.title.replace(/'/g,"&#39;")}')">
+                    type="button">
 
                     Edit
 
@@ -654,7 +655,7 @@ async function loadTasks(){
 
                 <button
                     class="btn delete-btn"
-                    onclick="deleteTask(${task.id})">
+                    type="button">
 
                     Delete
 
@@ -664,6 +665,10 @@ async function loadTasks(){
 
         </div>
         `;
+        wrapper.querySelector(".complete-btn").addEventListener("click",() => toggleTask(task.id,task.completed));
+        wrapper.querySelector(".edit-btn").addEventListener("click",() => editTask(task));
+        wrapper.querySelector(".delete-btn").addEventListener("click",() => deleteTask(task.id));
+        taskList.append(wrapper);
     });
 
     document.getElementById("openCount").innerText=open;
