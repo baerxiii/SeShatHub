@@ -13,6 +13,7 @@
     let editingId = null;
     let recipes = [];
     let attachments = [];
+    const expandedRecipes = new Set();
     let busy = false;
 
     async function getUser(){
@@ -28,21 +29,34 @@
             (recipe[field] || "").toLowerCase().includes(search)
         ));
         const list = get("recipeList");
+        list.querySelectorAll("details.recipe-card").forEach(card => {
+            if(card.open) expandedRecipes.add(card.dataset.recipeId);
+            else expandedRecipes.delete(card.dataset.recipeId);
+        });
         list.replaceChildren();
         get("listMessage").textContent = matches.length ? "" :
             (search ? "No recipes match your search." : "No recipes yet. Add one to get started.");
         for(const recipe of matches){
-            const card = document.createElement("article");
+            const card = document.createElement("details");
             card.className = "recipe-card";
+            card.dataset.recipeId = recipe.id;
+            card.open = expandedRecipes.has(recipe.id);
+            card.addEventListener("toggle",() => {
+                if(!card.isConnected) return;
+                if(card.open) expandedRecipes.add(recipe.id);
+                else expandedRecipes.delete(recipe.id);
+            });
+            const summary = document.createElement("summary");
             const title = document.createElement("h2");
             title.textContent = recipe.title;
-            card.append(title);
+            summary.append(title);
             if(recipe.category){
                 const category = document.createElement("span");
                 category.className = "badge";
                 category.textContent = recipe.category;
-                card.append(category);
+                summary.append(category);
             }
+            card.append(summary);
             for(const [field,heading] of [
                 ["ingredients","Ingredients and quantities"],
                 ["instructions","Instructions"],

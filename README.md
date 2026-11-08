@@ -91,6 +91,7 @@ The Home & Life section links to separate Household Recipes and Food Recipes
 pages. Each page can add, edit, search, and delete recipes, including their
 ingredients, instructions, and notes. Recipes belong to the signed-in user and
 are stored in Supabase; they are not shared between accounts.
+Select a recipe's name to expand or collapse its details and actions.
 
 Before using these pages, apply
 `supabase/migrations/20261108000000_recipes.sql` in the Supabase SQL Editor or
