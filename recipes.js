@@ -74,7 +74,7 @@
 
     async function loadRecipes(){
         const user = await getUser();
-        const {data,error} = await sb.from("recipes")
+        const {data,error} = await sb.from("seshat_hub_recipes")
             .select("*").eq("user_id",user.id).eq("recipe_type",type)
             .order("updated_at",{ascending:false});
         if(error) throw error;
@@ -130,11 +130,11 @@
             values.updated_at = new Date().toISOString();
             let result;
             if(editingId !== null){
-                result = await sb.from("recipes").update(values)
+                result = await sb.from("seshat_hub_recipes").update(values)
                     .eq("id",editingId).eq("user_id",user.id).eq("recipe_type",type).select("id");
                 if(!result.error && result.data.length !== 1) throw new Error("Recipe was not found or is no longer accessible.");
             }else{
-                result = await sb.from("recipes").insert({...values,user_id:user.id,recipe_type:type});
+                result = await sb.from("seshat_hub_recipes").insert({...values,user_id:user.id,recipe_type:type});
             }
             if(result.error) throw result.error;
             dialog.close();
@@ -154,7 +154,7 @@
         button.disabled = true;
         try{
             const user = await getUser();
-            const {data,error} = await sb.from("recipes").delete()
+            const {data,error} = await sb.from("seshat_hub_recipes").delete()
                 .eq("id",recipe.id).eq("user_id",user.id).eq("recipe_type",type).select("id");
             if(error) throw error;
             if(data.length !== 1) throw new Error("Recipe was not found or is no longer accessible.");

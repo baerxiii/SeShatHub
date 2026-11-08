@@ -16,7 +16,8 @@ async function run(){
         window.allowDelete = true;
         window.seshat = {supabase:{
             auth:{getUser:async () => ({data:{user:window.signedOut ? null : {id:"user"}},error:null})},
-            from:() => {
+            from:table => {
+                if(table !== "seshat_hub_recipes") throw Error("Unexpected table: " + table);
                 let op = "select", values, filters = [];
                 const query = {
                     select:() => query,

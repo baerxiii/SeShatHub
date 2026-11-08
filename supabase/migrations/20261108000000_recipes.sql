@@ -1,4 +1,4 @@
-create table public.recipes (
+create table public.seshat_hub_recipes (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references auth.users(id) on delete cascade,
     recipe_type text not null check (recipe_type in ('household', 'food')),
@@ -11,16 +11,16 @@ create table public.recipes (
     updated_at timestamptz not null default now()
 );
 
-create index recipes_user_type_updated_idx
-    on public.recipes (user_id, recipe_type, updated_at desc);
+create index seshat_hub_recipes_user_type_updated_idx
+    on public.seshat_hub_recipes (user_id, recipe_type, updated_at desc);
 
-alter table public.recipes enable row level security;
+alter table public.seshat_hub_recipes enable row level security;
 
 create policy "Users manage their own recipes"
-    on public.recipes
+    on public.seshat_hub_recipes
     for all
     to authenticated
     using (auth.uid() = user_id)
     with check (auth.uid() = user_id);
 
-grant select, insert, update, delete on public.recipes to authenticated;
+grant select, insert, update, delete on public.seshat_hub_recipes to authenticated;

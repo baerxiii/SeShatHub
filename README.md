@@ -95,8 +95,9 @@ are stored in Supabase; they are not shared between accounts.
 Before using these pages, apply
 `supabase/migrations/20261108000000_recipes.sql` in the Supabase SQL Editor or
 through the project's normal migration process. The migration creates the
-recipes table and its per-user row-level security policy; it must only be
-applied once. Deploy the site files after applying it.
+`seshat_hub_recipes` table and its per-user row-level security policy without
+changing any existing `recipes` table; it must only be applied once. Deploy the
+site files after applying it.
 
 ## Projects
 - Stern Archive: https://github.com/baerxiii/stern-archive
