@@ -56,8 +56,25 @@ body{
     margin-bottom:16px;
 }
 
-.recipe-card h2{
-    margin:0 0 10px;
+.recipe-card summary{
+    cursor:pointer;
+    overflow-wrap:anywhere;
+}
+
+.recipe-card summary:focus-visible{
+    outline:2px solid #93c5fd;
+    outline-offset:5px;
+    border-radius:4px;
+}
+
+.recipe-card summary h2{
+    display:inline;
+    margin:0 10px 0 0;
+    font-size:1.35rem;
+}
+
+.recipe-card[open] summary{
+    margin-bottom:16px;
 }
 
 .badge{

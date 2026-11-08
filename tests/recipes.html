@@ -91,6 +91,19 @@ async function run(){
         const get = selector => doc.querySelector(selector);
         await wait(() => get(".recipe-card"),type + " initial load");
         check(doc.querySelectorAll(".recipe-card").length === 1,type + " filters owner and type");
+        check(!get(".recipe-card").open,type + " starts collapsed");
+        check(get(".recipe-card summary").textContent.includes(type === "food" ? "Dinner" : "Laundry"),type + " category visible");
+        get(".recipe-card summary").click();
+        check(get(".recipe-card").open,type + " expands on click");
+        get("#searchBox").value = type === "food" ? "Pasta" : "Laundry";
+        get("#searchBox").dispatchEvent(new win.Event("input"));
+        check(get(".recipe-card").open,type + " expansion survives search");
+        get(".recipe-card summary").click();
+        check(!get(".recipe-card").open,type + " collapses on click");
+        get("#searchBox").value = "";
+        get("#searchBox").dispatchEvent(new win.Event("input"));
+        check(!get(".recipe-card").open,type + " collapse survives search");
+        get(".recipe-card summary").click();
         if(type === "food"){
             check(get(".recipe-card h2").textContent === "Pasta <b>", "recipe title is rendered as text");
             check(!get(".recipe-card h2 b"),"recipe HTML is not executed");
@@ -118,6 +131,7 @@ async function run(){
         await wait(() => !get("#recipeDialog").open && win.rows.length === 4,type + " created");
         check(win.rows[3].recipe_type === type && win.rows[3].user_id === "user",type + " create scope");
         await wait(() => doc.querySelectorAll(".recipe-card").length === 2,type + " refresh");
+        check(get(".recipe-card").open,type + " expansion survives creation refresh");
         get(".edit-button").click();
         const original = get("#title").value;
         get("#title").value = "Updated";
@@ -129,6 +143,7 @@ async function run(){
         get("#recipeForm").requestSubmit();
         await wait(() => !get("#recipeDialog").open && win.rows.some(row => row.title === "Updated"),type + " updated");
         await wait(() => get(".recipe-card h2").textContent === "Updated",type + " update refresh");
+        check(get(".recipe-card").open,type + " expansion survives editing");
         const choose = files => {
             const transfer = new win.DataTransfer();
             for(const file of files) transfer.items.add(file);
@@ -154,10 +169,12 @@ async function run(){
             new win.File(["image"],"recipe.png",{type:"image/png"})]);
         get(".upload-attachment").click();
         await wait(() => doc.querySelectorAll(".remove-attachment").length === 2,type + " upload");
+        check(get(".recipe-card").open,type + " expansion survives upload");
         check(win.attachmentRows.length === 2 && Object.keys(win.objects).length === 2,type + " uploaded files");
         check(win.attachmentRows.every(row => row.storage_path.startsWith("user/" + row.recipe_id + "/")),type + " storage ownership");
         get(".remove-attachment").click();
         await wait(() => doc.querySelectorAll(".remove-attachment").length === 1,type + " remove attachment");
+        check(get(".recipe-card").open,type + " expansion survives removal");
         check(win.attachmentRows.length === 1 && Object.keys(win.objects).length === 1,type + " removed file");
         win.allowDelete = false;
         get(".recipe-actions .delete-button").click();
