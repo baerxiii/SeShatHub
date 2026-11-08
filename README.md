@@ -1,6 +1,19 @@
 # SeShatHub
 The terminal hub for the SeShat Suite of apps.
 
+## Page icons and shortcuts
+
+Each local Hub page has its own browser-tab icon and home-screen icon. Open the
+page you want and use your browser's install or add-to-home-screen option to
+create a shortcut to that page; availability and behavior vary by browser and
+device. The main Hub keeps its existing icon. External applications linked
+from the dashboard manage their own icons.
+
+To regenerate the page icons and manifests, run
+`node scripts/generate-page-icons.js` with Node.js and headless Chrome
+installed. Set `CHROME` to the browser executable if it is not named
+`google-chrome`.
+
 ## Browser push reminders
 
 The Hub uses standard Web Push, not OneSignal. Each authenticated user can
