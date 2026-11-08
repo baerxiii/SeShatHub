@@ -76,7 +76,10 @@ the new one. Do not schedule both senders.
 Task reminders default to one day before, at 9:00 a.m. in the device's local
 time zone. Calendar reminders default to one day before the event; events
 without a start time use 9:00 a.m. Users can select additional one-hour,
-15-minute, and custom-minute reminders.
+15-minute, and custom-minute reminders. Select **Edit** on a calendar event
+to change its details, times, or reminders. Existing custom reminders are shown
+as comma-separated minutes; remove an entry to remove that reminder. Only
+reminders whose scheduled time is still in the future are scheduled.
 The sender marks a reminder sent when at least one push service accepts it; a
 failure on another device is recorded in `last_error`. Acceptance does not
 guarantee that a device displayed the notification.

@@ -158,6 +158,38 @@ textarea{
     background:#dc2626;
 }
 
+dialog{
+    width:min(600px,calc(100% - 32px));
+    max-height:calc(100% - 32px);
+    margin:auto;
+    padding:25px;
+    border:1px solid #475569;
+    border-radius:20px;
+    background:#1e293b;
+    color:white;
+}
+
+dialog::backdrop{
+    background:rgba(2,6,23,.8);
+}
+
+.edit-field{
+    display:block;
+    margin-top:12px;
+}
+
+.dialog-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:20px;
+}
+
+.dialog-message{
+    margin-top:12px;
+    color:#fca5a5;
+}
+
 .search-box{
     margin-bottom:15px;
 }
@@ -395,6 +427,56 @@ textarea{
     </div>
 
 </div>
+
+<dialog id="editEventDialog" aria-labelledby="editEventHeading">
+    <form id="editEventForm">
+        <h2 id="editEventHeading">Edit Event</h2>
+        <label class="edit-field">Title
+            <input id="editTitle" required>
+        </label>
+        <label class="edit-field">Description
+            <textarea id="editDescription"></textarea>
+        </label>
+        <div class="grid">
+            <label class="edit-field">Category
+                <select id="editCategory">
+                    <option>Work</option>
+                    <option>Personal</option>
+                    <option>Health</option>
+                    <option>Finance</option>
+                    <option>Family</option>
+                    <option>Projects</option>
+                </select>
+            </label>
+            <label class="edit-field">Location
+                <input id="editLocation">
+            </label>
+            <label class="edit-field">Date
+                <input id="editDate" type="date" required>
+            </label>
+            <label class="edit-field">Start time
+                <input id="editStartTime" type="time" step="1">
+            </label>
+            <label class="edit-field">End time
+                <input id="editEndTime" type="time" step="1">
+            </label>
+        </div>
+        <fieldset class="reminder-options">
+            <legend>Reminders (without a start time, 9:00 a.m. is used)</legend>
+            <label><input type="checkbox" name="edit-reminder-offset" value="1440"> 1 day before</label>
+            <label><input type="checkbox" name="edit-reminder-offset" value="60"> 1 hour before</label>
+            <label><input type="checkbox" name="edit-reminder-offset" value="15"> 15 minutes before</label>
+            <label for="editCustomReminders">Other minutes before (comma-separated)</label>
+            <input id="editCustomReminders" type="text" inputmode="numeric" placeholder="e.g. 30, 120">
+        </fieldset>
+        <p class="edit-field">Only reminders whose scheduled time is still in the future will be scheduled. Enable notifications in Settings on each device.</p>
+        <p id="editEventMessage" class="dialog-message" role="alert"></p>
+        <div class="dialog-actions">
+            <button type="button" class="btn delete-btn" id="cancelEditEvent">Cancel</button>
+            <button type="submit" class="btn edit-btn" id="saveEditEvent">Save changes</button>
+        </div>
+    </form>
+</dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="seshat-core.js"></script>
@@ -708,98 +790,129 @@ function clearDateFilter(){
     loadEvents();
 }    
 
+const editDialog = document.getElementById("editEventDialog");
+const editForm = document.getElementById("editEventForm");
+const editMessage = document.getElementById("editEventMessage");
+let editingEvent = null;
+let editLoading = false;
+
 async function editEvent(event){
-
-    const title =
-        prompt(
-            "Title",
-            event.title
-        );
-
-    if(title === null)
-        return;
-
-    const description =
-        prompt(
-            "Description",
-            event.description || ""
-        );
-
-    if(description === null)
-        return;
-
-    const eventDate =
-        prompt(
-            "Date (YYYY-MM-DD)",
-            event.event_date
-        );
-
-    if(eventDate === null)
-        return;
-
-    const startTime =
-        prompt(
-            "Start Time (HH:MM)",
-            event.start_time || ""
-        );
-
-    if(startTime === null)
-        return;
-
-    const endTime =
-        prompt(
-            "End Time (HH:MM)",
-            event.end_time || ""
-        );
-
-    if(endTime === null)
-        return;
-
-    let reminderOffsets;
+    if(editLoading || editDialog.open) return;
+    editLoading = true;
+    let offsets;
     try{
-        reminderOffsets = await window.seshat.getReminderOffsets("event",event.id);
+        offsets = await window.seshat.getReminderOffsets("event",event.id);
     }catch(error){
         alert("Unable to load event reminders: " + error.message);
         return;
+    }finally{
+        editLoading = false;
     }
 
-    const {error} = await getSB()
-        .from("calendar_events")
-        .update({
+    editingEvent = event;
+    document.getElementById("editTitle").value = event.title || "";
+    document.getElementById("editDescription").value = event.description || "";
+    const category = document.getElementById("editCategory");
+    const extraCategory = category.querySelector("option[data-existing]");
+    if(extraCategory) extraCategory.remove();
+    if(event.category && ![...category.options].some(option => option.value === event.category)){
+        const option = document.createElement("option");
+        option.value = event.category;
+        option.textContent = event.category;
+        option.dataset.existing = "true";
+        category.appendChild(option);
+    }
+    category.value = event.category || "Work";
+    document.getElementById("editLocation").value = event.location || "";
+    document.getElementById("editDate").value = event.event_date || "";
+    document.getElementById("editStartTime").value = event.start_time || "";
+    document.getElementById("editEndTime").value = event.end_time || "";
+    const presetInputs = [...editForm.querySelectorAll('input[name="edit-reminder-offset"]')];
+    presetInputs.forEach(input => { input.checked = offsets.includes(Number(input.value)); });
+    const presets = presetInputs.map(input => Number(input.value));
+    document.getElementById("editCustomReminders").value =
+        offsets.filter(offset => !presets.includes(Number(offset))).join(", ");
+    editMessage.textContent = "";
+    editDialog.showModal();
+}
 
-            title,
+const cancelEditButton = document.getElementById("cancelEditEvent");
+cancelEditButton.addEventListener("click",() => {
+    editingEvent = null;
+    editDialog.close();
+});
+editDialog.addEventListener("cancel",event => {
+    if(document.getElementById("saveEditEvent").disabled){
+        event.preventDefault();
+    }else{
+        editingEvent = null;
+    }
+});
 
-            description,
-
-            event_date:eventDate,
-
-            start_time:startTime,
-
-            end_time:endTime
-
-        })
-        .eq("id",event.id);
-
-    if(error){
-        alert(error.message);
+editForm.addEventListener("submit",async event => {
+    event.preventDefault();
+    if(!editingEvent) return;
+    const title = document.getElementById("editTitle").value.trim();
+    const eventDate = document.getElementById("editDate").value;
+    const startTime = document.getElementById("editStartTime").value;
+    const endTime = document.getElementById("editEndTime").value;
+    const custom = document.getElementById("editCustomReminders").value.trim();
+    const customParts = custom ? custom.split(",").map(value => value.trim()) : [];
+    if(!title || !eventDate){
+        editMessage.textContent = "Event title and date are required.";
         return;
     }
-
-    try{
-        await window.seshat.scheduleReminders({
-            itemType:"event",
-            itemId:event.id,
-            dueDate:eventDate,
-            dueTime:startTime || "09:00",
-            url:"calendar.html",
-            offsets:reminderOffsets
-        });
-    }catch(error){
-        alert("Event updated, but its reminders could not be rescheduled: " + error.message);
+    if(startTime && endTime && startTime > endTime){
+        editMessage.textContent = "End time must be after start time.";
+        return;
     }
+    if(customParts.some(value => !/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 525600)){
+        editMessage.textContent = "Enter whole numbers from 1 to 525600, separated by commas.";
+        return;
+    }
+    const offsets = [...new Set([
+        ...[...editForm.querySelectorAll('input[name="edit-reminder-offset"]:checked')].map(input => Number(input.value)),
+        ...customParts.map(Number)
+    ])];
+    const saveButton = document.getElementById("saveEditEvent");
+    const eventId = editingEvent.id;
+    saveButton.disabled = true;
+    cancelEditButton.disabled = true;
+    editMessage.textContent = "";
+    try{
+        const {error} = await getSB().from("calendar_events").update({
+            title,
+            description:document.getElementById("editDescription").value,
+            category:document.getElementById("editCategory").value,
+            location:document.getElementById("editLocation").value,
+            event_date:eventDate,
+            start_time:startTime || null,
+            end_time:endTime || null
+        }).eq("id",eventId);
+        if(error) throw error;
 
-    loadEvents();
-}
+        try{
+            await window.seshat.scheduleReminders({
+                itemType:"event",
+                itemId:eventId,
+                dueDate:eventDate,
+                dueTime:startTime || "09:00",
+                url:"calendar.html",
+                offsets
+            });
+        }catch(error){
+            alert("Event updated, but its reminders could not be rescheduled: " + error.message);
+        }
+        editingEvent = null;
+        editDialog.close();
+        await loadEvents();
+    }catch(error){
+        editMessage.textContent = "Unable to update event: " + error.message;
+    }finally{
+        saveButton.disabled = false;
+        cancelEditButton.disabled = false;
+    }
+});
 
 
 async function deleteEvent(id){
@@ -884,74 +997,40 @@ async function loadEvents(){
         if(event.event_date > today)
             upcomingCount++;
 
-        eventList.innerHTML += `
-
-        <div class="event-card">
-
-            <div class="event-header">
-
-                <h3>${event.title}</h3>
-
-                <small>
-                    ${event.event_date}
-                </small>
-
-            </div>
-
-            <div class="badge">
-                ${event.category}
-            </div>
-
-            <p style="margin-top:10px;">
-                ${event.description || ""}
-            </p>
-
-            <p style="margin-top:10px;">
-                📍 ${event.location || "No Location"}
-            </p>
-
-            <p style="margin-top:5px;">
-                🕒 ${event.start_time || "--"}
-                -
-                ${event.end_time || "--"}
-            </p>
-
-            <div class="event-actions">
-
- <button
-    class="btn edit-btn"
-    onclick='editEvent(${JSON.stringify({
-        id:"__ID__",
-        title:"__TITLE__",
-        description:"__DESC__",
-        event_date:"__DATE__",
-        start_time:"__START__",
-        end_time:"__END__"
-    })})'>
-
-    Edit
-
-</button>
-
-                <button
-                    class="btn delete-btn"
-                    onclick="deleteEvent(${event.id})">
-
-                    Delete
-
-                </button>
-
-            </div>
-
-        </div>
-
-                `
-        .replace('__ID__',event.id)
-        .replace('__TITLE__',(event.title || '').replace(/"/g,'&quot;'))
-        .replace('__DESC__',(event.description || '').replace(/"/g,'&quot;'))
-        .replace('__DATE__',event.event_date || '')
-        .replace('__START__',event.start_time || '')
-        .replace('__END__',event.end_time || '');
+        const card = document.createElement("div");
+        card.className = "event-card";
+        const header = document.createElement("div");
+        header.className = "event-header";
+        const heading = document.createElement("h3");
+        heading.textContent = event.title;
+        const date = document.createElement("small");
+        date.textContent = event.event_date;
+        header.append(heading,date);
+        const badge = document.createElement("div");
+        badge.className = "badge";
+        badge.textContent = event.category || "";
+        const description = document.createElement("p");
+        description.style.marginTop = "10px";
+        description.textContent = event.description || "";
+        const location = document.createElement("p");
+        location.style.marginTop = "10px";
+        location.textContent = `📍 ${event.location || "No Location"}`;
+        const time = document.createElement("p");
+        time.style.marginTop = "5px";
+        time.textContent = `🕒 ${event.start_time || "--"} - ${event.end_time || "--"}`;
+        const actions = document.createElement("div");
+        actions.className = "event-actions";
+        const edit = document.createElement("button");
+        edit.className = "btn edit-btn";
+        edit.textContent = "Edit";
+        edit.addEventListener("click",() => editEvent(event));
+        const remove = document.createElement("button");
+        remove.className = "btn delete-btn";
+        remove.textContent = "Delete";
+        remove.addEventListener("click",() => deleteEvent(event.id));
+        actions.append(edit,remove);
+        card.append(header,badge,description,location,time,actions);
+        eventList.appendChild(card);
     });
 
 renderCalendar(data);

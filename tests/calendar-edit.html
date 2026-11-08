@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Calendar edit tests</title></head>
+<body>
+<pre id="result">Running...</pre>
+<script>
+async function run(){
+    const source = await (await fetch("../calendar.html")).text();
+    const setup = function(){
+        window.testEvents = [{
+            id:"a-b", title:"Bob's <Meeting>", description:'Quote "hello"',
+            category:"Special", location:"Room 1", event_date:"2099-12-01",
+            start_time:"10:00:30", end_time:"11:00:00"
+        }];
+        window.testOffsets = [60,30,120];
+        window.updates = [];
+        window.schedules = [];
+        window.alerts = [];
+        window.alert = message => window.alerts.push(message);
+        const supabase = {
+            auth:{getUser:async () => ({data:{user:{id:"user"}}})},
+            from:() => ({
+                select:() => ({eq:() => ({order:async () => ({data:window.testEvents,error:null})})}),
+                update:values => ({eq:async (field,id) => {
+                    window.updates.push({values,id});
+                    Object.assign(window.testEvents[0],values);
+                    return {error:null};
+                }})
+            })
+        };
+        window.seshat = {
+            supabase,
+            getReminderOffsets:async () => window.testOffsets,
+            scheduleReminders:async args => {
+                window.schedules.push(args);
+                if(window.failSchedule) throw Error("offline");
+            }
+        };
+    };
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    frame.srcdoc = source.replace(
+        '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>\n<script src="seshat-core.js"><\/script>',
+        '<script>(' + setup.toString() + ')();<\/script>'
+    );
+    await new Promise(resolve => { frame.onload = resolve; });
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument;
+    const get = selector => doc.querySelector(selector);
+    const wait = async condition => {
+        for(let i = 0; i < 100; i++){
+            if(condition()) return;
+            await new Promise(resolve => setTimeout(resolve,10));
+        }
+        throw Error("Timed out waiting for the calendar.");
+    };
+    const check = (condition,message) => {
+        if(!condition) throw Error(message);
+    };
+    const open = async () => {
+        get(".event-card .edit-btn").click();
+        await wait(() => get("#editEventDialog").open);
+    };
+
+    await wait(() => get(".event-card .edit-btn"));
+    check(get(".event-card h3").textContent === "Bob's <Meeting>","Title must be rendered as text.");
+    await open();
+    check(get("#editTitle").value === "Bob's <Meeting>","Title not prefilled.");
+    check(get("#editCategory").value === "Special","Existing category not preserved.");
+    check(get("#editStartTime").value === "10:00:30","Time seconds not preserved.");
+    check(get('input[name="edit-reminder-offset"][value="60"]').checked,"Preset reminder not prefilled.");
+    check(get("#editCustomReminders").value === "30, 120","Custom reminders not prefilled.");
+    get("#cancelEditEvent").click();
+    check(win.updates.length === 0,"Cancel must not save changes.");
+
+    await open();
+    get("#editStartTime").value = "14:00";
+    get("#editEndTime").value = "13:00";
+    get("#editEventForm").requestSubmit();
+    check(get("#editEventMessage").textContent.includes("End time"),"Invalid times must be rejected.");
+    get("#editEndTime").value = "15:00";
+    get("#editCustomReminders").value = "30, nope";
+    get("#editEventForm").requestSubmit();
+    check(get("#editEventMessage").textContent.includes("whole numbers"),"Invalid reminders must be rejected.");
+    check(win.updates.length === 0,"Invalid form must not save.");
+    get("#editCustomReminders").value = "30, 120, 45";
+    get('input[name="edit-reminder-offset"][value="15"]').checked = true;
+    get("#editLocation").value = "Room 2";
+    get("#editEventForm").requestSubmit();
+    await wait(() => win.schedules.length === 1 && !get("#editEventDialog").open);
+    check(win.updates[0].values.start_time === "14:00" && win.updates[0].values.end_time === "15:00","Times not saved.");
+    check(win.updates[0].values.location === "Room 2" && win.updates[0].values.category === "Special","Details not saved.");
+    check(JSON.stringify(win.schedules[0].offsets) === "[60,15,30,120,45]","Reminders not saved.");
+
+    await wait(() => get(".event-card .edit-btn"));
+    await open();
+    win.failSchedule = true;
+    get("#editEventForm").requestSubmit();
+    await wait(() => win.alerts.length === 1);
+    check(win.alerts[0].includes("reminders could not be rescheduled"),"Reminder failure must be surfaced.");
+    frame.remove();
+    document.getElementById("result").textContent = "Calendar edit tests passed.";
+}
+run().catch(error => {
+    document.getElementById("result").textContent = "Calendar edit tests failed: " + error.message;
+    console.error(error);
+});
+</script>
+</body>
+</html>
