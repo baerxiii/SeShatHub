@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SeShat Food Recipes</title>
+<link rel="stylesheet" href="recipes.css">
+</head>
+<body data-recipe-type="food">
+<main class="container">
+    <header class="header">
+        <h1>🍲 Food Recipes</h1>
+        <a href="index.html" class="button">Dashboard</a>
+    </header>
+    <p>Keep your favorite recipes, ingredients, and cooking instructions together.</p>
+    <button class="button create-button" id="createRecipe" type="button">Add Food Recipe</button>
+    <section class="card" aria-label="Food recipes">
+        <input id="searchBox" type="search" aria-label="Search recipes" placeholder="🔍 Search recipes">
+        <p id="listMessage" role="status"></p>
+        <div id="recipeList"></div>
+    </section>
+</main>
+<dialog id="recipeDialog" aria-labelledby="dialogHeading">
+    <form id="recipeForm">
+        <h2 id="dialogHeading">Add Food Recipe</h2>
+        <label>Recipe name <input id="title" required maxlength="200"></label>
+        <label>Category <input id="category" placeholder="e.g. Dinner or Dessert" maxlength="100"></label>
+        <label>Ingredients and quantities <textarea id="ingredients"></textarea></label>
+        <label>Instructions <textarea id="instructions"></textarea></label>
+        <label>Notes <textarea id="notes"></textarea></label>
+        <p id="formMessage" class="message" role="alert"></p>
+        <div class="recipe-actions">
+            <button type="submit" class="button" id="saveRecipe">Save Recipe</button>
+            <button type="button" class="button cancel-button" id="cancelRecipe">Cancel</button>
+        </div>
+    </form>
+</dialog>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="seshat-core.js"></script>
+<script src="recipes.js"></script>
+</body>
+</html>

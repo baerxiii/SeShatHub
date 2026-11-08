@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Recipe page tests</title></head>
+<body>
+<pre id="result">Running...</pre>
+<script>
+async function run(){
+    const js = await (await fetch("../recipes.js")).text();
+    const setup = function(){
+        window.rows = [
+            {id:"food-id",user_id:"user",recipe_type:"food",title:"Pasta <b>",category:"Dinner",ingredients:"Pasta\nSauce",instructions:"Cook",notes:""},
+            {id:"home-id",user_id:"user",recipe_type:"household",title:"Laundry",category:"Laundry",ingredients:"Soap",instructions:"Mix",notes:"Wear gloves"},
+            {id:"other-id",user_id:"other",recipe_type:"food",title:"Private",category:"",ingredients:"",instructions:"",notes:""}
+        ];
+        window.confirm = () => window.allowDelete;
+        window.allowDelete = true;
+        window.seshat = {supabase:{
+            auth:{getUser:async () => ({data:{user:window.signedOut ? null : {id:"user"}},error:null})},
+            from:() => {
+                let op = "select", values, filters = [];
+                const query = {
+                    select:() => query,
+                    insert:value => {op = "insert"; values = value; return query;},
+                    update:value => {op = "update"; values = value; return query;},
+                    delete:() => {op = "delete"; return query;},
+                    eq:(key,value) => {filters.push([key,value]); return query;},
+                    order:() => query,
+                    then:(resolve,reject) => {
+                        const matched = window.rows.filter(row => filters.every(([key,value]) => row[key] === value));
+                        let result;
+                        if(window.fail === op) result = {data:null,error:{message:"offline"}};
+                        else if(op === "select") result = {data:matched.map(row => ({...row})),error:null};
+                        else if(op === "insert"){
+                            window.rows.push({id:"new-id",...values});
+                            result = {data:null,error:null};
+                        }else if(op === "update"){
+                            matched.forEach(row => Object.assign(row,values));
+                            result = {data:matched.map(row => ({id:row.id})),error:null};
+                        }else{
+                            window.rows = window.rows.filter(row => !matched.includes(row));
+                            result = {data:matched.map(row => ({id:row.id})),error:null};
+                        }
+                        return Promise.resolve(result).then(resolve,reject);
+                    }
+                };
+                return query;
+            }
+        }};
+    };
+    const check = (condition,message) => { if(!condition) throw Error(message); };
+    const wait = async (condition,message) => {
+        for(let i=0;i<200;i++){
+            if(condition()) return;
+            await new Promise(resolve => setTimeout(resolve,10));
+        }
+        throw Error("Timed out: " + message);
+    };
+    for(const type of ["food","household"]){
+        const source = await (await fetch("../" + (type === "food" ? "food" : "household") + "-recipes.html")).text();
+        const frame = document.createElement("iframe");
+        document.body.append(frame);
+        frame.srcdoc = source.replace(
+            '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>\n<script src="seshat-core.js"><\/script>\n<script src="recipes.js"><\/script>',
+            '<script>(' + setup.toString() + ')();<\/script><script>' + js + '<\/script>'
+        );
+        await new Promise(resolve => {frame.onload = resolve;});
+        const win = frame.contentWindow;
+        const doc = frame.contentDocument;
+        const get = selector => doc.querySelector(selector);
+        await wait(() => get(".recipe-card"),type + " initial load");
+        check(doc.querySelectorAll(".recipe-card").length === 1,type + " filters owner and type");
+        if(type === "food"){
+            check(get(".recipe-card h2").textContent === "Pasta <b>", "recipe title is rendered as text");
+            check(!get(".recipe-card h2 b"),"recipe HTML is not executed");
+        }
+        get("#searchBox").value = "not found";
+        get("#searchBox").dispatchEvent(new win.Event("input"));
+        check(!get(".recipe-card") && get("#listMessage").textContent.includes("No recipes match"),type + " search");
+        get("#searchBox").value = "";
+        get("#searchBox").dispatchEvent(new win.Event("input"));
+        get("#createRecipe").click();
+        check(get("#recipeDialog").open,type + " create dialog");
+        get("#title").value = "New recipe";
+        get("#ingredients").value = "First\nSecond";
+        get("#cancelRecipe").click();
+        check(win.rows.length === 3,type + " cancel");
+        get("#createRecipe").click();
+        get("#title").value = "New recipe";
+        get("#ingredients").value = "First\nSecond";
+        win.fail = "insert";
+        get("#recipeForm").requestSubmit();
+        await wait(() => get("#formMessage").textContent.includes("offline"),type + " create error");
+        check(get("#recipeDialog").open && get("#ingredients").value.includes("Second"),type + " create draft");
+        win.fail = "";
+        get("#recipeForm").requestSubmit();
+        await wait(() => !get("#recipeDialog").open && win.rows.length === 4,type + " created");
+        check(win.rows[3].recipe_type === type && win.rows[3].user_id === "user",type + " create scope");
+        await wait(() => doc.querySelectorAll(".recipe-card").length === 2,type + " refresh");
+        get(".edit-button").click();
+        const original = get("#title").value;
+        get("#title").value = "Updated";
+        win.fail = "update";
+        get("#recipeForm").requestSubmit();
+        await wait(() => get("#formMessage").textContent.includes("offline"),type + " update error");
+        check(get("#recipeDialog").open && get("#title").value === "Updated",type + " edit draft");
+        win.fail = "";
+        get("#recipeForm").requestSubmit();
+        await wait(() => !get("#recipeDialog").open && win.rows.some(row => row.title === "Updated"),type + " updated");
+        await wait(() => get(".recipe-card h2").textContent === "Updated",type + " update refresh");
+        win.allowDelete = false;
+        get(".delete-button").click();
+        check(win.rows.length === 4,type + " cancelled delete");
+        win.allowDelete = true;
+        win.fail = "delete";
+        get(".delete-button").click();
+        await wait(() => get("#listMessage").textContent.includes("offline"),type + " delete error");
+        check(win.rows.length === 4,type + " failed delete");
+        win.fail = "";
+        get(".delete-button").click();
+        await wait(() => win.rows.length === 3,type + " deleted");
+        check(win.rows.some(row => row.id === "other-id"),type + " other account unaffected");
+        check(original.length > 0,type + " edit prefilled");
+        frame.remove();
+    }
+    document.getElementById("result").textContent = "Recipe tests passed.";
+}
+run().catch(error => {
+    document.getElementById("result").textContent = "Recipe tests failed: " + error.message;
+    console.error(error);
+});
+</script>
+</body>
+</html>
