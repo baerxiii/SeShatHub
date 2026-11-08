@@ -79,6 +79,29 @@ body{
     margin-top:16px;
 }
 
+.attachments{
+    margin-top:20px;
+}
+
+.attachment-list{
+    padding-left:20px;
+}
+
+.attachment-list li{
+    margin:10px 0;
+    overflow-wrap:anywhere;
+}
+
+.attachment-list button{
+    margin:4px 8px 0 0;
+}
+
+.attachment-input{
+    margin:8px 0;
+    background:white;
+    color:#111827;
+}
+
 .delete-button{ background:#dc2626; }
 .cancel-button{ background:#475569; }
 
