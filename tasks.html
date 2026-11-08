@@ -117,6 +117,22 @@ textarea{
     color:white;
 }
 
+.create-task-btn{
+    width:100%;
+    margin-bottom:20px;
+}
+
+.cancel-btn{
+    width:100%;
+    margin-top:10px;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    background:#475569;
+    color:white;
+}
+
 .task{
     border-radius:16px;
     padding:18px;
@@ -247,7 +263,18 @@ textarea{
 
     </div>
 
-    <div class="card" id="create-task">
+    <button
+        class="add-btn create-task-btn"
+        id="showTaskForm"
+        aria-controls="create-task"
+        aria-expanded="false"
+        onclick="openTaskForm()">
+
+        Create Task
+
+    </button>
+
+    <div class="card" id="create-task" hidden>
 
         <h2>Create Task</h2>
 
@@ -291,6 +318,10 @@ textarea{
 
         <button class="add-btn" onclick="addTask()">
             Add Task
+        </button>
+
+        <button class="cancel-btn" onclick="closeTaskForm()">
+            Cancel
         </button>
 
     </div>
@@ -337,6 +368,19 @@ async function getUser(){
     } = await getSB().auth.getUser();
 
     return user;
+}
+
+function openTaskForm(){
+    document.getElementById("create-task").hidden = false;
+    document.getElementById("showTaskForm").hidden = true;
+    document.getElementById("showTaskForm").setAttribute("aria-expanded","true");
+    document.getElementById("title").focus();
+}
+
+function closeTaskForm(){
+    document.getElementById("create-task").hidden = true;
+    document.getElementById("showTaskForm").hidden = false;
+    document.getElementById("showTaskForm").setAttribute("aria-expanded","false");
 }
 
 async function addTask(){
@@ -407,6 +451,7 @@ async function addTask(){
     document.getElementById("title").value="";
     document.getElementById("notes").value="";
     document.getElementById("due_date").value="";
+    closeTaskForm();
     loadTasks();
 }
 
