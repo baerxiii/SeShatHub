@@ -1,0 +1,127 @@
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    font-family:'Segoe UI',sans-serif;
+    color:white;
+    min-height:100vh;
+    background:
+        radial-gradient(circle at top left,#2563eb,#020617 40%),
+        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+    padding:30px;
+}
+
+.header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:15px;
+    margin-bottom:25px;
+}
+
+.button{
+    display:inline-block;
+    border:0;
+    border-radius:12px;
+    padding:12px 18px;
+    background:#2563eb;
+    color:white;
+    cursor:pointer;
+    font:inherit;
+    text-decoration:none;
+}
+
+.button:disabled{
+    opacity:.6;
+    cursor:wait;
+}
+
+.create-button{
+    width:100%;
+    margin-bottom:20px;
+}
+
+.card,.recipe-card{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    padding:20px;
+    margin-bottom:16px;
+}
+
+.recipe-card h2{
+    margin:0 0 10px;
+}
+
+.badge{
+    display:inline-block;
+    border-radius:10px;
+    background:#334155;
+    padding:5px 10px;
+}
+
+.recipe-text{
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+}
+
+.recipe-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:16px;
+}
+
+.delete-button{ background:#dc2626; }
+.cancel-button{ background:#475569; }
+
+input,textarea{
+    width:100%;
+    padding:12px;
+    border:0;
+    border-radius:12px;
+    font:inherit;
+}
+
+textarea{
+    min-height:100px;
+    resize:vertical;
+}
+
+label{
+    display:block;
+    margin-top:14px;
+}
+
+label input,label textarea{
+    display:block;
+    margin-top:6px;
+}
+
+dialog{
+    width:min(650px,calc(100% - 32px));
+    max-height:calc(100% - 32px);
+    margin:auto;
+    overflow:auto;
+    border:1px solid #475569;
+    border-radius:18px;
+    padding:25px;
+    background:#1e293b;
+    color:white;
+}
+
+dialog::backdrop{ background:rgba(2,6,23,.75); }
+dialog h2{ margin:0; }
+.message{ color:#fca5a5; }
+
+@media(max-width:768px){
+    .container{ padding:20px; }
+    .header{ flex-direction:column; align-items:flex-start; }
+}

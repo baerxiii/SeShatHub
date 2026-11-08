@@ -85,5 +85,19 @@ The sender marks a reminder sent when at least one push service accepts it; a
 failure on another device is recorded in `last_error`. Acceptance does not
 guarantee that a device displayed the notification.
 
+## Recipes
+
+The Home & Life section links to separate Household Recipes and Food Recipes
+pages. Each page can add, edit, search, and delete recipes, including their
+ingredients, instructions, and notes. Recipes belong to the signed-in user and
+are stored in Supabase; they are not shared between accounts.
+
+Before using these pages, apply
+`supabase/migrations/20261108000000_recipes.sql` in the Supabase SQL Editor or
+through the project's normal migration process. The migration creates the
+`seshat_hub_recipes` table and its per-user row-level security policy without
+changing any existing `recipes` table; it must only be applied once. Deploy the
+site files after applying it.
+
 ## Projects
 - Stern Archive: https://github.com/baerxiii/stern-archive
