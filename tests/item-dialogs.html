@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Item dialog tests</title></head>
+<body>
+<pre id="result">Running...</pre>
+<script>
+async function run(){
+    const helper = await (await fetch("../item-dialog.js")).text();
+    const cases = [
+        {page:"tasks",table:"tasks",hash:"#create-task",dialog:"#create-task",edit:"#editTaskDialog",list:"#taskList",
+            input:"#title",editInput:"#editTaskTitle",item:{id:1,title:"Existing task",notes:"Notes",priority:"Medium",category:"Work",completed:false},
+            create:{title:"New task"},editValue:"Changed task"},
+        {page:"notes",table:"notes",hash:"#create-note",dialog:"#create-note",edit:"#editNoteDialog",list:"#notesList",
+            input:"#title",editInput:"#editNoteContent",item:{id:1,title:"Existing <note>",content:"Line one\nLine two",category:"Work",pinned:false},
+            create:{title:"New note"},editValue:"Changed\nnote"},
+        {page:"documentvault",table:"documents",hash:"#create-document",dialog:"#create-document",edit:"#editDocumentDialog",list:"#documentList",
+            input:"#title",editInput:"#editDocumentNotes",item:{id:1,title:"Existing document",notes:"Old notes",category:"Home",file_name:"file.pdf",storage_path:"user/file.pdf"},
+            create:{title:"New document"},editValue:"Changed notes"},
+        {page:"passwordvault",table:"passwords",hash:"#add-password",dialog:"#add-password",edit:"#editPasswordDialog",list:"#vaultList",
+            input:"#website",editInput:"#editPasswordValue",item:{id:1,website:"Existing site",username:"User",password_value:"quote'\"<secret>",category:"Work",notes:"Notes"},
+            create:{website:"New site"},editValue:"New'\"password"}
+    ];
+    const check = (condition,message) => { if(!condition) throw Error(message); };
+    const wait = async (condition,message) => {
+        for(let i=0;i<200;i++){
+            if(condition()) return;
+            await new Promise(resolve => setTimeout(resolve,10));
+        }
+        throw Error("Timed out: " + message);
+    };
+    for(const test of cases){
+        const source = await (await fetch("../" + test.page + ".html")).text();
+        const setup = function(item){
+            window.item = item;
+            window.inserts = [];
+            window.updates = [];
+            window.schedules = [];
+            window.alerts = [];
+            window.alert = value => window.alerts.push(value);
+            Object.defineProperty(navigator,"clipboard",{value:{writeText:async value => { window.copied = value; }}});
+            const result = () => ({data:[window.item],error:null});
+            window.seshat = {
+                supabase:{
+                    auth:{getUser:async () => ({data:{user:{id:"user"}}})},
+                    storage:{from:() => ({
+                        upload:async () => ({error:window.failUpload ? {message:"upload offline"} : null}),
+                        remove:async () => { window.cleaned = true; return {error:null}; }
+                    })},
+                    from:() => ({
+                        select:() => {
+                            const query = {eq:() => query,order:() => query,then:(resolve,reject) => Promise.resolve(result()).then(resolve,reject)};
+                            return query;
+                        },
+                        insert:values => {
+                            const response = window.failInsert ? {error:{message:"insert offline"}} : {data:{id:2},error:null};
+                            if(!window.failInsert) window.inserts.push(values);
+                            return {then:(resolve,reject) => Promise.resolve(response).then(resolve,reject),
+                                select:() => ({single:async () => response})};
+                        },
+                        update:values => ({eq:async (field,id) => {
+                            if(window.failUpdate) return {error:{message:"update offline"}};
+                            if(window.updateGate) await window.updateGate;
+                            window.updates.push({values,id});
+                            Object.assign(window.item,values);
+                            return {error:null};
+                        }})
+                    })
+                },
+                readReminderOffsets:() => [1440],
+                scheduleReminders:async args => window.schedules.push(args)
+            };
+        };
+        const frame = document.createElement("iframe");
+        document.body.append(frame);
+        frame.srcdoc = source.replace(
+            '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>\n<script src="seshat-core.js"><\/script>\n<script src="item-dialog.js"><\/script>',
+            '<script>(' + setup.toString() + ')(' + JSON.stringify(test.item).replace(/</g,"\\u003c") + ');<\/script><script>' + helper + '<\/script>'
+        );
+        await new Promise(resolve => { frame.onload = resolve; });
+        const win = frame.contentWindow;
+        const doc = frame.contentDocument;
+        const get = selector => doc.querySelector(selector);
+        const form = get(test.dialog + " form");
+        await wait(() => get(test.list + " .edit-btn"),test.page + " list");
+        if(test.page === "notes") check(get(test.list + " h3").textContent.includes("Existing <note>"),"note text rendering");
+        if(test.page === "passwordvault"){
+            get(".show-btn").click();
+            check(get(".hidden-password").textContent === test.item.password_value,"show password");
+            get(".copy-btn").click();
+            check(win.copied === test.item.password_value,"copy password");
+        }
+        check(!get(test.dialog).open,test.page + " initially closed");
+        win.location.hash = test.hash;
+        await wait(() => get(test.dialog).open,test.page + " hash");
+        get(test.input).value = Object.values(test.create)[0];
+        if(test.page === "tasks") get("#due_date").value = "2099-12-01";
+        if(test.page === "documentvault"){
+            const files = new win.DataTransfer();
+            files.items.add(new win.File(["PDF"],"file.pdf",{type:"application/pdf"}));
+            get("#documentFile").files = files.files;
+        }
+        get(test.dialog + " [data-cancel]").click();
+        check(!get(test.dialog).open && win.inserts.length === 0,test.page + " cancel");
+        get('[aria-controls="' + test.dialog.slice(1) + '"]').click();
+        check(get(test.input).value === Object.values(test.create)[0],test.page + " draft preserved");
+        if(test.page === "documentvault"){
+            win.failUpload = true;
+            form.requestSubmit();
+            await wait(() => get(test.dialog + " .dialog-message").textContent.includes("upload offline"),"upload failure");
+            check(get(test.dialog).open && get("#uploadContainer").style.display === "none","upload error preserves dialog and clears progress");
+            win.failUpload = false;
+        }
+        win.failInsert = true;
+        form.requestSubmit();
+        await wait(() => get(test.dialog + " .dialog-message").textContent.includes("offline"),test.page + " create error");
+        check(get(test.dialog).open && win.inserts.length === 0,test.page + " failed create remains open");
+        if(test.page === "documentvault") check(win.cleaned,"failed document insert cleans up uploaded file");
+        win.failInsert = false;
+        form.requestSubmit();
+        await wait(() => !get(test.dialog).open && win.inserts.length === 1,test.page + " create");
+        check(win.inserts[0][Object.keys(test.create)[0]] === Object.values(test.create)[0],test.page + " create values");
+        if(test.page === "tasks") check(win.schedules.length === 1 && win.schedules[0].itemId === 2,"task reminders");
+        await wait(() => get(test.list + " .edit-btn"),test.page + " refreshed list");
+        get(test.list + " .edit-btn").click();
+        check(get(test.edit).open,test.page + " edit opened");
+        check(get(test.editInput).value === (test.page === "tasks" ? test.item.title :
+            test.page === "notes" ? test.item.content : test.page === "documentvault" ? test.item.notes : test.item.password_value),
+            test.page + " edit prefilled");
+        get(test.editInput).value = test.editValue;
+        get(test.edit + " [data-cancel]").click();
+        check(!get(test.edit).open && win.updates.length === 0,test.page + " edit cancel");
+        get(test.list + " .edit-btn").click();
+        get(test.editInput).value = test.editValue;
+        win.failUpdate = true;
+        get(test.edit + " form").requestSubmit();
+        await wait(() => get(test.edit + " .dialog-message").textContent.includes("offline"),test.page + " edit error");
+        check(get(test.edit).open && get(test.editInput).value === test.editValue,test.page + " edit draft preserved");
+        win.failUpdate = false;
+        let releaseUpdate;
+        win.updateGate = new Promise(resolve => { releaseUpdate = resolve; });
+        get(test.edit + " form").requestSubmit();
+        await wait(() => get(test.edit + ' [type="submit"]').disabled,test.page + " saving state");
+        const cancelEvent = new win.Event("cancel",{cancelable:true});
+        check(!get(test.edit).dispatchEvent(cancelEvent),test.page + " blocks Escape while saving");
+        check(get(test.edit + " [data-cancel]").disabled,test.page + " blocks cancel while saving");
+        get(test.edit + " form").requestSubmit();
+        releaseUpdate();
+        await wait(() => !get(test.edit).open && win.updates.length === 1,test.page + " edit saved");
+        const field = test.page === "tasks" ? "title" : test.page === "notes" ? "content" :
+            test.page === "documentvault" ? "notes" : "password_value";
+        check(win.updates[0].values[field] === test.editValue,test.page + " edit value");
+        frame.remove();
+    }
+    document.getElementById("result").textContent = "Item dialog tests passed.";
+}
+run().catch(error => {
+    document.getElementById("result").textContent = "Item dialog tests failed: " + error.message;
+    console.error(error);
+});
+</script>
+</body>
+</html>

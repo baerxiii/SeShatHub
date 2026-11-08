@@ -85,5 +85,14 @@ The sender marks a reminder sent when at least one push service accepts it; a
 failure on another device is recorded in `last_error`. Acceptance does not
 guarantee that a device displayed the notification.
 
+## Item dialogs
+
+Use the creation buttons on Tasks, Notes, Document Vault, and Password Vault to
+open their forms. Edit buttons open a dialog for the fields previously available
+to edit: task title, note title and content, document title and notes, or
+password details. Cancel or Escape closes a dialog without saving; a failed save
+leaves the form open. Dashboard shortcuts continue to open the corresponding
+creation dialog.
+
 ## Projects
 - Stern Archive: https://github.com/baerxiii/stern-archive

@@ -6,6 +6,7 @@
 
 <title>SeShat Document Vault</title>
 
+<link rel="stylesheet" href="item-dialog.css">
 <style>
 
 *{
@@ -232,24 +233,24 @@ textarea{
         class="btn add-btn create-form-btn"
         id="showDocumentForm"
         aria-controls="create-document"
-        aria-expanded="false"
         onclick="openDocumentForm()">
 
         Add Document
 
     </button>
 
-    <div class="card" id="create-document" hidden>
+    <dialog class="item-dialog" id="create-document" aria-labelledby="createDocumentHeading">
+        <form id="createDocumentForm">
 
-        <h2>Add Document</h2>
+        <h2 id="createDocumentHeading">Add Document</h2>
 
         <input
             id="title"
-            placeholder="Document Title">
+            placeholder="Document Title" aria-label="Document title" required>
 
         <div class="grid">
 
-            <select id="category">
+            <select id="category" aria-label="Category">
 
                 <option>Vehicle</option>
                 <option>Home</option>
@@ -264,13 +265,13 @@ textarea{
 
             <input
                 type="file"
-                id="documentFile">
+                id="documentFile" aria-label="Document file" required>
 
         </div>
 
         <textarea
             id="notes"
-            placeholder="Notes"></textarea>
+            placeholder="Notes" aria-label="Document notes"></textarea>
 
         <div
             id="uploadContainer"
@@ -289,9 +290,10 @@ textarea{
 
         </div>
 
+        <p class="dialog-message" role="alert"></p>
         <button
             class="btn add-btn"
-            onclick="addDocument()">
+            type="submit">
 
             Upload Document
 
@@ -299,13 +301,25 @@ textarea{
 
         <button
             class="btn cancel-btn"
-            onclick="closeDocumentForm()">
+            type="button" data-cancel>
 
             Cancel
 
         </button>
 
-    </div>
+        </form>
+    </dialog>
+
+    <dialog class="item-dialog" id="editDocumentDialog" aria-labelledby="editDocumentHeading">
+        <form>
+            <h2 id="editDocumentHeading">Edit Document</h2>
+            <label>Title <input id="editDocumentTitle" required></label>
+            <label>Notes <textarea id="editDocumentNotes"></textarea></label>
+            <p class="dialog-message" role="alert"></p>
+            <button class="btn edit-btn" type="submit">Save changes</button>
+            <button class="btn cancel-btn" type="button" data-cancel>Cancel</button>
+        </form>
+    </dialog>
 
     <div class="card">
 
@@ -324,6 +338,7 @@ textarea{
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="seshat-core.js"></script>
+<script src="item-dialog.js"></script>
 
 <script>
 
@@ -340,23 +355,15 @@ async function getUser(){
     return user;
 }
 
-function openDocumentForm(){
-    document.getElementById("create-document").hidden = false;
-    document.getElementById("showDocumentForm").hidden = true;
-    document.getElementById("showDocumentForm").setAttribute("aria-expanded","true");
-    document.getElementById("title").focus();
-}
-
-function closeDocumentForm(){
-    document.getElementById("create-document").hidden = true;
-    document.getElementById("showDocumentForm").hidden = false;
-    document.getElementById("showDocumentForm").setAttribute("aria-expanded","false");
-}
+const createDocumentDialog = itemDialog("create-document",addDocument);
+function openDocumentForm(){ createDocumentDialog.open(); }
+openDialogFromHash("#create-document",openDocumentForm);
 
 async function addDocument(){
 
     const user =
         await getUser();
+    if(!user) throw new Error("Please sign in before adding a document.");
 
     const title =
         document
@@ -366,11 +373,7 @@ async function addDocument(){
 
     if(!title){
 
-        alert(
-            "Document title is required."
-        );
-
-        return;
+        throw new Error("Document title is required.");
     }
 
     const file =
@@ -382,11 +385,7 @@ async function addDocument(){
 
     if(!file){
 
-        alert(
-            "Please select a file."
-        );
-
-        return;
+        throw new Error("Please select a file.");
     }
 
     const allowedTypes = [
@@ -413,11 +412,7 @@ async function addDocument(){
         )
     ){
 
-        alert(
-            "Unsupported file type."
-        );
-
-        return;
+        throw new Error("Unsupported file type.");
     }
 
     const maxSize =
@@ -425,11 +420,7 @@ async function addDocument(){
 
     if(file.size > maxSize){
 
-        alert(
-            "Maximum file size is 25 MB."
-        );
-
-        return;
+        throw new Error("Maximum file size is 25 MB.");
     }
 
     const uploadContainer =
@@ -447,6 +438,7 @@ async function addDocument(){
 
     uploadBar.style.width = "15%";
 
+    try{
 const safeFileName =
     file.name
         .replace(/[^a-zA-Z0-9._-]/g,"_");
@@ -469,15 +461,7 @@ console.log("Storage Path:", storagePath);
             file
         );
 
-    if(uploadError){
-
-        alert(uploadError.message);
-
-        uploadContainer.style.display =
-            "none";
-
-        return;
-    }
+    if(uploadError) throw uploadError;
 
     uploadBar.style.width = "80%";
 
@@ -509,40 +493,19 @@ console.log("Storage Path:", storagePath);
         });
 
     if(error){
-
-        alert(error.message);
-
-        uploadContainer.style.display =
-            "none";
-
-        return;
+        const {error:cleanupError} = await getSB().storage.from("documents").remove([storagePath]);
+        if(cleanupError) throw new Error(error.message + " Uploaded file cleanup failed: " + cleanupError.message);
+        throw error;
     }
 
     uploadBar.style.width = "100%";
 
-    setTimeout(()=>{
-
+    }finally{
         uploadBar.style.width = "0%";
-
-        uploadContainer.style.display =
-            "none";
-
-    },500);
-
-    document.getElementById(
-        "title"
-    ).value = "";
-
-    document.getElementById(
-        "notes"
-    ).value = "";
-
-    document.getElementById(
-        "documentFile"
-    ).value = "";
-
-    closeDocumentForm();
-    loadDocuments();
+        uploadContainer.style.display = "none";
+    }
+    document.getElementById("createDocumentForm").reset();
+    loadDocuments().catch(error => alert("Document saved, but the list could not be refreshed: " + error.message));
 }
 
 async function openDocument(path){
@@ -571,80 +534,23 @@ async function openDocument(path){
     );
 }
 
-async function editDocument(doc){
-
-    const title =
-        prompt(
-            "Document Title",
-            doc.title
-        );
-
-    if(title === null)
-        return;
-
-    const notes =
-        prompt(
-            "Notes",
-            doc.notes || ""
-        );
-
-    if(notes === null)
-        return;
-
-    await getSB()
-        .from("documents")
-        .update({
-            title,
-            notes
-        })
-        .eq("id",doc.id);
-
-    loadDocuments();
-}
-
-    async function editDocumentById(id){
-
-    const {
-        data,
-        error
-    } =
-    await getSB()
-        .from("documents")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-    if(error){
-
-        alert(error.message);
-        return;
-    }
-
-    const title =
-        prompt(
-            "Document Title",
-            data.title
-        );
-
-    if(title === null) return;
-
-    const notes =
-        prompt(
-            "Notes",
-            data.notes || ""
-        );
-
-    if(notes === null) return;
-
-    await getSB()
-        .from("documents")
-        .update({
-            title,
-            notes
-        })
-        .eq("id", id);
-
-    loadDocuments();
+let editingDocumentId;
+const editDocumentDialog = itemDialog("editDocumentDialog",async () => {
+    const title = document.getElementById("editDocumentTitle").value.trim();
+    if(!title) throw new Error("Document title is required.");
+    const {error} = await getSB().from("documents").update({
+        title,
+        notes:document.getElementById("editDocumentNotes").value
+    }).eq("id",editingDocumentId);
+    if(error) throw error;
+    loadDocuments().catch(error => alert("Document updated, but the list could not be refreshed: " + error.message));
+});
+function editDocument(doc){
+    if(editDocumentDialog.openState) return;
+    editingDocumentId = doc.id;
+    document.getElementById("editDocumentTitle").value = doc.title || "";
+    document.getElementById("editDocumentNotes").value = doc.notes || "";
+    editDocumentDialog.open();
 }
 
 async function deleteDocument(id){
@@ -728,27 +634,28 @@ async function loadDocuments(){
         if(doc.category==="Insurance")
             insurance++;
 
-        list.innerHTML += `
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = `
 
         <div class="doc-card">
 
-            <h3>${doc.title}</h3>
+            <h3>${escapeItemText(doc.title)}</h3>
 
             <div class="badge">
 
-                ${doc.category}
+                ${escapeItemText(doc.category)}
 
             </div>
 
             <p style="margin-top:10px;">
 
-                📄 ${doc.file_name || "No File"}
+                📄 ${escapeItemText(doc.file_name || "No File")}
 
             </p>
 
             <p style="margin-top:10px;">
 
-                ${doc.notes || ""}
+                ${escapeItemText(doc.notes)}
 
             </p>
 
@@ -756,7 +663,7 @@ async function loadDocuments(){
 
                 <button
                     class="btn open-btn"
-                    onclick="openDocument('${doc.storage_path}')">
+                    type="button">
 
                     Open
 
@@ -764,7 +671,7 @@ async function loadDocuments(){
 
                 <button
     class="btn edit-btn"
-    onclick="editDocumentById(${doc.id})">
+    type="button">
 
     Edit
 
@@ -772,7 +679,7 @@ async function loadDocuments(){
 
                 <button
                     class="btn delete-btn"
-                    onclick="deleteDocument(${doc.id})">
+                    type="button">
 
                     Delete
 
@@ -782,10 +689,11 @@ async function loadDocuments(){
 
         </div>
 
-        `
-        .replace("__ID__",doc.id)
-        .replace("__TITLE__",(doc.title||"").replace(/"/g,"&quot;"))
-        .replace("__NOTES__",(doc.notes||"").replace(/"/g,"&quot;"));
+        `;
+        wrapper.querySelector(".open-btn").addEventListener("click",() => openDocument(doc.storage_path));
+        wrapper.querySelector(".edit-btn").addEventListener("click",() => editDocument(doc));
+        wrapper.querySelector(".delete-btn").addEventListener("click",() => deleteDocument(doc.id));
+        list.append(wrapper);
     });
 
     document.getElementById(

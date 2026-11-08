@@ -6,6 +6,7 @@
 
 <title>SeShat Notes</title>
 
+<link rel="stylesheet" href="item-dialog.css">
 <style>
 
 *{
@@ -218,24 +219,24 @@ textarea{
         class="btn add-btn create-form-btn"
         id="showNoteForm"
         aria-controls="create-note"
-        aria-expanded="false"
         onclick="openNoteForm()">
 
         Create Note
 
     </button>
 
-    <div class="card" id="create-note" hidden>
+    <dialog class="item-dialog" id="create-note" aria-labelledby="createNoteHeading">
+        <form id="createNoteForm">
 
-        <h2>Create Note</h2>
+        <h2 id="createNoteHeading">Create Note</h2>
 
         <input
             id="title"
-            placeholder="Note Title">
+            placeholder="Note Title" aria-label="Note title" required>
 
         <div class="grid">
 
-            <select id="category">
+            <select id="category" aria-label="Category">
                 <option>Work</option>
                 <option>Personal</option>
                 <option>Projects</option>
@@ -243,7 +244,7 @@ textarea{
                 <option>Ideas</option>
             </select>
 
-            <select id="pinned">
+            <select id="pinned" aria-label="Pin status">
                 <option value="false">Normal</option>
                 <option value="true">Pinned</option>
             </select>
@@ -252,11 +253,12 @@ textarea{
 
         <textarea
             id="content"
-            placeholder="Write your note..."></textarea>
+            placeholder="Write your note..." aria-label="Note content"></textarea>
 
+        <p class="dialog-message" role="alert"></p>
         <button
             class="btn add-btn"
-            onclick="addNote()">
+            type="submit">
 
             Save Note
 
@@ -264,13 +266,25 @@ textarea{
 
         <button
             class="btn cancel-btn"
-            onclick="closeNoteForm()">
+            type="button" data-cancel>
 
             Cancel
 
         </button>
 
-    </div>
+        </form>
+    </dialog>
+
+    <dialog class="item-dialog" id="editNoteDialog" aria-labelledby="editNoteHeading">
+        <form>
+            <h2 id="editNoteHeading">Edit Note</h2>
+            <label>Title <input id="editNoteTitle" required></label>
+            <label>Content <textarea id="editNoteContent"></textarea></label>
+            <p class="dialog-message" role="alert"></p>
+            <button class="btn edit-btn" type="submit">Save changes</button>
+            <button class="btn cancel-btn" type="button" data-cancel>Cancel</button>
+        </form>
+    </dialog>
 
     <div class="card">
 
@@ -288,6 +302,7 @@ textarea{
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="seshat-core.js"></script>
+<script src="item-dialog.js"></script>
 
 <script>
 
@@ -304,23 +319,16 @@ async function getUser(){
     return user;
 }
 
-function openNoteForm(){
-    document.getElementById("create-note").hidden = false;
-    document.getElementById("showNoteForm").hidden = true;
-    document.getElementById("showNoteForm").setAttribute("aria-expanded","true");
-    document.getElementById("title").focus();
-}
-
-function closeNoteForm(){
-    document.getElementById("create-note").hidden = true;
-    document.getElementById("showNoteForm").hidden = false;
-    document.getElementById("showNoteForm").setAttribute("aria-expanded","false");
-}
+const createNoteDialog = itemDialog("create-note",addNote);
+function openNoteForm(){ createNoteDialog.open(); }
+openDialogFromHash("#create-note",openNoteForm);
 
 async function addNote(){
 
     const user =
         await getUser();
+    if(!user) throw new Error("Please sign in before adding a note.");
+    if(!document.getElementById("title").value.trim()) throw new Error("Note title is required.");
 
     const { error } =
     await getSB()
@@ -345,39 +353,34 @@ async function addNote(){
 
     if(error){
 
-        alert(error.message);
-        return;
+        throw error;
     }
 
-    document.getElementById("title").value="";
-    document.getElementById("content").value="";
-
-    closeNoteForm();
-    loadNotes();
+    document.getElementById("createNoteForm").reset();
+    loadNotes().catch(error => alert("Note saved, but the list could not be refreshed: " + error.message));
 }
 
-async function editNote(note){
-
-    const title =
-        prompt("Title", note.title);
-
-    if(title === null) return;
-
-    const content =
-        prompt("Content", note.content || "");
-
-    if(content === null) return;
-
-    await getSB()
+let editingNoteId;
+const editNoteDialog = itemDialog("editNoteDialog",async () => {
+    const title = document.getElementById("editNoteTitle").value.trim();
+    if(!title) throw new Error("Note title is required.");
+    const {error} = await getSB()
         .from("notes")
         .update({
-            title:title,
-            content:content,
+            title,
+            content:document.getElementById("editNoteContent").value,
             updated_at:new Date().toISOString()
         })
-        .eq("id",note.id);
-
-    loadNotes();
+        .eq("id",editingNoteId);
+    if(error) throw error;
+    loadNotes().catch(error => alert("Note updated, but the list could not be refreshed: " + error.message));
+});
+function editNote(note){
+    if(editNoteDialog.openState) return;
+    editingNoteId = note.id;
+    document.getElementById("editNoteTitle").value = note.title || "";
+    document.getElementById("editNoteContent").value = note.content || "";
+    editNoteDialog.open();
 }
 
 async function togglePin(id,current){
@@ -456,33 +459,34 @@ async function loadNotes(){
             pinned++;
         }
 
-        list.innerHTML += `
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = `
         <div class="note-card ${note.pinned ? 'pinned' : ''}">
 
             <div class="note-header">
 
                 <h3>
                     ${note.pinned ? '📌 ' : ''}
-                    ${note.title}
+                    ${escapeItemText(note.title)}
                 </h3>
 
-                <small>${note.category}</small>
+                <small>${escapeItemText(note.category)}</small>
 
             </div>
 
             <div class="badge">
-                ${note.category}
+                ${escapeItemText(note.category)}
             </div>
 
             <div class="note-content">
-                ${note.content || ""}
+                ${escapeItemText(note.content)}
             </div>
 
             <div class="note-actions">
 
                 <button
                     class="btn pin-btn"
-                    onclick="togglePin(${note.id},${note.pinned})">
+                    type="button">
 
                     ${note.pinned ? 'Unpin' : 'Pin'}
 
@@ -490,11 +494,7 @@ async function loadNotes(){
 
                 <button
                     class="btn edit-btn"
-                    onclick="editNote({
-                        id:${note.id},
-                        title:'${(note.title || '').replace(/'/g,'&#39;')}',
-                        content:'${(note.content || '').replace(/'/g,'&#39;')}'
-                    })">
+                    type="button">
 
                     Edit
 
@@ -502,7 +502,7 @@ async function loadNotes(){
 
                 <button
                     class="btn delete-btn"
-                    onclick="deleteNote(${note.id})">
+                    type="button">
 
                     Delete
 
@@ -512,6 +512,10 @@ async function loadNotes(){
 
         </div>
         `;
+        wrapper.querySelector(".pin-btn").addEventListener("click",() => togglePin(note.id,note.pinned));
+        wrapper.querySelector(".edit-btn").addEventListener("click",() => editNote(note));
+        wrapper.querySelector(".delete-btn").addEventListener("click",() => deleteNote(note.id));
+        list.append(wrapper);
     });
 
     document.getElementById("noteCount").innerText =
