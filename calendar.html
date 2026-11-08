@@ -355,64 +355,7 @@ dialog::backdrop{
 
 </button>
 
-<div class="card" id="create-event">
-        <h2>Create Event</h2>
-
-        <input
-            id="title"
-            placeholder="Event Title">
-
-        <textarea
-            id="description"
-            placeholder="Description"></textarea>
-
-        <div class="grid">
-
-            <select id="category">
-                <option>Work</option>
-                <option>Personal</option>
-                <option>Health</option>
-                <option>Finance</option>
-                <option>Family</option>
-                <option>Projects</option>
-            </select>
-
-            <input
-                id="location"
-                placeholder="Location">
-
-            <input
-                type="date"
-                id="event_date">
-
-            <input
-                type="time"
-                id="start_time">
-
-            <input
-                type="time"
-                id="end_time">
-
-        </div>
-
-        <fieldset class="reminder-options">
-            <legend>Reminders (events without a start time default to 9:00 a.m.)</legend>
-            <label><input type="checkbox" name="reminder-offset" value="1440" checked> 1 day before</label>
-            <label><input type="checkbox" name="reminder-offset" value="60"> 1 hour before</label>
-            <label><input type="checkbox" name="reminder-offset" value="15"> 15 minutes before</label>
-            <label for="customReminderMinutes">Custom minutes before</label>
-            <input id="customReminderMinutes" type="number" min="1" max="525600" step="1" placeholder="e.g. 30">
-        </fieldset>
-
-        <button
-            class="btn add-btn"
-            onclick="addEvent()">
-
-            Add Event
-
-        </button>
-
-    </div>
+<button type="button" class="btn add-btn" id="create-event">Create Event</button>
 
     <div class="card">
 
@@ -427,6 +370,55 @@ dialog::backdrop{
     </div>
 
 </div>
+
+<dialog id="createEventDialog" aria-labelledby="createEventHeading">
+    <form id="createEventForm">
+        <h2 id="createEventHeading">Create Event</h2>
+        <label class="edit-field">Title
+            <input id="title" required>
+        </label>
+        <label class="edit-field">Description
+            <textarea id="description"></textarea>
+        </label>
+        <div class="grid">
+            <label class="edit-field">Category
+                <select id="category">
+                    <option>Work</option>
+                    <option>Personal</option>
+                    <option>Health</option>
+                    <option>Finance</option>
+                    <option>Family</option>
+                    <option>Projects</option>
+                </select>
+            </label>
+            <label class="edit-field">Location
+                <input id="location">
+            </label>
+            <label class="edit-field">Date
+                <input type="date" id="event_date" required>
+            </label>
+            <label class="edit-field">Start time
+                <input type="time" id="start_time">
+            </label>
+            <label class="edit-field">End time
+                <input type="time" id="end_time">
+            </label>
+        </div>
+        <fieldset class="reminder-options">
+            <legend>Reminders (events without a start time default to 9:00 a.m.)</legend>
+            <label><input type="checkbox" name="reminder-offset" value="1440" checked> 1 day before</label>
+            <label><input type="checkbox" name="reminder-offset" value="60"> 1 hour before</label>
+            <label><input type="checkbox" name="reminder-offset" value="15"> 15 minutes before</label>
+            <label for="customReminderMinutes">Custom minutes before</label>
+            <input id="customReminderMinutes" type="number" min="1" max="525600" step="1" placeholder="e.g. 30">
+        </fieldset>
+        <p id="createEventMessage" class="dialog-message" role="alert"></p>
+        <div class="dialog-actions">
+            <button type="button" class="btn delete-btn" id="cancelCreateEvent">Cancel</button>
+            <button type="submit" class="btn edit-btn" id="saveCreateEvent">Add Event</button>
+        </div>
+    </form>
+</dialog>
 
 <dialog id="editEventDialog" aria-labelledby="editEventHeading">
     <form id="editEventForm">
@@ -496,53 +488,49 @@ async function getUser(){
     return user;
 }
 
-async function addEvent(){
+const createDialog = document.getElementById("createEventDialog");
+const createForm = document.getElementById("createEventForm");
+const createMessage = document.getElementById("createEventMessage");
+const createSave = document.getElementById("saveCreateEvent");
+const createCancel = document.getElementById("cancelCreateEvent");
 
-    const user =
-        await getUser();
+function openCreateEvent(){
+    if(!createDialog.open){
+        createMessage.textContent = "";
+        createDialog.showModal();
+    }
+}
 
-    if(!user){
-        alert("Please sign in before adding an event.");
+document.getElementById("create-event").addEventListener("click",openCreateEvent);
+createCancel.addEventListener("click",() => createDialog.close());
+createDialog.addEventListener("cancel",event => {
+    if(createSave.disabled) event.preventDefault();
+});
+if(location.hash === "#create-event") openCreateEvent();
+window.addEventListener("hashchange",() => {
+    if(location.hash === "#create-event") openCreateEvent();
+});
+
+createForm.addEventListener("submit",async submission => {
+    submission.preventDefault();
+    const title = document.getElementById("title").value.trim();
+    const eventDate = document.getElementById("event_date").value;
+    const startTime = document.getElementById("start_time").value;
+    const endTime = document.getElementById("end_time").value;
+    if(!title || !eventDate){
+        createMessage.textContent = "Event title and date are required.";
         return;
     }
-
-const title =
-    document.getElementById("title").value.trim();
-
-const eventDate =
-    document.getElementById("event_date").value;
-
-const startTime =
-    document.getElementById("start_time").value;
-
-const endTime =
-    document.getElementById("end_time").value;
-
-if(!title){
-
-    alert("Event title is required.");
-    return;
-}
-
-if(!eventDate){
-
-    alert("Event date is required.");
-    return;
-}
-
-if(
-    startTime &&
-    endTime &&
-    startTime > endTime
-){
-
-    alert(
-        "End time must be after start time."
-    );
-
-    return;
-}
-    
+    if(startTime && endTime && startTime > endTime){
+        createMessage.textContent = "End time must be after start time.";
+        return;
+    }
+    createSave.disabled = true;
+    createCancel.disabled = true;
+    createMessage.textContent = "";
+    try{
+    const user = await getUser();
+    if(!user) throw new Error("Please sign in before adding an event.");
     const { data:event,error } =
     await getSB()
         .from("calendar_events")
@@ -574,10 +562,7 @@ if(
         .select("id")
         .single();
 
-    if(error){
-    alert(error.message);
-    return;
-}
+    if(error) throw error;
 
 try{
     await window.seshat.scheduleReminders({
@@ -592,16 +577,16 @@ try{
     alert("Event saved, but its reminders could not be scheduled: " + error.message);
 }
 
-document.getElementById("title").value = "";
-document.getElementById("description").value = "";
-document.getElementById("location").value = "";
-document.getElementById("event_date").value = "";
-document.getElementById("start_time").value = "";
-document.getElementById("end_time").value = "";
-
-    loadEvents();
-
-}
+    createForm.reset();
+    createDialog.close();
+    loadEvents().catch(error => alert("Event saved, but the calendar could not be refreshed: " + error.message));
+    }catch(error){
+        createMessage.textContent = "Unable to add event: " + error.message;
+    }finally{
+        createSave.disabled = false;
+        createCancel.disabled = false;
+    }
+});
 
 function previousMonth(){
 
@@ -905,7 +890,7 @@ editForm.addEventListener("submit",async event => {
         }
         editingEvent = null;
         editDialog.close();
-        await loadEvents();
+        loadEvents().catch(error => alert("Event updated, but the calendar could not be refreshed: " + error.message));
     }catch(error){
         editMessage.textContent = "Unable to update event: " + error.message;
     }finally{

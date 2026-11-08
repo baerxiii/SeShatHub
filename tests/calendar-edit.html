@@ -14,6 +14,7 @@ async function run(){
         }];
         window.testOffsets = [60,30,120];
         window.updates = [];
+        window.inserts = [];
         window.schedules = [];
         window.alerts = [];
         window.alert = message => window.alerts.push(message);
@@ -21,6 +22,11 @@ async function run(){
             auth:{getUser:async () => ({data:{user:{id:"user"}}})},
             from:() => ({
                 select:() => ({eq:() => ({order:async () => ({data:window.testEvents,error:null})})}),
+                insert:values => ({select:() => ({single:async () => {
+                    if(window.failInsert) return {data:null,error:{message:"offline"}};
+                    window.inserts.push(values);
+                    return {data:{id:"new-event"},error:null};
+                }})}),
                 update:values => ({eq:async (field,id) => {
                     window.updates.push({values,id});
                     Object.assign(window.testEvents[0],values);
@@ -30,6 +36,8 @@ async function run(){
         };
         window.seshat = {
             supabase,
+            readReminderOffsets:() => [...document.querySelectorAll('input[name="reminder-offset"]:checked')]
+                .map(input => Number(input.value)),
             getReminderOffsets:async () => window.testOffsets,
             scheduleReminders:async args => {
                 window.schedules.push(args);
@@ -63,6 +71,33 @@ async function run(){
     };
 
     await wait(() => get(".event-card .edit-btn"));
+    check(!get("#createEventDialog").open,"Create form must start closed.");
+    get("#create-event").click();
+    check(get("#createEventDialog").open,"Create button must open a modal.");
+    get("#title").value = "New event";
+    get("#event_date").value = "2099-12-01";
+    get("#start_time").value = "14:00";
+    get("#end_time").value = "13:00";
+    get("#createEventForm").requestSubmit();
+    check(get("#createEventMessage").textContent.includes("End time"),"Invalid create times must be rejected.");
+    check(win.inserts.length === 0,"Invalid create form must not save.");
+    get("#cancelCreateEvent").click();
+    check(!get("#createEventDialog").open && win.inserts.length === 0,"Cancel must not create an event.");
+    win.location.hash = "#create-event";
+    await wait(() => get("#createEventDialog").open);
+    check(get("#title").value === "New event","Cancel must preserve the draft.");
+    get("#end_time").value = "15:00";
+    win.failInsert = true;
+    get("#createEventForm").requestSubmit();
+    await wait(() => get("#createEventMessage").textContent.includes("offline"));
+    check(get("#createEventDialog").open && get("#title").value === "New event","Failed create must preserve the draft.");
+    win.failInsert = false;
+    get("#createEventForm").requestSubmit();
+    await wait(() => win.inserts.length === 1 && !get("#createEventDialog").open);
+    check(win.inserts[0].title === "New event" && win.inserts[0].start_time === "14:00","Event not created.");
+    check(win.schedules[0].itemId === "new-event" && win.schedules[0].offsets[0] === 1440,"Create reminder not scheduled.");
+    check(get("#title").value === "","Successful create must reset the form.");
+    win.schedules = [];
     check(get(".event-card h3").textContent === "Bob's <Meeting>","Title must be rendered as text.");
     await open();
     check(get("#editTitle").value === "Bob's <Meeting>","Title not prefilled.");
