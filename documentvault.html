@@ -101,6 +101,16 @@ textarea{
     background:#2563eb;
 }
 
+.create-form-btn{
+    margin-bottom:20px;
+}
+
+.cancel-btn{
+    width:100%;
+    margin-top:10px;
+    background:#475569;
+}
+
 .open-btn{
     background:#16a34a;
 }
@@ -218,7 +228,18 @@ textarea{
 
     </div>
 
-    <div class="card">
+    <button
+        class="btn add-btn create-form-btn"
+        id="showDocumentForm"
+        aria-controls="create-document"
+        aria-expanded="false"
+        onclick="openDocumentForm()">
+
+        Add Document
+
+    </button>
+
+    <div class="card" id="create-document" hidden>
 
         <h2>Add Document</h2>
 
@@ -276,6 +297,14 @@ textarea{
 
         </button>
 
+        <button
+            class="btn cancel-btn"
+            onclick="closeDocumentForm()">
+
+            Cancel
+
+        </button>
+
     </div>
 
     <div class="card">
@@ -309,6 +338,19 @@ async function getUser(){
     } = await getSB().auth.getUser();
 
     return user;
+}
+
+function openDocumentForm(){
+    document.getElementById("create-document").hidden = false;
+    document.getElementById("showDocumentForm").hidden = true;
+    document.getElementById("showDocumentForm").setAttribute("aria-expanded","true");
+    document.getElementById("title").focus();
+}
+
+function closeDocumentForm(){
+    document.getElementById("create-document").hidden = true;
+    document.getElementById("showDocumentForm").hidden = false;
+    document.getElementById("showDocumentForm").setAttribute("aria-expanded","false");
 }
 
 async function addDocument(){
@@ -499,6 +541,7 @@ console.log("Storage Path:", storagePath);
         "documentFile"
     ).value = "";
 
+    closeDocumentForm();
     loadDocuments();
 }
 

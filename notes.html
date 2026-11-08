@@ -102,6 +102,17 @@ textarea{
     color:white;
 }
 
+.create-form-btn{
+    margin-bottom:20px;
+}
+
+.cancel-btn{
+    width:100%;
+    margin-top:10px;
+    background:#475569;
+    color:white;
+}
+
 .note-card{
     background:rgba(255,255,255,.05);
     border-radius:16px;
@@ -203,7 +214,18 @@ textarea{
 
     </div>
 
-    <div class="card" id="create-note">
+    <button
+        class="btn add-btn create-form-btn"
+        id="showNoteForm"
+        aria-controls="create-note"
+        aria-expanded="false"
+        onclick="openNoteForm()">
+
+        Create Note
+
+    </button>
+
+    <div class="card" id="create-note" hidden>
 
         <h2>Create Note</h2>
 
@@ -237,6 +259,14 @@ textarea{
             onclick="addNote()">
 
             Save Note
+
+        </button>
+
+        <button
+            class="btn cancel-btn"
+            onclick="closeNoteForm()">
+
+            Cancel
 
         </button>
 
@@ -274,6 +304,19 @@ async function getUser(){
     return user;
 }
 
+function openNoteForm(){
+    document.getElementById("create-note").hidden = false;
+    document.getElementById("showNoteForm").hidden = true;
+    document.getElementById("showNoteForm").setAttribute("aria-expanded","true");
+    document.getElementById("title").focus();
+}
+
+function closeNoteForm(){
+    document.getElementById("create-note").hidden = true;
+    document.getElementById("showNoteForm").hidden = false;
+    document.getElementById("showNoteForm").setAttribute("aria-expanded","false");
+}
+
 async function addNote(){
 
     const user =
@@ -309,6 +352,7 @@ async function addNote(){
     document.getElementById("title").value="";
     document.getElementById("content").value="";
 
+    closeNoteForm();
     loadNotes();
 }
 

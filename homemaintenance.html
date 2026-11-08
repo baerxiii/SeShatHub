@@ -101,6 +101,16 @@ textarea{
     background:#2563eb;
 }
 
+.create-form-btn{
+    margin-bottom:20px;
+}
+
+.cancel-btn{
+    width:100%;
+    margin-top:10px;
+    background:#475569;
+}
+
 .complete-btn{
     background:#16a34a;
 }
@@ -208,7 +218,18 @@ textarea{
 
     </div>
 
-    <div class="card">
+    <button
+        class="btn add-btn create-form-btn"
+        id="showMaintenanceForm"
+        aria-controls="create-maintenance"
+        aria-expanded="false"
+        onclick="openMaintenanceForm()">
+
+        Add Maintenance Item
+
+    </button>
+
+    <div class="card" id="create-maintenance" hidden>
 
         <h2>Add Maintenance Item</h2>
 
@@ -267,6 +288,14 @@ textarea{
 
         </button>
 
+        <button
+            class="btn cancel-btn"
+            onclick="closeMaintenanceForm()">
+
+            Cancel
+
+        </button>
+
     </div>
 
     <div class="card">
@@ -300,6 +329,19 @@ async function getUser(){
     } = await getSB().auth.getUser();
 
     return user;
+}
+
+function openMaintenanceForm(){
+    document.getElementById("create-maintenance").hidden = false;
+    document.getElementById("showMaintenanceForm").hidden = true;
+    document.getElementById("showMaintenanceForm").setAttribute("aria-expanded","true");
+    document.getElementById("item_name").focus();
+}
+
+function closeMaintenanceForm(){
+    document.getElementById("create-maintenance").hidden = true;
+    document.getElementById("showMaintenanceForm").hidden = false;
+    document.getElementById("showMaintenanceForm").setAttribute("aria-expanded","false");
 }
 
 async function addMaintenanceItem(){
@@ -368,6 +410,7 @@ async function addMaintenanceItem(){
     document.getElementById("next_due").value="";
     document.getElementById("notes").value="";
 
+    closeMaintenanceForm();
     loadItems();
 }
 
