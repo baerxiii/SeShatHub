@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Reader tests</title></head>
+<body>
+<pre id="result">Running...</pre>
+<script>
+async function run(){
+    const source = await (await fetch("../reader.html")).text();
+    const readerScript = await (await fetch("../reader.js")).text();
+    const setup = function(){
+        localStorage.removeItem("seshat-reader-v1");
+        window.JSZip = function(){};
+        window.calls = [];
+        window.testFetch = [];
+        window.fetch = async url => {
+            window.testFetch.push(String(url));
+            if(String(url).includes("/metadata/")) return {
+                ok:true,json:async () => ({metadata:{title:"Test Book"},files:[
+                    {name:"book.epub",size:"100"},
+                    {name:"secret.epub",private:"true"},
+                    {name:"file.pdf"},
+                    {name:"../bad.epub"}
+                ]})
+            };
+            if(window.failDownload) throw new TypeError("blocked");
+            return {ok:true,headers:new Headers(),arrayBuffer:async () => new Uint8Array([1,2,3]).buffer};
+        };
+        window.ePub = () => {
+            let handlers = {};
+            const rendition = {
+                themes:{default:() => {},fontSize:value => window.calls.push(["fontSize",value])},
+                on:(name,fn) => {handlers[name] = fn;},
+                display:async target => {
+                    if(window.badPosition && target) throw Error("bad position");
+                    window.calls.push(["display",target]);
+                    handlers.relocated({start:{cfi:target || "epubcfi(/6/2)",displayed:{page:1,total:4}}});
+                },
+                next:async () => window.calls.push(["next"]),
+                prev:async () => window.calls.push(["prev"])
+            };
+            return {
+                open:async () => {if(window.failOpen) throw Error("invalid EPUB");},
+                ready:Promise.resolve(),
+                loaded:{navigation:Promise.resolve({toc:[{label:"Chapter 1",href:"chapter.xhtml",subitems:[]}]})},
+                renderTo:(id,options) => {window.renderOptions = options; return rendition;},
+                destroy:() => window.calls.push(["destroy"])
+            };
+        };
+    };
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    frame.srcdoc = source.replace(
+        '<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"><\/script>\n<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"><\/script>',
+        '<script>(' + setup.toString() + ')();<\/script>'
+    ).replace('<script src="./reader.js"><\/script>','<script>' + readerScript + '<\/script>');
+    await new Promise(resolve => {frame.onload = resolve;});
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument;
+    const get = selector => doc.querySelector(selector);
+    const check = (condition,message) => {if(!condition) throw Error(message);};
+    const wait = async (condition,message) => {
+        for(let i=0;i<200;i++){
+            if(condition()) return;
+            await new Promise(resolve => setTimeout(resolve,10));
+        }
+        throw Error("Timed out: " + message);
+    };
+    get("#archiveLink").value = "https://evil.example/details/book";
+    get("#archiveForm").requestSubmit();
+    await wait(() => get("#archiveMessage").textContent.includes("archive.org"),"reject non-archive URL");
+    check(win.testFetch.length === 0,"Invalid URL must not be fetched.");
+    get("#archiveLink").value = "https://archive.org/details/book-id";
+    get("#archiveForm").requestSubmit();
+    await wait(() => get("#archiveResults button"),"lookup");
+    check(doc.querySelectorAll("#archiveResults button").length === 1,"Filter private and invalid files.");
+    win.failDownload = true;
+    get("#archiveResults button").click();
+    await wait(() => get("#libraryMessage").textContent.includes("blocked"),"download failure");
+    check(!get("#library").hidden,"Blocked download leaves library visible.");
+    win.failDownload = false;
+    get("#archiveResults button").click();
+    await wait(() => !get("#reader").hidden && get("#location").textContent.includes("Page"),"open book");
+    check(win.renderOptions.allowScriptedContent === false && win.renderOptions.spread === "none","Reader security and single-page layout.");
+    check(win.testFetch.some(url => url === "https://archive.org/download/book-id/book.epub"),"Correct download URL.");
+    get("#nextPage").click();
+    get("#previousPage").click();
+    check(win.calls.some(call => call[0] === "next") && win.calls.some(call => call[0] === "prev"),"Page controls.");
+    get("#showSettings").click();
+    get("#largerText").click();
+    check(get("#textSize").textContent === "110%","Text size control.");
+    for(let i=0;i<20;i++) get("#largerText").click();
+    check(get("#textSize").textContent === "180%","Maximum text size.");
+    for(let i=0;i<20;i++) get("#smallerText").click();
+    check(get("#textSize").textContent === "80%","Minimum text size.");
+    get("#theme").value = "dark";
+    get("#theme").dispatchEvent(new win.Event("change"));
+    check(get("#reader").dataset.theme === "dark","Appearance control.");
+    get("#chapter").value = "chapter.xhtml";
+    get("#chapter").dispatchEvent(new win.Event("change"));
+    await wait(() => win.calls.some(call => call[0] === "display" && call[1] === "chapter.xhtml"),"chapter navigation");
+    get("#readingView").click();
+    check(get("#reader").classList.contains("reading-view") && !get("#showToolbars").hidden,"Reading view.");
+    get("#showToolbars").click();
+    check(!get("#reader").classList.contains("reading-view"),"Restore controls.");
+    get("#backToLibrary").click();
+    check(get("#recentBooks").textContent.includes("Test Book"),"Recent book saved.");
+    get("#recentBooks button").click();
+    await wait(() => !get("#reader").hidden,"resume");
+    check(win.calls.some(call => call[0] === "display" && call[1] === "chapter.xhtml"),"Position restored.");
+    check(get("#textSize").textContent === "80%" && get("#reader").dataset.theme === "dark","Preferences persist.");
+    get("#backToLibrary").click();
+    const files = new win.DataTransfer();
+    files.items.add(new win.File(["bad"],"invalid.epub",{type:"application/epub+zip"}));
+    get("#localBook").files = files.files;
+    win.failOpen = true;
+    get("#localBook").dispatchEvent(new win.Event("change"));
+    await wait(() => get("#libraryMessage").textContent.includes("invalid EPUB"),"invalid file error");
+    check(!get("#library").hidden,"Failed local file returns to library.");
+    frame.remove();
+    document.getElementById("result").textContent = "Reader tests passed.";
+}
+run().catch(error => {
+    document.getElementById("result").textContent = "Reader tests failed: " + error.message;
+    console.error(error);
+});
+</script>
+</body>
+</html>

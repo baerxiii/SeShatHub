@@ -1,6 +1,24 @@
 # SeShatHub
 The terminal hub for the SeShat Suite of apps.
 
+## SeShat Reader
+
+Open **SeShat Reader** from Home & Life and enter an Internet Archive item URL
+or identifier to find a freely downloadable EPUB (up to 50 MB). Select a listed
+file to read it, or download an EPUB you are allowed to access and choose the
+local file if your browser blocks Archive downloads. Borrowed, encrypted, and
+other non-downloadable books are not supported. Internet Archive availability
+and browser cross-origin rules may prevent direct loading; no proxy or lending
+restrictions are bypassed.
+
+The reader supports single-page navigation, swipe, a chapter menu, text size,
+light/sepia/dark appearance, and an optional full-screen reading view. Recent
+book references, reading positions and preferences are stored in the browser,
+not synced to an account; local files must be selected again to resume. Clearing
+browser data removes saved positions. The reader loads EPUB.js and JSZip from
+jsDelivr and needs network access to those libraries even for local files.
+Scripted EPUB content is disabled; only open files from sources you trust.
+
 ## Browser push reminders
 
 The Hub uses standard Web Push, not OneSignal. Each authenticated user can
