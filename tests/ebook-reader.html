@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>E-book reader tests</title></head>
+<body>
+<pre id="result">Running...</pre>
+<script>
+async function run() {
+    const check = (condition, message) => { if (!condition) throw new Error(message); };
+    const wait = async (condition, message) => {
+        for (let i = 0; i < 200; i++) {
+            if (condition()) return;
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        throw new Error(`Timed out: ${message}`);
+    };
+    const response = await fetch("../ebook-reader.html");
+    if (!response.ok) throw new Error("Could not load reader page");
+    let source = await response.text();
+    const mock = `
+        class Cancelled extends Error {}
+        const pdfjsLib = {
+            RenderingCancelledException: Cancelled,
+            getDocument: () => ({
+                promise: Promise.resolve({
+                    numPages: 3,
+                    getPage: async () => ({
+                        getViewport: ({scale}) => ({width: 500 * scale, height: 1800 * scale}),
+                        render: () => ({promise: Promise.resolve(), cancel() {}})
+                    })
+                }),
+                destroy: async () => {}
+            })
+        };
+        const pdfjsReady = Promise.resolve();
+        window.ePub = () => ({
+            ready: Promise.resolve(),
+            loaded: {navigation: Promise.resolve({toc: []})},
+            renderTo: () => ({
+                themes: {default() {}, fontSize() {}},
+                on() {},
+                display: async () => {},
+                prev: async () => {},
+                next: async () => {}
+            }),
+            destroy: async () => {}
+        });
+    `;
+    source = source.replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/epubjs[^"]*"><\/script>/, "");
+    source = source.replace(/let pdfjsLib;[\s\S]*?(?=const fileInput =)/, mock);
+    source = source.replaceAll("seshatEbookShelf.v1", "seshatEbookShelf.test");
+    source = source.replaceAll("seshatEbookHistory.v1", "seshatEbookHistory.test");
+    localStorage.removeItem("seshatEbookShelf.test");
+    localStorage.removeItem("seshatEbookHistory.test");
+    const frame = document.createElement("iframe");
+    frame.style.cssText = "width:900px;height:500px;border:0";
+    document.body.appendChild(frame);
+    frame.srcdoc = source;
+    await new Promise(resolve => frame.addEventListener("load", resolve, {once: true}));
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument;
+    const get = selector => doc.querySelector(selector);
+    const setFile = name => {
+        const files = new win.DataTransfer();
+        files.items.add(new win.File(["test"], name));
+        get("#bookFile").files = files.files;
+        get("#bookFile").dispatchEvent(new win.Event("change"));
+    };
+
+    try {
+        get("#driveLink").value = "https://drive.google.com/file/d/1234567890ABCDEF/view?resourcekey=0-test";
+        get("#driveTitle").value = "Drive book";
+        get("#driveForm").requestSubmit();
+        check(get("#bookshelf button").textContent === "Read in SeShat reader", "Drive read button present");
+        get("#bookshelf button").click();
+        await wait(() => !get("#driveViewport").hidden, "Drive preview");
+        check(get("#driveFrame").src === "https://drive.google.com/file/d/1234567890ABCDEF/preview?resourcekey=0-test", "Drive preview and resource key");
+        check(get("#driveFallback").href.includes("resourcekey=0-test"), "Drive fallback preserves key");
+        check(win.getComputedStyle(get("#emptyState")).display === "none", "Drive hides empty state");
+        check(JSON.parse(localStorage.getItem("seshatEbookHistory.test")).length === 1, "Drive book enters history");
+
+        setFile("sample.pdf");
+        await wait(() => !get("#pdfViewport").hidden && get("#pdfPageCount").textContent === "of 3" && !get("#bookFile").disabled, "PDF open");
+        check(!get("#driveFrame").hasAttribute("src"), "Drive frame unloaded");
+        check(win.getComputedStyle(get("#emptyState")).display === "none", "PDF hides empty state");
+        check(win.getComputedStyle(get(".toolbar")).position === "sticky", "Toolbar uses sticky positioning");
+        const cardTop = get("#readerCard").getBoundingClientRect().top + win.scrollY;
+        win.scrollTo(0, cardTop + 300);
+        await new Promise(resolve => setTimeout(resolve, 50));
+        check(Math.abs(get(".toolbar").getBoundingClientRect().top) < 3, "Toolbar remains visible while scrolling PDF");
+        get("#pdfNext").click();
+        await wait(() => get("#pdfPage").value === "2", "PDF next page");
+        get("#pdfNext").click();
+        get("#pdfPrevious").click();
+        await wait(() => get("#pdfPage").value === "2" && get("#status").textContent.includes("Page 2 of 3"), "Rapid PDF navigation");
+        get("#zoomIn").click();
+        await wait(() => get("#zoomLevel").textContent === "120%", "PDF zoom");
+        frame.style.width = "360px";
+        await new Promise(resolve => setTimeout(resolve, 50));
+        check(doc.documentElement.scrollWidth <= doc.documentElement.clientWidth, "Reader fits narrow screens");
+        check(win.getComputedStyle(get(".toolbar")).position === "sticky", "Toolbar remains sticky on narrow screens");
+
+        setFile("sample.epub");
+        await wait(() => !get("#epubViewport").hidden && !get("#epubControls").hidden && !get("#bookFile").disabled, "EPUB open");
+        check(win.getComputedStyle(get("#emptyState")).display === "none", "EPUB hides empty state");
+        check(get("#pdfViewport").hidden, "PDF hidden after switching");
+        get("#readingHistory button").click();
+        await wait(() => !get("#driveViewport").hidden, "Reopen Drive book from history");
+        check(get("#epubViewport").hidden && get("#epubControls").hidden, "EPUB hidden after switching");
+        document.getElementById("result").textContent = "PASS: Drive preview, history, PDF controls, sticky toolbar, empty state and format switching";
+    } finally {
+        localStorage.removeItem("seshatEbookShelf.test");
+        localStorage.removeItem("seshatEbookHistory.test");
+        frame.remove();
+    }
+}
+run().catch(error => {
+    console.error(error);
+    document.getElementById("result").textContent = `FAIL: ${error.message}`;
+});
+</script>
+</body>
+</html>

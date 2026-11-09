@@ -118,9 +118,12 @@ https://baerxiii.github.io/SeShatHub/ebook-reader.html. It reads local EPUB and
 PDF files without uploading them; PDF pages can be selected and zoomed, and
 EPUB books support page navigation, a table of contents, and text sizing.
 You can add Internet Archive item URLs or identifiers and Google Drive shared
-file links to a visual bookshelf. Archive items open on Internet Archive;
-Drive items open in Google Drive and require access through the Google account
-signed in to that browser. Drive files are linked, not copied into the Hub.
+file links to a visual bookshelf. Archive items open on Internet Archive. Select **Read in SeShat
+reader** on a Drive book to view it using Google's embedded preview, or open it
+in Google Drive. Google controls preview support and access; the signed-in
+Google account must be able to access the file. If preview is unavailable,
+download the EPUB or PDF and open it locally in the reader instead. Drive
+files are linked, not copied into the Hub.
 Opening a shelf item records it under Recently Read. The shelf and reading
 history are stored in that browser, not synced between devices. Internet
 Archive controls book access; restricted items may show only a preview, and
