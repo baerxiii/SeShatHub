@@ -155,6 +155,46 @@ a {
     margin: 0 0 14px;
 }
 
+.archive-reader {
+    margin-top: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 14px;
+    background: #0b1220;
+}
+
+.archive-reader[hidden] {
+    display: none;
+}
+
+.archive-reader-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+}
+
+.archive-reader-header h3 {
+    margin: 0;
+}
+
+#archiveBookFrame {
+    display: block;
+    width: 100%;
+    height: min(75vh, 760px);
+    min-height: 480px;
+    border: 0;
+    background: #111827;
+}
+
+.archive-reader-fallback {
+    margin: 0;
+    padding: 10px 16px 14px;
+    color: #cbd5e1;
+    font-size: .9rem;
+}
+
 .book-shelf {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
@@ -223,6 +263,10 @@ a {
     padding: 8px;
     font-size: .85rem;
     text-align: center;
+}
+
+.book-actions button {
+    background: #1d4ed8;
 }
 
 .book-actions a {
@@ -391,6 +435,20 @@ input[type="number"] {
             <h3 id="historyHeading">Recently Read</h3>
             <div class="book-shelf" id="readingHistory" aria-live="polite"></div>
         </section>
+        <section class="archive-reader" id="archiveReader" aria-label="Internet Archive book reader" hidden>
+            <div class="archive-reader-header">
+                <h3 id="archiveReaderTitle">Reading book</h3>
+                <button type="button" id="closeArchiveReader">Close reader</button>
+            </div>
+            <iframe
+                id="archiveBookFrame"
+                title="Internet Archive book reader"
+                allow="fullscreen"
+                allowfullscreen
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"></iframe>
+            <p class="archive-reader-fallback">If the book doesn’t load here, <a id="archiveReaderExternal" href="#" target="_blank" rel="noopener noreferrer">open it on Internet Archive</a>.</p>
+        </section>
     </section>
 
     <section class="card" aria-label="E-book reader">
@@ -472,6 +530,10 @@ const archiveStatus = document.getElementById("archiveStatus");
 const archiveAddButton = document.getElementById("addArchiveBook");
 const bookshelf = document.getElementById("bookshelf");
 const readingHistory = document.getElementById("readingHistory");
+const archiveReader = document.getElementById("archiveReader");
+const archiveBookFrame = document.getElementById("archiveBookFrame");
+const archiveReaderTitle = document.getElementById("archiveReaderTitle");
+const archiveReaderExternal = document.getElementById("archiveReaderExternal");
 const shelfStorageKey = "seshatEbookShelf.v1";
 const historyStorageKey = "seshatEbookHistory.v1";
 
@@ -545,13 +607,17 @@ function renderArchiveCollection(container, entries, isHistory) {
 
         const actions = document.createElement("div");
         actions.className = "book-actions";
+        const readHere = document.createElement("button");
+        readHere.type = "button";
+        readHere.textContent = "Read in SeShat Hub";
+        readHere.addEventListener("click", () => openArchiveReader(book));
         const open = document.createElement("a");
         open.href = `https://archive.org/details/${encodeURIComponent(book.id)}`;
         open.target = "_blank";
         open.rel = "noopener noreferrer";
-        open.textContent = "Read on Internet Archive";
+        open.textContent = "Open on Internet Archive";
         open.addEventListener("click", () => recordArchiveRead(book));
-        actions.appendChild(open);
+        actions.append(readHere, open);
 
         item.append(cover, title, meta);
         if (isHistory && Number.isFinite(book.readAt)) {
@@ -574,6 +640,20 @@ function renderArchiveCollection(container, entries, isHistory) {
         item.appendChild(actions);
         container.appendChild(item);
     }
+}
+
+function openArchiveReader(book) {
+    archiveReaderTitle.textContent = book.title;
+    archiveReaderExternal.href = `https://archive.org/details/${encodeURIComponent(book.id)}`;
+    archiveBookFrame.src = `https://archive.org/embed/${encodeURIComponent(book.id)}`;
+    archiveReader.hidden = false;
+    recordArchiveRead(book);
+    archiveReader.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function closeArchiveReader() {
+    archiveReader.hidden = true;
+    archiveBookFrame.src = "about:blank";
 }
 
 function renderArchiveCollections() {
@@ -608,6 +688,8 @@ function removeArchiveBook(id) {
         setArchiveStatus(`Could not update your bookshelf: ${error.message}`, true);
     }
 }
+
+document.getElementById("closeArchiveReader").addEventListener("click", closeArchiveReader);
 
 archiveForm.addEventListener("submit", async event => {
     event.preventDefault();
