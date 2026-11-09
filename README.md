@@ -117,3 +117,6 @@ Open the browser-based reader at
 https://baerxiii.github.io/SeShatHub/ebook-reader.html. It reads local EPUB and
 PDF files without uploading them; PDF pages can be selected and zoomed, and
 EPUB books support page navigation, a table of contents, and text sizing.
+You can also add Internet Archive item URLs or identifiers to a visual
+bookshelf; opening a shelf item records it under Recently Read. The shelf and
+reading history are stored in that browser, not synced between devices.
