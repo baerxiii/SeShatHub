@@ -117,6 +117,9 @@ Open the browser-based reader at
 https://baerxiii.github.io/SeShatHub/ebook-reader.html. It reads local EPUB and
 PDF files without uploading them; PDF pages can be selected and zoomed, and
 EPUB books support page navigation, a table of contents, and text sizing.
+The reader libraries load from external CDNs, so an internet connection is
+needed when opening the reader. If a library fails to load, reconnect and
+reload the page.
 You can add Internet Archive item URLs or identifiers and Google Drive shared
 file links to a visual bookshelf. Archive items open on Internet Archive. Select **Read in SeShat
 reader** on a Drive book to view it using Google's embedded preview, or open it

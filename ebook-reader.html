@@ -495,6 +495,7 @@ input[type="number"] {
     </section>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
 <script type="module">
 let pdfjsLib;
@@ -879,8 +880,11 @@ function flattenToc(items, parent = "") {
 }
 
 async function openEpub(file) {
+    if (typeof window.JSZip !== "function") {
+        throw new Error("The EPUB unpacking library could not be loaded. Check your internet connection and reload the page.");
+    }
     if (typeof window.ePub !== "function") {
-        throw new Error("The EPUB reader library could not be loaded. Check your internet connection and try again.");
+        throw new Error("The EPUB reader library could not be loaded. Check your internet connection and reload the page.");
     }
 
     epubBook = window.ePub(await file.arrayBuffer());
