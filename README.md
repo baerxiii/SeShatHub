@@ -110,3 +110,10 @@ Deleting a recipe through the page also deletes its attachments.
 
 ## Projects
 - Stern Archive: https://github.com/baerxiii/stern-archive
+
+## E-book reader
+
+Open the browser-based reader at
+https://baerxiii.github.io/SeShatHub/ebook-reader.html. It reads local EPUB and
+PDF files without uploading them; PDF pages can be selected and zoomed, and
+EPUB books support page navigation, a table of contents, and text sizing.

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#030712">
+<title>E-book Reader | SeShat Hub</title>
+<style>
+:root {
+    color-scheme: dark;
+    font-family: Arial, sans-serif;
+    background: #030712;
+    color: #f8fafc;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    background:
+        radial-gradient(circle at top left, #1e3a8a, transparent 38rem),
+        #030712;
+}
+
+button,
+select,
+input {
+    font: inherit;
+}
+
+button,
+.file-button,
+select,
+input[type="number"] {
+    min-height: 42px;
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 10px;
+    background: #172554;
+    color: inherit;
+}
+
+button,
+.file-button {
+    padding: 10px 14px;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled),
+.file-button:hover {
+    background: #1d4ed8;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: .5;
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+.file-button:focus-within {
+    outline: 3px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+a {
+    color: #bfdbfe;
+}
+
+.page {
+    width: min(1100px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 24px 0 40px;
+}
+
+.topbar,
+.toolbar,
+.file-actions,
+.page-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.topbar {
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.topbar h1 {
+    margin: 0;
+    font-size: clamp(1.5rem, 4vw, 2rem);
+}
+
+.back-link {
+    text-decoration: none;
+}
+
+.card {
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 20px;
+    background: rgba(15, 23, 42, .88);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .22);
+}
+
+.toolbar {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.file-actions,
+.page-controls {
+    flex-wrap: wrap;
+}
+
+.file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+
+.file-button {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.page-controls[hidden],
+#epubControls[hidden],
+#pdfControls[hidden] {
+    display: none;
+}
+
+select,
+input[type="number"] {
+    padding: 8px 10px;
+}
+
+input[type="number"] {
+    width: 86px;
+}
+
+#status {
+    min-height: 24px;
+    margin: 4px 0 16px;
+    color: #cbd5e1;
+}
+
+#status[data-error="true"] {
+    color: #fca5a5;
+}
+
+.reader {
+    min-height: 62vh;
+    overflow: auto;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 14px;
+    background: #0b1220;
+}
+
+.empty-state {
+    display: grid;
+    min-height: 62vh;
+    place-content: center;
+    padding: 24px;
+    color: #94a3b8;
+    text-align: center;
+}
+
+#pdfViewport {
+    padding: 20px;
+    text-align: center;
+}
+
+#pdfCanvas {
+    max-width: 100%;
+    height: auto;
+    background: white;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, .45);
+}
+
+#epubViewport {
+    height: 72vh;
+    min-height: 480px;
+    background: white;
+}
+
+#epubViewer {
+    width: 100%;
+    height: 100%;
+}
+
+.hint {
+    margin: 12px 0 0;
+    color: #94a3b8;
+    font-size: .9rem;
+}
+
+@media (max-width: 600px) {
+    .topbar {
+        align-items: flex-start;
+        flex-direction: column-reverse;
+    }
+
+    .toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .reader,
+    .empty-state {
+        min-height: 55vh;
+    }
+
+    #epubViewport {
+        height: 62vh;
+        min-height: 360px;
+    }
+}
+</style>
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <a class="back-link" href="./index.html">← Back to SeShat Hub</a>
+        <h1>📚 E-book Reader</h1>
+    </header>
+
+    <section class="card" aria-label="E-book reader">
+        <div class="toolbar">
+            <div class="file-actions">
+                <label class="file-button" for="bookFile">Open EPUB or PDF</label>
+                <input class="file-input" id="bookFile" type="file" accept=".epub,.pdf,application/epub+zip,application/pdf">
+                <span id="bookName">No book selected</span>
+            </div>
+            <div class="page-controls" id="epubControls" hidden>
+                <button id="epubPrevious" type="button" aria-label="Previous page">← Previous</button>
+                <button id="epubNext" type="button" aria-label="Next page">Next →</button>
+                <label for="toc">Contents</label>
+                <select id="toc" aria-label="Book contents">
+                    <option value="">Contents</option>
+                </select>
+                <button id="fontDown" type="button" aria-label="Decrease text size">A−</button>
+                <button id="fontUp" type="button" aria-label="Increase text size">A+</button>
+            </div>
+            <div class="page-controls" id="pdfControls" hidden>
+                <button id="pdfPrevious" type="button" aria-label="Previous PDF page">← Previous</button>
+                <label for="pdfPage">Page</label>
+                <input id="pdfPage" type="number" min="1" value="1" aria-label="PDF page number">
+                <span id="pdfPageCount">of 0</span>
+                <button id="pdfNext" type="button" aria-label="Next PDF page">Next →</button>
+                <button id="zoomOut" type="button" aria-label="Zoom out">−</button>
+                <span id="zoomLevel">100%</span>
+                <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
+            </div>
+        </div>
+
+        <p id="status" role="status" aria-live="polite">Choose an EPUB or PDF file to start reading.</p>
+        <div class="reader" id="reader">
+            <div class="empty-state" id="emptyState">
+                <div>
+                    <strong>Your reading space is ready.</strong>
+                    <p>EPUB books reflow for comfortable reading. PDFs keep their original page layout.</p>
+                </div>
+            </div>
+            <div id="epubViewport" hidden>
+                <div id="epubViewer"></div>
+            </div>
+            <div id="pdfViewport" hidden>
+                <canvas id="pdfCanvas"></canvas>
+            </div>
+        </div>
+        <p class="hint">Your book is opened in this browser and is not uploaded to SeShat Hub.</p>
+    </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+<script type="module">
+let pdfjsLib;
+try {
+    pdfjsLib = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+} catch (error) {
+    const status = document.getElementById("status");
+    console.error("PDF.js could not be loaded:", error);
+    status.textContent = "The PDF reader library could not be loaded. Check your internet connection and reload.";
+    status.dataset.error = "true";
+}
+
+const fileInput = document.getElementById("bookFile");
+const status = document.getElementById("status");
+const bookName = document.getElementById("bookName");
+const emptyState = document.getElementById("emptyState");
+const epubControls = document.getElementById("epubControls");
+const pdfControls = document.getElementById("pdfControls");
+const epubViewport = document.getElementById("epubViewport");
+const pdfViewport = document.getElementById("pdfViewport");
+const pdfCanvas = document.getElementById("pdfCanvas");
+const pdfPageInput = document.getElementById("pdfPage");
+const pdfPageCount = document.getElementById("pdfPageCount");
+const zoomLevel = document.getElementById("zoomLevel");
+
+let epubBook;
+let epubRendition;
+let pdfLoadingTask;
+let pdfDocument;
+let pdfRenderTask;
+let pdfPage = 1;
+let pdfScale = 1;
+let epubFontSize = 100;
+
+function setStatus(message, isError = false) {
+    status.textContent = message;
+    status.dataset.error = String(isError);
+}
+
+function showReader(mode) {
+    emptyState.hidden = true;
+    epubControls.hidden = mode !== "epub";
+    pdfControls.hidden = mode !== "pdf";
+    epubViewport.hidden = mode !== "epub";
+    pdfViewport.hidden = mode !== "pdf";
+}
+
+async function clearBook() {
+    if (pdfRenderTask) {
+        const previousRender = pdfRenderTask;
+        previousRender.cancel();
+        try {
+            await previousRender.promise;
+        } catch (error) {
+            if (!(error instanceof pdfjsLib.RenderingCancelledException)) throw error;
+        }
+    }
+    pdfRenderTask = undefined;
+
+    if (epubBook) {
+        await epubBook.destroy();
+    }
+    if (pdfLoadingTask) {
+        await pdfLoadingTask.destroy();
+    }
+
+    epubBook = undefined;
+    epubRendition = undefined;
+    pdfDocument = undefined;
+    pdfLoadingTask = undefined;
+    document.getElementById("epubViewer").replaceChildren();
+    pdfCanvas.width = 0;
+    pdfCanvas.height = 0;
+}
+
+function flattenToc(items, parent = "") {
+    return items.flatMap(item => {
+        const label = parent ? `${parent} › ${item.label}` : item.label;
+        return [
+            { label, href: item.href },
+            ...flattenToc(item.subitems || [], label)
+        ];
+    });
+}
+
+async function openEpub(file) {
+    if (typeof window.ePub !== "function") {
+        throw new Error("The EPUB reader library could not be loaded. Check your internet connection and try again.");
+    }
+
+    epubBook = window.ePub(await file.arrayBuffer());
+    await epubBook.ready;
+    epubRendition = epubBook.renderTo("epubViewer", {
+        width: "100%",
+        height: "100%",
+        flow: "paginated",
+        spread: "none"
+    });
+    epubRendition.themes.default({ body: { color: "#111827", background: "#ffffff" } });
+    epubFontSize = 100;
+    epubRendition.themes.fontSize(`${epubFontSize}%`);
+    epubRendition.on("relocated", location => {
+        const { page, total } = location.start.displayed;
+        setStatus(`${file.name} · Page ${page} of ${total} in this section`);
+    });
+    await epubRendition.display();
+
+    const navigation = await epubBook.loaded.navigation;
+    const toc = document.getElementById("toc");
+    toc.replaceChildren(new Option("Contents", ""));
+    for (const item of flattenToc(navigation.toc)) {
+        toc.add(new Option(item.label, item.href));
+    }
+
+    showReader("epub");
+    setStatus(`${file.name} · EPUB ready`);
+}
+
+async function renderPdfPage() {
+    if (!pdfDocument) return;
+    if (pdfRenderTask) {
+        const previousRender = pdfRenderTask;
+        previousRender.cancel();
+        try {
+            await previousRender.promise;
+        } catch (error) {
+            if (!(error instanceof pdfjsLib.RenderingCancelledException)) throw error;
+        }
+    }
+    pdfRenderTask = undefined;
+    pdfPage = Math.min(Math.max(pdfPage, 1), pdfDocument.numPages);
+    pdfPageInput.value = String(pdfPage);
+    pdfPageInput.max = String(pdfDocument.numPages);
+    pdfPageCount.textContent = `of ${pdfDocument.numPages}`;
+
+    const page = await pdfDocument.getPage(pdfPage);
+    const viewport = page.getViewport({ scale: pdfScale });
+    const outputScale = window.devicePixelRatio || 1;
+    const context = pdfCanvas.getContext("2d");
+    pdfCanvas.width = Math.floor(viewport.width * outputScale);
+    pdfCanvas.height = Math.floor(viewport.height * outputScale);
+    pdfCanvas.style.width = `${Math.floor(viewport.width)}px`;
+    pdfCanvas.style.height = `${Math.floor(viewport.height)}px`;
+    pdfRenderTask = page.render({
+        canvasContext: context,
+        viewport,
+        transform: outputScale === 1 ? null : [outputScale, 0, 0, outputScale, 0, 0]
+    });
+    await pdfRenderTask.promise;
+    setStatus(`${bookName.textContent} · Page ${pdfPage} of ${pdfDocument.numPages}`);
+}
+
+async function openPdf(file) {
+    if (!pdfjsLib) {
+        throw new Error("The PDF reader library is unavailable. Check your internet connection and reload.");
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    pdfLoadingTask = pdfjsLib.getDocument({ data: bytes });
+    pdfDocument = await pdfLoadingTask.promise;
+    pdfPage = 1;
+    pdfScale = 1;
+    zoomLevel.textContent = "100%";
+    showReader("pdf");
+    await renderPdfPage();
+}
+
+fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (extension !== "epub" && extension !== "pdf") {
+        setStatus("Choose an EPUB or PDF file.", true);
+        fileInput.value = "";
+        return;
+    }
+
+    setStatus(`Opening ${file.name}…`);
+    try {
+        await clearBook();
+        bookName.textContent = file.name;
+        if (extension === "pdf") {
+            await openPdf(file);
+        } else {
+            await openEpub(file);
+        }
+    } catch (error) {
+        emptyState.hidden = false;
+        epubControls.hidden = true;
+        pdfControls.hidden = true;
+        epubViewport.hidden = true;
+        pdfViewport.hidden = true;
+        setStatus(error instanceof Error ? error.message : "The book could not be opened.", true);
+    }
+});
+
+document.getElementById("epubPrevious").addEventListener("click", () => epubRendition?.prev());
+document.getElementById("epubNext").addEventListener("click", () => epubRendition?.next());
+document.getElementById("toc").addEventListener("change", event => {
+    if (event.target.value) epubRendition?.display(event.target.value);
+});
+document.getElementById("fontDown").addEventListener("click", () => {
+    epubFontSize = Math.max(80, epubFontSize - 10);
+    epubRendition?.themes.fontSize(`${epubFontSize}%`);
+});
+document.getElementById("fontUp").addEventListener("click", () => {
+    epubFontSize = Math.min(180, epubFontSize + 10);
+    epubRendition?.themes.fontSize(`${epubFontSize}%`);
+});
+document.getElementById("pdfPrevious").addEventListener("click", async () => {
+    pdfPage -= 1;
+    await renderPdfPage();
+});
+document.getElementById("pdfNext").addEventListener("click", async () => {
+    pdfPage += 1;
+    await renderPdfPage();
+});
+pdfPageInput.addEventListener("change", async () => {
+    pdfPage = Number.parseInt(pdfPageInput.value, 10) || 1;
+    await renderPdfPage();
+});
+document.getElementById("zoomOut").addEventListener("click", async () => {
+    pdfScale = Math.max(.5, Math.round((pdfScale - .2) * 10) / 10);
+    zoomLevel.textContent = `${Math.round(pdfScale * 100)}%`;
+    await renderPdfPage();
+});
+document.getElementById("zoomIn").addEventListener("click", async () => {
+    pdfScale = Math.min(3, Math.round((pdfScale + .2) * 10) / 10);
+    zoomLevel.textContent = `${Math.round(pdfScale * 100)}%`;
+    await renderPdfPage();
+});
+</script>
+</body>
+</html>
