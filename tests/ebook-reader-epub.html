@@ -38,9 +38,10 @@ async function run() {
               </metadata>
               <manifest>
                 <item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/>
+                <item id="chapter2" href="chapter2.xhtml" media-type="application/xhtml+xml"/>
                 <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
               </manifest>
-              <spine toc="ncx"><itemref idref="chapter"/></spine>
+              <spine toc="ncx"><itemref idref="chapter"/><itemref idref="chapter2"/></spine>
             </package>`);
         zip.file("OEBPS/toc.ncx", `<?xml version="1.0" encoding="UTF-8"?>
             <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
@@ -51,6 +52,9 @@ async function run() {
         zip.file("OEBPS/chapter.xhtml", `<?xml version="1.0" encoding="UTF-8"?>
             <html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter</title></head>
             <body><p>Real EPUB content</p></body></html>`);
+        zip.file("OEBPS/chapter2.xhtml", `<?xml version="1.0" encoding="UTF-8"?>
+            <html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 2</title></head>
+            <body><p>Next EPUB chapter</p></body></html>`);
         const bytes = await zip.generateAsync({type: "uint8array"});
         const files = new win.DataTransfer();
         files.items.add(new win.File([bytes], "sample.epub", {type: "application/epub+zip"}));
@@ -63,7 +67,17 @@ async function run() {
         check(doc.querySelector("#toc").options.length > 1, "EPUB table of contents missing");
         const page = doc.querySelector("#epubViewer iframe");
         check(page?.contentDocument?.body.textContent.includes("Real EPUB content"), "EPUB content missing");
-        document.getElementById("result").textContent = "PASS: real EPUB opened and rendered on a narrow screen";
+        Object.defineProperty(doc, "fullscreenEnabled", {value: false, configurable: true});
+        doc.querySelector("#fullscreenToggle").click();
+        doc.querySelector("#pageTapNext").click();
+        await wait(() => Array.from(doc.querySelectorAll("#epubViewer iframe")).some(
+            item => item.contentDocument?.body?.textContent.includes("Next EPUB chapter")
+        ), "EPUB tap next");
+        doc.querySelector("#pageTapPrevious").click();
+        await wait(() => Array.from(doc.querySelectorAll("#epubViewer iframe")).some(
+            item => item.contentDocument?.body?.textContent.includes("Real EPUB content")
+        ), "EPUB tap previous");
+        document.getElementById("result").textContent = "PASS: real EPUB opened and page taps worked on a narrow screen";
     } finally {
         frame.remove();
     }

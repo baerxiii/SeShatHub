@@ -32,6 +32,7 @@ async function run() {
             })
         };
         const pdfjsReady = Promise.resolve();
+        window.epubTurns = {previous: 0, next: 0};
         window.JSZip = function JSZip() {};
         window.ePub = () => ({
             ready: Promise.resolve(),
@@ -40,8 +41,8 @@ async function run() {
                 themes: {default() {}, fontSize() {}},
                 on() {},
                 display: async () => {},
-                prev: async () => {},
-                next: async () => {}
+                prev: async () => { window.epubTurns.previous++; },
+                next: async () => { window.epubTurns.next++; }
             }),
             destroy: async () => {}
         });
@@ -76,6 +77,7 @@ async function run() {
         await wait(() => !get("#driveViewport").hidden, "Drive preview");
         check(get("#driveFrame").src === "https://drive.google.com/file/d/1234567890ABCDEF/preview?resourcekey=0-test", "Drive preview and resource key");
         check(get("#driveFallback").href.includes("resourcekey=0-test"), "Drive fallback preserves key");
+        check(get("#pageTapNext").hidden, "Drive preview keeps Google page controls");
         check(win.getComputedStyle(get("#emptyState")).display === "none", "Drive hides empty state");
         check(JSON.parse(localStorage.getItem("seshatEbookHistory.test")).length === 1, "Drive book enters history");
 
@@ -99,6 +101,22 @@ async function run() {
         await new Promise(resolve => setTimeout(resolve, 50));
         check(doc.documentElement.scrollWidth <= doc.documentElement.clientWidth, "Reader fits narrow screens");
         check(win.getComputedStyle(get(".toolbar")).position === "sticky", "Toolbar remains sticky on narrow screens");
+        Object.defineProperty(doc, "fullscreenEnabled", {value: false, configurable: true});
+        get("#fullscreenToggle").click();
+        check(get("#readerCard").classList.contains("reader-fullscreen"), "Page-filling fallback opens");
+        check(!get("#pageTapNext").hidden && win.getComputedStyle(get("#pageTapNext")).display !== "none", "PDF tap zones visible");
+        const zone = get("#pageTapNext").getBoundingClientRect();
+        check(zone.width >= 44 && zone.height > 100, "Page tap zone covers the reader edge");
+        check(doc.elementFromPoint(zone.left + zone.width / 2, zone.top + zone.height / 2) === get("#pageTapNext"), "Page tap zone can be clicked");
+        check(get("#fullscreenToggle").textContent === "Exit full screen", "Exit control visible");
+        get("#pageTapNext").click();
+        await wait(() => get("#pdfPage").value === "3", "PDF tap next");
+        get("#pageTapPrevious").click();
+        await wait(() => get("#pdfPage").value === "2", "PDF tap previous");
+        get("#readingControls").click();
+        check(get("#readingControls").getAttribute("aria-expanded") === "true", "Reading controls expand");
+        get("#fullscreenToggle").click();
+        check(!get("#readerCard").classList.contains("reader-fullscreen"), "Page-filling fallback closes");
 
         delete win.JSZip;
         setFile("sample.epub");
@@ -109,6 +127,12 @@ async function run() {
         await wait(() => !get("#epubViewport").hidden && !get("#epubControls").hidden && !get("#bookFile").disabled, "EPUB open");
         check(win.getComputedStyle(get("#emptyState")).display === "none", "EPUB hides empty state");
         check(get("#pdfViewport").hidden, "PDF hidden after switching");
+        get("#fullscreenToggle").click();
+        get("#pageTapNext").click();
+        get("#pageTapPrevious").click();
+        await wait(() => win.epubTurns.next === 1 && win.epubTurns.previous === 1, "EPUB tap navigation");
+        doc.dispatchEvent(new win.KeyboardEvent("keydown", {key: "Escape"}));
+        check(!get("#readerCard").classList.contains("reader-fullscreen"), "Escape exits page-filling fallback");
         get("#readingHistory button").click();
         await wait(() => !get("#driveViewport").hidden, "Reopen Drive book from history");
         check(get("#epubViewport").hidden && get("#epubControls").hidden, "EPUB hidden after switching");
