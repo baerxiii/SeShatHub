@@ -73,10 +73,13 @@ async function run() {
         check(!win.mobiScriptRan, "Book scripts and event handlers must not run");
         get("#fontUp").click();
         check(content().head.textContent.includes("110%"), "Text size changed");
-        get("#epubNext").click();
-        await wait(() => content()?.body.textContent.includes("Second chapter"), "Next MOBI chapter");
-        get("#epubPrevious").click();
-        await wait(() => content()?.body.textContent.includes("First chapter"), "Previous MOBI chapter");
+        Object.defineProperty(doc, "fullscreenEnabled", {value: false, configurable: true});
+        get("#fullscreenToggle").click();
+        get("#pageTapNext").click();
+        await wait(() => content()?.body?.textContent.includes("Second chapter"), "Next MOBI chapter");
+        get("#pageTapPrevious").click();
+        await wait(() => content()?.body?.textContent.includes("First chapter"), "Previous MOBI chapter");
+        get("#fullscreenToggle").click();
         setFile("bad.mobi", new Uint8Array([0]));
         await wait(() => !get("#bookFile").disabled, "invalid MOBI rejection");
         check(get("#status").dataset.error === "true", "Invalid MOBI reports an error");

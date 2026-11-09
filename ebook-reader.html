@@ -406,6 +406,99 @@ input[type="number"] {
         min-height: 360px;
     }
 }
+
+.reader-area {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.page-tap {
+    display: none;
+}
+
+body.reader-fullscreen {
+    overflow: hidden;
+}
+
+#readerCard.reader-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    background: #0f172a;
+}
+
+#readerCard.reader-fullscreen .toolbar {
+    position: static;
+    flex: none;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+    border-radius: 0;
+}
+
+#readerCard.reader-fullscreen:not(.controls-expanded) .file-actions,
+#readerCard.reader-fullscreen:not(.controls-expanded) .page-controls,
+#readerCard.reader-fullscreen #status:not([data-error="true"]),
+#readerCard.reader-fullscreen .hint {
+    display: none;
+}
+
+#readerCard.reader-fullscreen #status[data-error="true"] {
+    margin: 8px 12px;
+}
+
+#readerCard.reader-fullscreen .reader-area {
+    flex: 1;
+    overflow: hidden;
+}
+
+#readerCard.reader-fullscreen .reader {
+    height: 100%;
+    min-height: 0;
+    border-radius: 0;
+}
+
+#readerCard.reader-fullscreen #epubViewport,
+#readerCard.reader-fullscreen #driveViewport {
+    height: 100%;
+    min-height: 0;
+}
+
+#readerCard.reader-fullscreen .page-tap:not([hidden]) {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    width: clamp(44px, 10%, 80px);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: rgba(30, 58, 138, .55);
+    font-size: 1.4rem;
+    display: block;
+}
+
+#readerCard.reader-fullscreen .page-tap:hover,
+#readerCard.reader-fullscreen .page-tap:focus-visible {
+    background: rgba(15, 23, 42, .16);
+    color: #1e3a8a;
+}
+
+#pageTapPrevious { left: 0; }
+#pageTapNext { right: 0; }
 </style>
 </head>
 <body>
@@ -470,25 +563,31 @@ input[type="number"] {
                 <span id="zoomLevel">100%</span>
                 <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
             </div>
+            <button id="readingControls" type="button" aria-expanded="false" hidden>Controls</button>
+            <button id="fullscreenToggle" type="button" aria-pressed="false">Full screen</button>
         </div>
 
         <p id="status" role="status" aria-live="polite">Choose an EPUB, MOBI or PDF file to start reading.</p>
-        <div class="reader" id="reader">
-            <div class="empty-state" id="emptyState">
-                <div>
-                    <strong>Your reading space is ready.</strong>
-                    <p>EPUB and MOBI books reflow for comfortable reading. PDFs keep their original page layout.</p>
+        <div class="reader-area">
+            <div class="reader" id="reader">
+                <div class="empty-state" id="emptyState">
+                    <div>
+                        <strong>Your reading space is ready.</strong>
+                        <p>EPUB and MOBI books reflow for comfortable reading. PDFs keep their original page layout.</p>
+                    </div>
+                </div>
+                <div id="epubViewport" hidden>
+                    <div id="epubViewer"></div>
+                </div>
+                <div id="pdfViewport" hidden>
+                    <canvas id="pdfCanvas"></canvas>
+                </div>
+                <div id="driveViewport" hidden>
+                    <iframe id="driveFrame" title="Google Drive book preview" allow="fullscreen" allowfullscreen></iframe>
                 </div>
             </div>
-            <div id="epubViewport" hidden>
-                <div id="epubViewer"></div>
-            </div>
-            <div id="pdfViewport" hidden>
-                <canvas id="pdfCanvas"></canvas>
-            </div>
-            <div id="driveViewport" hidden>
-                <iframe id="driveFrame" title="Google Drive book preview" allow="fullscreen" allowfullscreen></iframe>
-            </div>
+            <button class="page-tap" id="pageTapPrevious" type="button" aria-label="Previous page" hidden>←</button>
+            <button class="page-tap" id="pageTapNext" type="button" aria-label="Next page" hidden>→</button>
         </div>
         <p class="hint" id="readerHint">Local books are opened in this browser and are not uploaded to SeShat Hub.</p>
         <p class="hint" id="driveHint" hidden>Google Drive provides the preview and its controls. If it cannot load or preview this book, <a id="driveFallback" target="_blank" rel="noopener noreferrer">open it in Google Drive</a> or download an EPUB, MOBI or PDF and open it locally. The Google account must have access.</p>
@@ -524,6 +623,10 @@ const driveFallback = document.getElementById("driveFallback");
 const readerCard = document.getElementById("readerCard");
 const reader = document.getElementById("reader");
 const toolbar = document.querySelector(".toolbar");
+const fullscreenToggle = document.getElementById("fullscreenToggle");
+const readingControls = document.getElementById("readingControls");
+const pageTapPrevious = document.getElementById("pageTapPrevious");
+const pageTapNext = document.getElementById("pageTapNext");
 const pdfCanvas = document.getElementById("pdfCanvas");
 const pdfPageInput = document.getElementById("pdfPage");
 const pdfPageCount = document.getElementById("pdfPageCount");
@@ -830,6 +933,8 @@ let pdfPage = 1;
 let pdfScale = 1;
 let epubFontSize = 100;
 let openingBook = false;
+let nativeFullscreen = false;
+let fullscreenBusy = false;
 
 function setStatus(message, isError = false) {
     status.textContent = message;
@@ -845,7 +950,64 @@ function showReader(mode) {
     driveViewport.hidden = mode !== "drive";
     readerHint.hidden = mode === "drive";
     driveHint.hidden = mode !== "drive";
+    pageTapPrevious.hidden = mode !== "epub" && mode !== "pdf";
+    pageTapNext.hidden = pageTapPrevious.hidden;
 }
+
+function setFullscreen(active) {
+    readerCard.classList.toggle("reader-fullscreen", active);
+    document.body.classList.toggle("reader-fullscreen", active);
+    readerCard.classList.remove("controls-expanded");
+    readingControls.hidden = !active;
+    readingControls.setAttribute("aria-expanded", "false");
+    fullscreenToggle.textContent = active ? "Exit full screen" : "Full screen";
+    fullscreenToggle.setAttribute("aria-pressed", String(active));
+}
+
+fullscreenToggle.addEventListener("click", async () => {
+    if (fullscreenBusy) return;
+    fullscreenBusy = true;
+    try {
+        if (readerCard.classList.contains("reader-fullscreen")) {
+            if (document.fullscreenElement === readerCard) await document.exitFullscreen();
+            nativeFullscreen = false;
+            setFullscreen(false);
+        } else {
+            setFullscreen(true);
+            if (readerCard.requestFullscreen && document.fullscreenEnabled) {
+                try {
+                    await readerCard.requestFullscreen();
+                    nativeFullscreen = true;
+                } catch (error) {
+                    console.warn("Browser full screen unavailable; using page-filling reader:", error);
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Could not change full screen:", error);
+        setStatus("Could not exit full screen. Use your browser's full-screen controls.", true);
+    } finally {
+        fullscreenBusy = false;
+    }
+});
+
+document.addEventListener("fullscreenchange", () => {
+    if (nativeFullscreen && document.fullscreenElement !== readerCard) {
+        nativeFullscreen = false;
+        setFullscreen(false);
+    }
+});
+
+document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && readerCard.classList.contains("reader-fullscreen") && !document.fullscreenElement) {
+        setFullscreen(false);
+    }
+});
+
+readingControls.addEventListener("click", () => {
+    const expanded = readerCard.classList.toggle("controls-expanded");
+    readingControls.setAttribute("aria-expanded", String(expanded));
+});
 
 async function clearBook() {
     pdfRenderVersion += 1;
@@ -992,6 +1154,7 @@ function requestPdfRender() {
 
 function scrollToPdfPage() {
     reader.scrollTop = 0;
+    if (readerCard.classList.contains("reader-fullscreen")) return;
     const top = reader.getBoundingClientRect().top + window.scrollY - toolbar.offsetHeight - 8;
     window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
 }
@@ -1071,6 +1234,12 @@ fileInput.addEventListener("change", async () => {
 
 document.getElementById("epubPrevious").addEventListener("click", () => runEbookAction(() => mobiReader ? mobiReader.prev() : epubRendition?.prev()));
 document.getElementById("epubNext").addEventListener("click", () => runEbookAction(() => mobiReader ? mobiReader.next() : epubRendition?.next()));
+pageTapPrevious.addEventListener("click", () => {
+    document.getElementById(pdfDocument ? "pdfPrevious" : "epubPrevious").click();
+});
+pageTapNext.addEventListener("click", () => {
+    document.getElementById(pdfDocument ? "pdfNext" : "epubNext").click();
+});
 document.getElementById("toc").addEventListener("change", event => {
     if (event.target.value) runEbookAction(() => mobiReader ? mobiReader.goTo(event.target.value) : epubRendition?.display(event.target.value));
 });

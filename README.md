@@ -119,6 +119,11 @@ MOBI and PDF files without uploading them; PDF pages can be selected and
 zoomed, and EPUB and MOBI books support page navigation, a table of contents
 when available, and text sizing for reflowable books. MOBI books must be
 unprotected; DRM-protected books cannot be opened.
+Select **Full screen** for a larger reading area; tap the left or right edge
+of a local EPUB, MOBI, or PDF page to turn pages. **Controls** opens the
+reading toolbar, and **Exit full screen** returns to the normal view. On
+browsers without full-screen support, the reader fills the browser window.
+Google Drive previews use Google's own page controls.
 The reader libraries load from external CDNs, so an internet connection is
 needed when opening the reader. If a library fails to load, reconnect and
 reload the page.
