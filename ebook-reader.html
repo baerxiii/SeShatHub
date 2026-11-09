@@ -121,6 +121,16 @@ a {
     color: #cbd5e1;
 }
 
+.archive-access-note {
+    margin: 12px 0 0;
+    padding: 12px 14px;
+    border-left: 3px solid #f59e0b;
+    border-radius: 6px;
+    background: rgba(245, 158, 11, .1);
+    color: #fde68a;
+    line-height: 1.5;
+}
+
 .archive-form {
     display: flex;
     gap: 10px;
@@ -420,6 +430,7 @@ input[type="number"] {
     <section class="card archive-card" aria-labelledby="archiveHeading">
         <h2 id="archiveHeading">📚 Archive.org Bookshelf</h2>
         <p class="archive-intro">Add an Internet Archive item URL or identifier to keep it on your shelf. Book covers, saved titles, and reading history stay in this browser.</p>
+        <p class="archive-access-note">Internet Archive controls which pages are available. Some books only have a limited preview; SeShat Hub can’t unlock omitted pages. Check the book’s Archive.org page for borrowing or other access options.</p>
         <form class="archive-form" id="archiveForm">
             <label class="file-input" for="archiveLink">Internet Archive link or ID</label>
             <input id="archiveLink" type="text" placeholder="https://archive.org/details/august191400solz_0" autocomplete="url" required>

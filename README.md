@@ -121,4 +121,5 @@ You can also add Internet Archive item URLs or identifiers to a visual
 bookshelf; select **Read in SeShat Hub** to use the embedded Internet Archive
 BookReader, or open the item on Archive.org. Opening a shelf item records it
 under Recently Read. The shelf and reading history are stored in that browser,
-not synced between devices.
+not synced between devices. Internet Archive controls book access; restricted
+items may show only a preview, and omitted pages cannot be unlocked by the Hub.
