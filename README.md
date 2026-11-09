@@ -117,9 +117,11 @@ Open the browser-based reader at
 https://baerxiii.github.io/SeShatHub/ebook-reader.html. It reads local EPUB and
 PDF files without uploading them; PDF pages can be selected and zoomed, and
 EPUB books support page navigation, a table of contents, and text sizing.
-You can also add Internet Archive item URLs or identifiers to a visual
-bookshelf; select **Read on Internet Archive** to open the item there. Opening
-a shelf item records it under Recently Read. The shelf and reading history are
-stored in that browser, not synced between devices. Internet Archive controls
-book access; restricted items may show only a preview, and omitted pages cannot
-be unlocked by the Hub.
+You can add Internet Archive item URLs or identifiers and Google Drive shared
+file links to a visual bookshelf. Archive items open on Internet Archive;
+Drive items open in Google Drive and require access through the Google account
+signed in to that browser. Drive files are linked, not copied into the Hub.
+Opening a shelf item records it under Recently Read. The shelf and reading
+history are stored in that browser, not synced between devices. Internet
+Archive controls book access; restricted items may show only a preview, and
+omitted pages cannot be unlocked by the Hub.

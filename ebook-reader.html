@@ -388,9 +388,16 @@ input[type="number"] {
     </header>
 
     <section class="card archive-card" aria-labelledby="archiveHeading">
-        <h2 id="archiveHeading">📚 Archive.org Bookshelf</h2>
-        <p class="archive-intro">Add an Internet Archive item URL or identifier to keep it on your shelf. Book covers, saved titles, and reading history stay in this browser.</p>
+        <h2 id="archiveHeading">📚 Bookshelf</h2>
+        <p class="archive-intro">Save Internet Archive books and Google Drive links here. Your book list and reading history stay in this browser.</p>
         <p class="archive-access-note">Internet Archive controls which pages are available. Some books only have a limited preview; SeShat Hub can’t unlock omitted pages. Check the book’s Archive.org page for borrowing or other access options.</p>
+        <form class="archive-form" id="driveForm">
+            <label class="file-input" for="driveLink">Google Drive shared file link</label>
+            <input id="driveLink" type="url" placeholder="https://drive.google.com/file/d/…" autocomplete="url" required>
+            <input id="driveTitle" type="text" maxlength="160" placeholder="Book title (optional)" aria-label="Book title (optional)">
+            <button type="submit" id="addDriveBook">Add Drive book</button>
+        </form>
+        <p class="archive-intro">Drive files open in Google Drive. Make sure the file is shared with the Google account you use in this browser.</p>
         <form class="archive-form" id="archiveForm">
             <label class="file-input" for="archiveLink">Internet Archive link or ID</label>
             <input id="archiveLink" type="text" placeholder="https://archive.org/details/august191400solz_0" autocomplete="url" required>
@@ -481,6 +488,10 @@ const pdfCanvas = document.getElementById("pdfCanvas");
 const pdfPageInput = document.getElementById("pdfPage");
 const pdfPageCount = document.getElementById("pdfPageCount");
 const zoomLevel = document.getElementById("zoomLevel");
+const driveForm = document.getElementById("driveForm");
+const driveInput = document.getElementById("driveLink");
+const driveTitleInput = document.getElementById("driveTitle");
+const driveAddButton = document.getElementById("addDriveBook");
 const archiveForm = document.getElementById("archiveForm");
 const archiveInput = document.getElementById("archiveLink");
 const archiveStatus = document.getElementById("archiveStatus");
@@ -516,6 +527,42 @@ function archiveIdFromInput(value) {
     return id;
 }
 
+function driveFileFromInput(value) {
+    let url;
+    try {
+        url = new URL(value.trim());
+    } catch {
+        throw new Error("Enter a valid Google Drive file link.");
+    }
+
+    if (url.protocol !== "https:" || !["drive.google.com", "www.drive.google.com"].includes(url.hostname.toLowerCase())) {
+        throw new Error("Use an HTTPS Google Drive file link.");
+    }
+
+    const pathMatch = url.pathname.match(/^\/file\/d\/([^/]+)/i);
+    const queryId = ["/open", "/uc"].includes(url.pathname) ? url.searchParams.get("id") : null;
+    let id;
+    try {
+        id = pathMatch ? decodeURIComponent(pathMatch[1]) : queryId || "";
+    } catch {
+        throw new Error("That Google Drive file link is not valid.");
+    }
+    if (!/^[A-Za-z0-9_-]{10,200}$/.test(id)) {
+        throw new Error("Use a Google Drive file link, not a folder or document link.");
+    }
+
+    return {
+        id,
+        url: `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`
+    };
+}
+
+function sameBook(left, right) {
+    const leftSource = left.source || "archive";
+    const rightSource = right.source || "archive";
+    return leftSource === rightSource && left.id === right.id;
+}
+
 function readArchiveCollection(key) {
     const raw = localStorage.getItem(key);
     if (raw === null) return [];
@@ -548,12 +595,16 @@ function renderArchiveCollection(container, entries, isHistory) {
         cover.className = "book-cover";
         cover.alt = `${book.title} cover`;
         cover.loading = "lazy";
-        cover.src = `https://archive.org/services/img/${encodeURIComponent(book.id)}`;
+        cover.src = book.source === "drive"
+            ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(book.id)}&sz=w400`
+            : `https://archive.org/services/img/${encodeURIComponent(book.id)}`;
         cover.addEventListener("error", () => cover.removeAttribute("src"), { once: true });
 
         const title = document.createElement("h4");
         title.textContent = book.title;
-        const details = [book.creator, book.year].filter(Boolean).join(" · ");
+        const details = book.source === "drive"
+            ? "Google Drive"
+            : [book.creator, book.year].filter(Boolean).join(" · ");
         const meta = document.createElement("p");
         meta.className = "book-meta";
         meta.textContent = details || `Archive ID: ${book.id}`;
@@ -561,10 +612,12 @@ function renderArchiveCollection(container, entries, isHistory) {
         const actions = document.createElement("div");
         actions.className = "book-actions";
         const open = document.createElement("a");
-        open.href = `https://archive.org/details/${encodeURIComponent(book.id)}`;
+        open.href = book.source === "drive"
+            ? `https://drive.google.com/file/d/${encodeURIComponent(book.id)}/view`
+            : `https://archive.org/details/${encodeURIComponent(book.id)}`;
         open.target = "_blank";
         open.rel = "noopener noreferrer";
-        open.textContent = "Read on Internet Archive";
+        open.textContent = book.source === "drive" ? "Open in Google Drive" : "Read on Internet Archive";
         open.addEventListener("click", () => recordArchiveRead(book));
         actions.appendChild(open);
 
@@ -583,7 +636,7 @@ function renderArchiveCollection(container, entries, isHistory) {
             remove.type = "button";
             remove.className = "remove-book";
             remove.textContent = "Remove from shelf";
-            remove.addEventListener("click", () => removeArchiveBook(book.id));
+            remove.addEventListener("click", () => removeArchiveBook(book));
             actions.appendChild(remove);
         }
         item.appendChild(actions);
@@ -604,7 +657,7 @@ function recordArchiveRead(book) {
     try {
         const entries = readArchiveCollection(historyStorageKey);
         const historyItem = { ...book, readAt: Date.now() };
-        const updated = [historyItem, ...entries.filter(entry => entry.id !== book.id)].slice(0, 50);
+        const updated = [historyItem, ...entries.filter(entry => !sameBook(entry, book))].slice(0, 50);
         localStorage.setItem(historyStorageKey, JSON.stringify(updated));
         renderArchiveCollection(readingHistory, updated, true);
     } catch (error) {
@@ -612,10 +665,10 @@ function recordArchiveRead(book) {
     }
 }
 
-function removeArchiveBook(id) {
+function removeArchiveBook(bookToRemove) {
     try {
         const entries = readArchiveCollection(shelfStorageKey);
-        const updated = entries.filter(book => book.id !== id);
+        const updated = entries.filter(book => !sameBook(book, bookToRemove));
         localStorage.setItem(shelfStorageKey, JSON.stringify(updated));
         renderArchiveCollection(bookshelf, updated, false);
         setArchiveStatus("Book removed from your shelf. Its reading history is unchanged.");
@@ -624,6 +677,36 @@ function removeArchiveBook(id) {
     }
 }
 
+driveForm.addEventListener("submit", event => {
+    event.preventDefault();
+    driveAddButton.disabled = true;
+
+    try {
+        const driveFile = driveFileFromInput(driveInput.value);
+        const existing = readArchiveCollection(shelfStorageKey);
+        const book = {
+            id: driveFile.id,
+            source: "drive",
+            title: driveTitleInput.value.trim() || `Drive book ${driveFile.id.slice(-6)}`
+        };
+        if (existing.some(entry => sameBook(entry, book))) {
+            setArchiveStatus("That Google Drive book is already on your bookshelf.");
+            return;
+        }
+
+        const updated = [book, ...existing];
+        localStorage.setItem(shelfStorageKey, JSON.stringify(updated));
+        renderArchiveCollection(bookshelf, updated, false);
+        driveInput.value = "";
+        driveTitleInput.value = "";
+        setArchiveStatus(`Added ${book.title} to your bookshelf.`);
+    } catch (error) {
+        setArchiveStatus(error instanceof Error ? error.message : "Could not add that Drive book.", true);
+    } finally {
+        driveAddButton.disabled = false;
+    }
+});
+
 archiveForm.addEventListener("submit", async event => {
     event.preventDefault();
     archiveAddButton.disabled = true;
@@ -631,7 +714,7 @@ archiveForm.addEventListener("submit", async event => {
     try {
         const id = archiveIdFromInput(archiveInput.value);
         const existing = readArchiveCollection(shelfStorageKey);
-        if (existing.some(book => book.id.toLowerCase() === id.toLowerCase())) {
+        if (existing.some(book => sameBook(book, { id }))) {
             setArchiveStatus("That book is already on your bookshelf.");
             return;
         }
