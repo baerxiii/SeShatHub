@@ -118,8 +118,8 @@ https://baerxiii.github.io/SeShatHub/ebook-reader.html. It reads local EPUB and
 PDF files without uploading them; PDF pages can be selected and zoomed, and
 EPUB books support page navigation, a table of contents, and text sizing.
 You can also add Internet Archive item URLs or identifiers to a visual
-bookshelf; select **Read in SeShat Hub** to use the embedded Internet Archive
-BookReader, or open the item on Archive.org. Opening a shelf item records it
-under Recently Read. The shelf and reading history are stored in that browser,
-not synced between devices. Internet Archive controls book access; restricted
-items may show only a preview, and omitted pages cannot be unlocked by the Hub.
+bookshelf; select **Read on Internet Archive** to open the item there. Opening
+a shelf item records it under Recently Read. The shelf and reading history are
+stored in that browser, not synced between devices. Internet Archive controls
+book access; restricted items may show only a preview, and omitted pages cannot
+be unlocked by the Hub.
