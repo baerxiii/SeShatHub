@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Real EPUB reader test</title></head>
+<body>
+<pre id="result">Running...</pre>
+<script>
+async function run() {
+    const check = (condition, message) => { if (!condition) throw new Error(message); };
+    const wait = async (condition, message) => {
+        for (let i = 0; i < 500; i++) {
+            if (condition()) return;
+            await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        throw new Error(`Timed out: ${message}`);
+    };
+    const frame = document.createElement("iframe");
+    frame.style.cssText = "width:360px;height:700px;border:0";
+    document.body.appendChild(frame);
+    frame.src = "../ebook-reader.html";
+    await new Promise(resolve => frame.addEventListener("load", resolve, {once: true}));
+
+    try {
+        const win = frame.contentWindow;
+        const doc = frame.contentDocument;
+        check(typeof win.JSZip === "function", "JSZip did not load");
+        check(typeof win.ePub === "function", "EPUB.js did not load");
+        const zip = new win.JSZip();
+        zip.file("mimetype", "application/epub+zip", {compression: "STORE"});
+        zip.file("META-INF/container.xml", `<?xml version="1.0"?>
+            <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+              <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+            </container>`);
+        zip.file("OEBPS/content.opf", `<?xml version="1.0" encoding="UTF-8"?>
+            <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="id">
+              <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+                <dc:identifier id="id">test-book</dc:identifier><dc:title>Test Book</dc:title>
+                <dc:language>en</dc:language>
+              </metadata>
+              <manifest>
+                <item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/>
+                <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+              </manifest>
+              <spine toc="ncx"><itemref idref="chapter"/></spine>
+            </package>`);
+        zip.file("OEBPS/toc.ncx", `<?xml version="1.0" encoding="UTF-8"?>
+            <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+              <head><meta name="dtb:uid" content="test-book"/></head><docTitle><text>Test Book</text></docTitle>
+              <navMap><navPoint id="chapter" playOrder="1"><navLabel><text>Chapter</text></navLabel>
+                <content src="chapter.xhtml"/></navPoint></navMap>
+            </ncx>`);
+        zip.file("OEBPS/chapter.xhtml", `<?xml version="1.0" encoding="UTF-8"?>
+            <html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter</title></head>
+            <body><p>Real EPUB content</p></body></html>`);
+        const bytes = await zip.generateAsync({type: "uint8array"});
+        const files = new win.DataTransfer();
+        files.items.add(new win.File([bytes], "sample.epub", {type: "application/epub+zip"}));
+        const input = doc.querySelector("#bookFile");
+        input.files = files.files;
+        input.dispatchEvent(new win.Event("change"));
+        await wait(() => !input.disabled, "EPUB open");
+        check(doc.querySelector("#status").dataset.error !== "true", doc.querySelector("#status").textContent);
+        check(!doc.querySelector("#epubViewport").hidden, "EPUB viewport is hidden");
+        check(doc.querySelector("#toc").options.length > 1, "EPUB table of contents missing");
+        const page = doc.querySelector("#epubViewer iframe");
+        check(page?.contentDocument?.body.textContent.includes("Real EPUB content"), "EPUB content missing");
+        document.getElementById("result").textContent = "PASS: real EPUB opened and rendered on a narrow screen";
+    } finally {
+        frame.remove();
+    }
+}
+run().catch(error => {
+    console.error(error);
+    document.getElementById("result").textContent = `FAIL: ${error.message}`;
+});
+</script>
+</body>
+</html>

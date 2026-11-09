@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>MOBI reader tests</title></head>
+<body>
+<pre id="result">Running...</pre>
+<script>
+async function run() {
+    const check = (condition, message) => { if (!condition) throw new Error(message); };
+    const wait = async (condition, message) => {
+        for (let i = 0; i < 1000; i++) {
+            if (condition()) return;
+            await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        throw new Error(`Timed out: ${message}`);
+    };
+    const frame = document.createElement("iframe");
+    frame.style.cssText = "width:360px;height:700px;border:0";
+    document.body.appendChild(frame);
+    frame.src = "../ebook-reader.html";
+    await new Promise(resolve => frame.addEventListener("load", resolve, {once: true}));
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument;
+    const get = selector => doc.querySelector(selector);
+
+    function makeMobi(encrypted = false) {
+        const text = new TextEncoder().encode(`<html><head><title>Test</title></head><body>
+            <p>First chapter</p><script>parent.mobiScriptRan = true<\/script>
+            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" onload="parent.mobiScriptRan = true">
+            <mbp:pagebreak/><p>Second chapter</p></body></html>`);
+        const recordStart = 94;
+        const textStart = recordStart + 264;
+        const buffer = new ArrayBuffer(textStart + text.length);
+        const data = new DataView(buffer);
+        const bytes = new Uint8Array(buffer);
+        bytes.set(new TextEncoder().encode("BOOKMOBI"), 60);
+        data.setUint16(76, 2);
+        data.setUint32(78, recordStart);
+        data.setUint32(86, textStart);
+        data.setUint16(recordStart, 1);
+        data.setUint16(recordStart + 8, 1);
+        data.setUint16(recordStart + 10, 4096);
+        data.setUint16(recordStart + 12, encrypted ? 1 : 0);
+        bytes.set(new TextEncoder().encode("MOBI"), recordStart + 16);
+        data.setUint32(recordStart + 20, 248);
+        data.setUint32(recordStart + 28, 65001);
+        data.setUint32(recordStart + 36, 6);
+        data.setUint32(recordStart + 108, 2);
+        data.setUint32(recordStart + 244, 0xffffffff);
+        bytes.set(text, textStart);
+        return buffer;
+    }
+
+    function setFile(name, bytes) {
+        const files = new win.DataTransfer();
+        files.items.add(new win.File([bytes], name));
+        const input = get("#bookFile");
+        input.files = files.files;
+        input.dispatchEvent(new win.Event("change"));
+    }
+
+    try {
+        setFile("protected.mobi", makeMobi(true));
+        await wait(() => !get("#bookFile").disabled, "encrypted MOBI rejection");
+        check(get("#status").textContent.includes("DRM-protected"), "DRM error is actionable");
+        setFile("sample.mobi", makeMobi());
+        await wait(() => !get("#bookFile").disabled, "MOBI open");
+        check(get("#status").textContent.includes("MOBI ready"), get("#status").textContent);
+        const view = get("foliate-view");
+        check(view && !get("#epubViewport").hidden, "MOBI reader visible");
+        const content = () => view.renderer.getContents()[0]?.doc;
+        check(content()?.body.textContent.includes("First chapter"), "First chapter rendered");
+        await new Promise(resolve => setTimeout(resolve, 100));
+        check(!win.mobiScriptRan, "Book scripts and event handlers must not run");
+        get("#fontUp").click();
+        check(content().head.textContent.includes("110%"), "Text size changed");
+        get("#epubNext").click();
+        await wait(() => content()?.body.textContent.includes("Second chapter"), "Next MOBI chapter");
+        get("#epubPrevious").click();
+        await wait(() => content()?.body.textContent.includes("First chapter"), "Previous MOBI chapter");
+        setFile("bad.mobi", new Uint8Array([0]));
+        await wait(() => !get("#bookFile").disabled, "invalid MOBI rejection");
+        check(get("#status").dataset.error === "true", "Invalid MOBI reports an error");
+        check(!get("foliate-view"), "Old MOBI view removed on switch");
+        document.getElementById("result").textContent = "PASS: MOBI rendering, navigation, text size, script blocking and errors";
+    } finally {
+        frame.remove();
+    }
+}
+run().catch(error => {
+    console.error(error);
+    document.getElementById("result").textContent = `FAIL: ${error.message}`;
+});
+</script>
+</body>
+</html>

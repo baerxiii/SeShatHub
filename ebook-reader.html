@@ -446,8 +446,8 @@ input[type="number"] {
     <section class="card" id="readerCard" aria-label="E-book reader">
         <div class="toolbar">
             <div class="file-actions">
-                <label class="file-button" for="bookFile">Open EPUB or PDF</label>
-                <input class="file-input" id="bookFile" type="file" accept=".epub,.pdf,application/epub+zip,application/pdf">
+                <label class="file-button" for="bookFile">Open EPUB, MOBI or PDF</label>
+                <input class="file-input" id="bookFile" type="file" accept=".epub,.mobi,.pdf,application/epub+zip,application/x-mobipocket-ebook,application/pdf">
                 <span id="bookName">No book selected</span>
             </div>
             <div class="page-controls" id="epubControls" hidden>
@@ -472,12 +472,12 @@ input[type="number"] {
             </div>
         </div>
 
-        <p id="status" role="status" aria-live="polite">Choose an EPUB or PDF file to start reading.</p>
+        <p id="status" role="status" aria-live="polite">Choose an EPUB, MOBI or PDF file to start reading.</p>
         <div class="reader" id="reader">
             <div class="empty-state" id="emptyState">
                 <div>
                     <strong>Your reading space is ready.</strong>
-                    <p>EPUB books reflow for comfortable reading. PDFs keep their original page layout.</p>
+                    <p>EPUB and MOBI books reflow for comfortable reading. PDFs keep their original page layout.</p>
                 </div>
             </div>
             <div id="epubViewport" hidden>
@@ -491,10 +491,11 @@ input[type="number"] {
             </div>
         </div>
         <p class="hint" id="readerHint">Local books are opened in this browser and are not uploaded to SeShat Hub.</p>
-        <p class="hint" id="driveHint" hidden>Google Drive provides the preview and its controls. If it cannot load or preview this book, <a id="driveFallback" target="_blank" rel="noopener noreferrer">open it in Google Drive</a> or download an EPUB/PDF and use Open EPUB or PDF. The Google account must have access.</p>
+        <p class="hint" id="driveHint" hidden>Google Drive provides the preview and its controls. If it cannot load or preview this book, <a id="driveFallback" target="_blank" rel="noopener noreferrer">open it in Google Drive</a> or download an EPUB, MOBI or PDF and open it locally. The Google account must have access.</p>
     </section>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
 <script type="module">
 let pdfjsLib;
@@ -819,6 +820,7 @@ renderArchiveCollections();
 
 let epubBook;
 let epubRendition;
+let mobiReader;
 let pdfLoadingTask;
 let pdfDocument;
 let pdfRenderTask;
@@ -854,12 +856,18 @@ async function clearBook() {
     if (epubBook) {
         await epubBook.destroy();
     }
+    if (mobiReader) {
+        await mobiReader.destroy();
+    }
     if (pdfLoadingTask) {
         await pdfLoadingTask.destroy();
     }
 
     epubBook = undefined;
     epubRendition = undefined;
+    mobiReader = undefined;
+    document.getElementById("fontDown").disabled = false;
+    document.getElementById("fontUp").disabled = false;
     pdfDocument = undefined;
     pdfLoadingTask = undefined;
     driveFrame.removeAttribute("src");
@@ -879,8 +887,11 @@ function flattenToc(items, parent = "") {
 }
 
 async function openEpub(file) {
+    if (typeof window.JSZip !== "function") {
+        throw new Error("The EPUB unpacking library could not be loaded. Check your internet connection and reload the page.");
+    }
     if (typeof window.ePub !== "function") {
-        throw new Error("The EPUB reader library could not be loaded. Check your internet connection and try again.");
+        throw new Error("The EPUB reader library could not be loaded. Check your internet connection and reload the page.");
     }
 
     epubBook = window.ePub(await file.arrayBuffer());
@@ -910,6 +921,28 @@ async function openEpub(file) {
 
     showReader("epub");
     setStatus(`${file.name} · EPUB ready`);
+}
+
+async function openMobi(file) {
+    const { openMobiBook } = await import("./mobi-reader.js");
+    showReader("epub");
+    mobiReader = await openMobiBook(file, document.getElementById("epubViewer"));
+    epubFontSize = 100;
+    document.getElementById("fontDown").disabled = mobiReader.fixedLayout;
+    document.getElementById("fontUp").disabled = mobiReader.fixedLayout;
+    const toc = document.getElementById("toc");
+    toc.replaceChildren(new Option("Contents", ""));
+    for (const item of flattenToc(mobiReader.toc)) {
+        toc.add(new Option(item.label, item.href));
+    }
+    setStatus(`${file.name} · MOBI ready`);
+}
+
+function runEbookAction(action) {
+    Promise.resolve().then(action).catch(error => {
+        console.error("E-book navigation failed:", error);
+        setStatus(`Could not navigate the book: ${error.message}`, true);
+    });
 }
 
 async function renderPdfPage() {
@@ -1006,8 +1039,8 @@ fileInput.addEventListener("change", async () => {
     if (!file || openingBook) return;
 
     const extension = file.name.split(".").pop()?.toLowerCase();
-    if (extension !== "epub" && extension !== "pdf") {
-        setStatus("Choose an EPUB or PDF file.", true);
+    if (!["epub", "mobi", "pdf"].includes(extension)) {
+        setStatus("Choose an EPUB, MOBI or PDF file.", true);
         fileInput.value = "";
         return;
     }
@@ -1021,6 +1054,8 @@ fileInput.addEventListener("change", async () => {
         bookName.textContent = file.name;
         if (extension === "pdf") {
             await openPdf(file);
+        } else if (extension === "mobi") {
+            await openMobi(file);
         } else {
             await openEpub(file);
         }
@@ -1034,18 +1069,20 @@ fileInput.addEventListener("change", async () => {
     }
 });
 
-document.getElementById("epubPrevious").addEventListener("click", () => epubRendition?.prev());
-document.getElementById("epubNext").addEventListener("click", () => epubRendition?.next());
+document.getElementById("epubPrevious").addEventListener("click", () => runEbookAction(() => mobiReader ? mobiReader.prev() : epubRendition?.prev()));
+document.getElementById("epubNext").addEventListener("click", () => runEbookAction(() => mobiReader ? mobiReader.next() : epubRendition?.next()));
 document.getElementById("toc").addEventListener("change", event => {
-    if (event.target.value) epubRendition?.display(event.target.value);
+    if (event.target.value) runEbookAction(() => mobiReader ? mobiReader.goTo(event.target.value) : epubRendition?.display(event.target.value));
 });
 document.getElementById("fontDown").addEventListener("click", () => {
     epubFontSize = Math.max(80, epubFontSize - 10);
     epubRendition?.themes.fontSize(`${epubFontSize}%`);
+    mobiReader?.setFontSize(epubFontSize);
 });
 document.getElementById("fontUp").addEventListener("click", () => {
     epubFontSize = Math.min(180, epubFontSize + 10);
     epubRendition?.themes.fontSize(`${epubFontSize}%`);
+    mobiReader?.setFontSize(epubFontSize);
 });
 document.getElementById("pdfPrevious").addEventListener("click", async () => {
     pdfPage = Math.max(1, pdfPage - 1);

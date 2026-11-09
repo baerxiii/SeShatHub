@@ -114,15 +114,20 @@ Deleting a recipe through the page also deletes its attachments.
 ## E-book reader
 
 Open the browser-based reader at
-https://baerxiii.github.io/SeShatHub/ebook-reader.html. It reads local EPUB and
-PDF files without uploading them; PDF pages can be selected and zoomed, and
-EPUB books support page navigation, a table of contents, and text sizing.
+https://baerxiii.github.io/SeShatHub/ebook-reader.html. It reads local EPUB,
+MOBI and PDF files without uploading them; PDF pages can be selected and
+zoomed, and EPUB and MOBI books support page navigation, a table of contents
+when available, and text sizing for reflowable books. MOBI books must be
+unprotected; DRM-protected books cannot be opened.
+The reader libraries load from external CDNs, so an internet connection is
+needed when opening the reader. If a library fails to load, reconnect and
+reload the page.
 You can add Internet Archive item URLs or identifiers and Google Drive shared
 file links to a visual bookshelf. Archive items open on Internet Archive. Select **Read in SeShat
 reader** on a Drive book to view it using Google's embedded preview, or open it
 in Google Drive. Google controls preview support and access; the signed-in
 Google account must be able to access the file. If preview is unavailable,
-download the EPUB or PDF and open it locally in the reader instead. Drive
+download the EPUB, MOBI or PDF and open it locally in the reader instead. Drive
 files are linked, not copied into the Hub.
 Opening a shelf item records it under Recently Read. The shelf and reading
 history are stored in that browser, not synced between devices. Internet

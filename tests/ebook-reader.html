@@ -32,6 +32,7 @@ async function run() {
             })
         };
         const pdfjsReady = Promise.resolve();
+        window.JSZip = function JSZip() {};
         window.ePub = () => ({
             ready: Promise.resolve(),
             loaded: {navigation: Promise.resolve({toc: []})},
@@ -45,7 +46,7 @@ async function run() {
             destroy: async () => {}
         });
     `;
-    source = source.replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/epubjs[^"]*"><\/script>/, "");
+    source = source.replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/(?:jszip|epubjs)[^"]*"><\/script>/g, "");
     source = source.replace(/let pdfjsLib;[\s\S]*?(?=const fileInput =)/, mock);
     source = source.replaceAll("seshatEbookShelf.v1", "seshatEbookShelf.test");
     source = source.replaceAll("seshatEbookHistory.v1", "seshatEbookHistory.test");
@@ -99,6 +100,11 @@ async function run() {
         check(doc.documentElement.scrollWidth <= doc.documentElement.clientWidth, "Reader fits narrow screens");
         check(win.getComputedStyle(get(".toolbar")).position === "sticky", "Toolbar remains sticky on narrow screens");
 
+        delete win.JSZip;
+        setFile("sample.epub");
+        await wait(() => !get("#bookFile").disabled && get("#status").dataset.error === "true", "Missing JSZip error");
+        check(get("#status").textContent.includes("unpacking library") && get("#status").textContent.includes("reload"), "Missing JSZip has actionable error");
+        win.JSZip = function JSZip() {};
         setFile("sample.epub");
         await wait(() => !get("#epubViewport").hidden && !get("#epubControls").hidden && !get("#bookFile").disabled, "EPUB open");
         check(win.getComputedStyle(get("#emptyState")).display === "none", "EPUB hides empty state");
