@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#020617">
+<title>SeShat Reader</title>
+<link rel="icon" type="image/svg+xml" href="./icon.svg">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="stylesheet" href="./reader.css">
+</head>
+<body>
+<main id="library" class="library">
+    <header class="library-header">
+        <h1>📚 SeShat Reader</h1>
+        <a class="button secondary" href="index.html">Dashboard</a>
+    </header>
+    <p>Read freely downloadable Internet Archive EPUBs in a mobile-friendly reader.</p>
+    <form id="archiveForm" class="panel">
+        <label for="archiveLink">Internet Archive item link or identifier</label>
+        <input id="archiveLink" type="text" required placeholder="https://archive.org/details/..." autocomplete="url">
+        <button id="findBook" class="button" type="submit">Find EPUBs</button>
+        <p id="archiveMessage" class="message" role="status"></p>
+        <div id="archiveResults"></div>
+    </form>
+    <section class="panel">
+        <h2>Open a downloaded EPUB</h2>
+        <p>If a book can’t be loaded directly, download an available EPUB from Internet Archive and select it here.</p>
+        <label class="file-label" for="localBook">Choose EPUB file</label>
+        <input id="localBook" type="file" accept=".epub,application/epub+zip">
+    </section>
+    <section class="panel">
+        <h2>Recent books</h2>
+        <p>Book links, reading position, and preferences are stored only in this browser.</p>
+        <div id="recentBooks"></div>
+    </section>
+    <p id="libraryMessage" class="message" role="alert"></p>
+</main>
+
+<section id="reader" class="reader" aria-label="Book reader" hidden>
+    <header class="reader-toolbar">
+        <button id="backToLibrary" class="button secondary" type="button">Library</button>
+        <strong id="bookTitle"></strong>
+        <button id="showSettings" class="button secondary" type="button" aria-controls="readerSettings" aria-expanded="false">Controls</button>
+    </header>
+    <div id="readerSettings" class="reader-settings" hidden>
+        <label for="chapter">Chapter</label>
+        <select id="chapter"><option value="">Table of contents unavailable</option></select>
+        <div class="setting-row">
+            <span>Text size</span>
+            <button id="smallerText" type="button" class="button secondary" aria-label="Decrease text size">A−</button>
+            <output id="textSize">100%</output>
+            <button id="largerText" type="button" class="button secondary" aria-label="Increase text size">A+</button>
+        </div>
+        <label for="theme">Appearance</label>
+        <select id="theme">
+            <option value="light">Light</option>
+            <option value="sepia">Sepia</option>
+            <option value="dark">Dark</option>
+        </select>
+        <button id="fullscreen" class="button secondary" type="button">Full screen</button>
+        <button id="readingView" class="button secondary" type="button">Hide toolbars</button>
+    </div>
+    <div id="viewer" class="viewer"></div>
+    <button id="showToolbars" class="button show-toolbars" type="button" hidden>Show controls</button>
+    <div class="reader-bottom">
+        <button id="previousPage" type="button" class="button secondary" aria-label="Previous page">‹ Previous</button>
+        <span id="location" aria-live="polite"></span>
+        <button id="nextPage" type="button" class="button secondary" aria-label="Next page">Next ›</button>
+    </div>
+    <p id="readerMessage" class="message reader-message" role="alert"></p>
+</section>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+<script src="./reader.js"></script>
+</body>
+</html>
