@@ -531,6 +531,21 @@ body{
             <p>Blood sugar and wellness tracking.</p>
         </a>
 
+        <a href="seshathabits.html"
+   class="app-card">
+
+    <div class="icon">🚬</div>
+
+    <h1>🜃 SeShat Habits</h1>
+
+    <p>
+        Track cigarettes, cannabis use,
+        water intake, exercise, mood,
+        sleep and wellness goals.
+    </p>
+
+</a>
+
     </div>
 
 </section>
@@ -790,7 +805,9 @@ async function loadDashboardStats(){
         events.count || 0;
 }    
 
-checkSession();
+window.addEventListener("load", () => {
+    checkSession();
+});
 
 </script>
 
