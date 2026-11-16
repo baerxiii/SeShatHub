@@ -392,6 +392,18 @@ body{
         <small>Maintenance Items</small>
     </div>
 
+    <div class="stat-card">
+    <span>🚬 Cigarettes</span>
+    <h2 id="cigaretteCount">0</h2>
+    <small>Today</small>
+</div>
+
+<div class="stat-card">
+    <span>🌿 Joints</span>
+    <h2 id="jointCount">0</h2>
+    <small>Today</small>
+</div>
+
 </section>
 
 <h2 class="section-title">🜃 SeShat Applications</h2>
@@ -803,6 +815,33 @@ async function loadDashboardStats(){
         "eventCount"
     ).innerText =
         events.count || 0;
+
+    const startOfDay = new Date();
+startOfDay.setHours(0,0,0,0);
+
+const { data: habits } = await sb
+    .from("habit_logs")
+    .select("category")
+    .eq("user_id", user.id)
+    .gte("logged_at", startOfDay.toISOString());
+
+const cigarettes =
+    habits?.filter(
+        h => h.category === "cigarette"
+    ).length || 0;
+
+const joints =
+    habits?.filter(
+        h => h.category === "joint"
+    ).length || 0;
+
+document.getElementById(
+    "cigaretteCount"
+).innerText = cigarettes;
+
+document.getElementById(
+    "jointCount"
+).innerText = joints;
 }    
 
 window.addEventListener("load", () => {
