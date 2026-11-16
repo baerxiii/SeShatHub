@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Smoking Tracker</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    background:#121212;
+    color:white;
+    font-family:Arial, sans-serif;
+    margin:0;
+    padding:20px;
+}
+
+.container{
+    max-width:500px;
+    margin:auto;
+}
+
+.header{
+    text-align:center;
+    margin-bottom:30px;
+}
+
+.date{
+    color:#9ca3af;
+    font-size:14px;
+}
+
+.card{
+    background:#1f1f1f;
+    border-radius:16px;
+    padding:25px;
+    margin-bottom:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.3);
+}
+
+.title{
+    text-align:center;
+    font-size:22px;
+    margin-bottom:15px;
+}
+
+.counter{
+    text-align:center;
+    font-size:58px;
+    font-weight:bold;
+    margin:20px 0;
+}
+
+.controls{
+    display:flex;
+    justify-content:center;
+    gap:30px;
+}
+
+button{
+    width:70px;
+    height:70px;
+    border:none;
+    border-radius:50%;
+    font-size:32px;
+    cursor:pointer;
+}
+
+.plus{
+    background:#22c55e;
+    color:white;
+}
+
+.minus{
+    background:#ef4444;
+    color:white;
+}
+
+.summary{
+    background:#1f1f1f;
+    padding:20px;
+    border-radius:16px;
+    text-align:center;
+}
+
+.stat{
+    margin:10px 0;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <h1>Smoking Tracker</h1>
+        <div class="date" id="currentDate"></div>
+    </div>
+
+    <div class="card">
+
+        <div class="title">🚬 Cigarettes</div>
+
+        <div class="counter" id="cigaretteCount">0</div>
+
+        <div class="controls">
+            <button class="minus" onclick="removeHabit('cigarette')">-</button>
+            <button class="plus" onclick="addHabit('cigarette')">+</button>
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="title">🌿 Joints</div>
+
+        <div class="counter" id="jointCount">0</div>
+
+        <div class="controls">
+            <button class="minus" onclick="removeHabit('joint')">-</button>
+            <button class="plus" onclick="addHabit('joint')">+</button>
+        </div>
+
+    </div>
+
+    <div class="summary">
+        <h3>Today's Summary</h3>
+
+        <div class="stat">
+            Cigarettes: <span id="summaryCigs">0</span>
+        </div>
+
+        <div class="stat">
+            Joints: <span id="summaryJoints">0</span>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const SUPABASE_URL = "https://uzbbwvihkfzdbnowhglc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf";
+
+const client = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+let currentUser = null;
+
+document.getElementById("currentDate").innerText =
+new Date().toLocaleDateString(undefined,{
+    weekday:"long",
+    year:"numeric",
+    month:"long",
+    day:"numeric"
+});
+
+async function getUser() {
+
+    const {
+        data: { user }
+    } = await client.auth.getUser();
+
+    currentUser = user;
+
+    if(!currentUser){
+        alert("User not logged in.");
+        return;
+    }
+
+    await loadTotals();
+    setupRealtime();
+}
+
+async function addHabit(category){
+
+    await client
+      .from("habit_logs")
+      .insert({
+          user_id: currentUser.id,
+          category: category,
+          quantity: 1
+      });
+
+    loadTotals();
+}
+
+async function removeHabit(category){
+
+    const start = new Date();
+    start.setHours(0,0,0,0);
+
+    const { data } = await client
+      .from("habit_logs")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .eq("category", category)
+      .gte("logged_at", start.toISOString())
+      .order("logged_at", { ascending:false })
+      .limit(1);
+
+    if(data && data.length){
+
+        await client
+          .from("habit_logs")
+          .delete()
+          .eq("id", data[0].id);
+
+        loadTotals();
+    }
+}
+
+async function loadTotals(){
+
+    const start = new Date();
+    start.setHours(0,0,0,0);
+
+    const { data } = await client
+      .from("habit_logs")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .gte("logged_at", start.toISOString());
+
+    const cigarettes =
+        data.filter(x => x.category === "cigarette").length;
+
+    const joints =
+        data.filter(x => x.category === "joint").length;
+
+    document.getElementById("cigaretteCount").innerText =
+        cigarettes;
+
+    document.getElementById("jointCount").innerText =
+        joints;
+
+    document.getElementById("summaryCigs").innerText =
+        cigarettes;
+
+    document.getElementById("summaryJoints").innerText =
+        joints;
+}
+
+function setupRealtime(){
+
+    client
+      .channel("habit_updates")
+      .on(
+          "postgres_changes",
+          {
+              event:"*",
+              schema:"public",
+              table:"habit_logs"
+          },
+          () => {
+              loadTotals();
+          }
+      )
+      .subscribe();
+}
+
+getUser();
+
+</script>
+
+</body>
+</html>
