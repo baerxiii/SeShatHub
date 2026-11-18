@@ -435,4 +435,256 @@ No mood recorded.
 
 let sb;
 let currentUser;</script>
+
+      <script>
+
+function getSB(){
+    return window.seshat?.supabase;
+}
+
+let sb;
+let currentUser;
+
+window.addEventListener("load", async () => {
+
+    sb = getSB();
+
+    if(!sb){
+        alert("Supabase unavailable");
+        return;
+    }
+
+    const {
+        data:{user}
+    } = await sb.auth.getUser();
+
+    if(!user){
+
+        alert("Please login first");
+
+        location.href="index.html";
+
+        return;
+    }
+
+    currentUser = user;
+
+    document.getElementById(
+        "todayDate"
+    ).innerText =
+    new Date().toLocaleDateString(
+        undefined,
+        {
+            weekday:"long",
+            year:"numeric",
+            month:"long",
+            day:"numeric"
+        }
+    );
+
+    await loadHabits();
+
+});
+
+async function addHabit(category, quantity){
+
+    const { error } =
+    await sb
+    .from("habit_logs")
+    .insert({
+        user_id: currentUser.id,
+        category: category,
+        quantity: quantity
+    });
+
+    if(error){
+
+        console.error(error);
+        return;
+
+    }
+
+    await loadHabits();
+
+}
+
+async function removeHabit(category){
+
+    const startOfDay = new Date();
+
+    startOfDay.setHours(
+        0,0,0,0
+    );
+
+    const { data,error } =
+    await sb
+    .from("habit_logs")
+    .select("*")
+    .eq(
+        "user_id",
+        currentUser.id
+    )
+    .eq(
+        "category",
+        category
+    )
+    .gte(
+        "logged_at",
+        startOfDay.toISOString()
+    )
+    .order(
+        "logged_at",
+        {
+            ascending:false
+        }
+    )
+    .limit(1);
+
+    if(error){
+
+        console.error(error);
+        return;
+
+    }
+
+    if(!data.length){
+        return;
+    }
+
+    await sb
+    .from("habit_logs")
+    .delete()
+    .eq(
+        "id",
+        data[0].id
+    );
+
+    await loadHabits();
+
+}
+
+async function loadHabits(){
+
+    const startOfDay =
+    new Date();
+
+    startOfDay.setHours(
+        0,0,0,0
+    );
+
+    const { data,error } =
+    await sb
+    .from("habit_logs")
+    .select("*")
+    .eq(
+        "user_id",
+        currentUser.id
+    )
+    .gte(
+        "logged_at",
+        startOfDay.toISOString()
+    );
+
+    if(error){
+
+        console.error(error);
+        return;
+
+    }
+
+    const cigarettes =
+    data.filter(
+        x =>
+        x.category ===
+        "cigarette"
+    );
+
+    const joints =
+    data.filter(
+        x =>
+        x.category ===
+        "joint"
+    );
+
+    document
+    .getElementById(
+        "cigaretteCount"
+    )
+    .innerText =
+    cigarettes.length;
+
+    document
+    .getElementById(
+        "jointCount"
+    )
+    .innerText =
+    joints.length;
+
+    const latestCig =
+    cigarettes.sort(
+        (a,b)=>
+        new Date(
+            b.logged_at
+        )-
+        new Date(
+            a.logged_at
+        )
+    )[0];
+
+    const latestJoint =
+    joints.sort(
+        (a,b)=>
+        new Date(
+            b.logged_at
+        )-
+        new Date(
+            a.logged_at
+        )
+    )[0];
+
+    document
+    .getElementById(
+        "cigaretteLast"
+    )
+    .innerText =
+    latestCig
+    ?
+    new Date(
+        latestCig.logged_at
+    ).toLocaleTimeString()
+    :
+    "Never";
+
+    document
+    .getElementById(
+        "jointLast"
+    )
+    .innerText =
+    latestJoint
+    ?
+    new Date(
+        latestJoint.logged_at
+    ).toLocaleTimeString()
+    :
+    "Never";
+
+    document
+    .getElementById(
+        "summaryList"
+    )
+    .innerHTML = `
+        <li>
+            🚬 Cigarettes:
+            ${cigarettes.length}
+        </li>
+
+        <li>
+            🌿 Joints:
+            ${joints.length}
+        </li>
+    `;
+
+}
+
+</script>
 </div>
