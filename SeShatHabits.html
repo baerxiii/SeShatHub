@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
 
 <title>SeShat Habits</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="seshat-core.js"></script>
 
 <style>
 
@@ -14,35 +16,30 @@ body{
     margin:0;
     padding:20px;
     font-family:Arial,sans-serif;
-    color:white;
     background:
         radial-gradient(circle at top left,#2563eb,#020617 40%),
         radial-gradient(circle at bottom right,#1e293b,#020617 70%);
+    color:white;
 }
 
 .container{
-    max-width:1100px;
+    max-width:1400px;
     margin:auto;
 }
 
 .header{
-    text-align:center;
-    margin-bottom:30px;
-}
-
-.date{
-    color:#cbd5e1;
+    margin-bottom:25px;
 }
 
 .grid{
     display:grid;
     grid-template-columns:
-        repeat(auto-fit,minmax(280px,1fr));
+        repeat(auto-fit,minmax(320px,1fr));
     gap:20px;
 }
 
 .card{
-    background:rgba(255,255,255,.08);
+    background:rgba(255,255,255,.06);
     border:1px solid rgba(255,255,255,.12);
     backdrop-filter:blur(24px);
     border-radius:24px;
@@ -51,28 +48,26 @@ body{
 
 .card h2{
     margin-top:0;
-    text-align:center;
 }
 
 .counter{
+    font-size:3rem;
     text-align:center;
-    font-size:56px;
+    margin:20px 0;
     font-weight:bold;
-    margin:15px 0;
 }
 
 .controls{
     display:flex;
     justify-content:center;
-    gap:20px;
+    flex-wrap:wrap;
+    gap:10px;
 }
 
-.controls button{
-    width:60px;
-    height:60px;
+button{
     border:none;
-    border-radius:50%;
-    font-size:26px;
+    border-radius:12px;
+    padding:10px 16px;
     cursor:pointer;
 }
 
@@ -86,49 +81,34 @@ body{
     color:white;
 }
 
-.updated{
-    margin-top:15px;
-    text-align:center;
-    color:#cbd5e1;
-    font-size:.85rem;
+.action{
+    background:#2563eb;
+    color:white;
 }
 
-.mood-buttons{
-    display:flex;
-    justify-content:center;
-    gap:10px;
-    flex-wrap:wrap;
-}
-
-.mood-buttons button{
-    font-size:2rem;
-    background:none;
+select,
+input,
+textarea{
+    width:100%;
+    padding:10px;
     border:none;
-    cursor:pointer;
+    border-radius:12px;
+    margin-top:10px;
+    box-sizing:border-box;
 }
 
 textarea{
-    width:100%;
-    min-height:180px;
-    border:none;
-    border-radius:12px;
-    padding:12px;
-    resize:vertical;
+    min-height:200px;
 }
 
-.save-btn{
-    margin-top:12px;
-    width:100%;
-    border:none;
-    border-radius:12px;
-    padding:12px;
-    background:#2563eb;
-    color:white;
-    cursor:pointer;
+.updated{
+    margin-top:15px;
+    font-size:.85rem;
+    color:#cbd5e1;
 }
 
 .summary{
-    margin-top:30px;
+    margin-top:25px;
 }
 
 .summary ul{
@@ -140,470 +120,319 @@ textarea{
     margin:8px 0;
 }
 
-.back-btn{
-    display:inline-block;
-    margin-bottom:20px;
-    text-decoration:none;
-    color:white;
-}
-
 </style>
+
 </head>
+
 <body>
 
 <div class="container">
 
-<a href="index.html" class="back-btn">
-← Back to Dashboard
-</a>
-
 <div class="header">
+
     <h1>🜃 SeShat Habits</h1>
-    <div class="date" id="todayDate"></div>
-</div>
 
-<div class="grid" id="habitGrid"></div>
-
-<div class="card">
-
-    <h2>😊 Mood</h2>
-
-    <div class="mood-buttons">
-
-        <button onclick="saveMood(1)">😢</button>
-        <button onclick="saveMood(2)">🙁</button>
-        <button onclick="saveMood(3)">😐</button>
-        <button onclick="saveMood(4)">🙂</button>
-        <button onclick="saveMood(5)">😁</button>
-
-    </div>
-
-    <div id="currentMood"
-         class="updated">
-         No mood logged
-    </div>
+    <p id="todayDate"></p>
 
 </div>
 
+<div class="grid">
+
+<!-- CIGARETTES -->
+
 <div class="card">
 
-    <h2>📓 Daily Journal</h2>
+    <h2>🚬 Cigarettes</h2>
 
-    <textarea
-      id="journalText"
-      placeholder="What's on your mind today?">
-    </textarea>
+    <div class="counter"
+         id="cigaretteCount">0</div>
+
+    <div class="controls">
+
+        <button
+            class="minus"
+            onclick="removeHabit('cigarette')">
+            -
+        </button>
+
+        <button
+            class="plus"
+            onclick="addHabit('cigarette',1)">
+            +
+        </button>
+
+    </div>
+
+    <div class="updated">
+
+        Last Updated:
+
+        <span id="cigaretteLast">
+            Never
+        </span>
+
+    </div>
+
+</div>
+
+<!-- JOINTS -->
+
+<div class="card">
+
+    <h2>🌿 Joints</h2>
+
+    <div class="counter"
+         id="jointCount">0</div>
+
+    <div class="controls">
+
+        <button
+            class="minus"
+            onclick="removeHabit('joint')">
+            -
+        </button>
+
+        <button
+            class="plus"
+            onclick="addHabit('joint',1)">
+            +
+        </button>
+
+    </div>
+
+    <div class="updated">
+
+        Last Updated:
+
+        <span id="jointLast">
+            Never
+        </span>
+
+    </div>
+
+</div>
+
+<!-- WATER -->
+
+<div class="card">
+
+    <h2>💧 Water</h2>
+
+    <div class="counter"
+         id="waterCount">
+
+         0.00 L
+
+    </div>
+
+    <div class="controls">
+
+        <button
+            class="action"
+            onclick="addHabit('water',0.25)">
+            +250ml
+        </button>
+
+        <button
+            class="action"
+            onclick="addHabit('water',0.5)">
+            +500ml
+        </button>
+
+    </div>
+
+    <div class="updated">
+
+        Last Updated:
+
+        <span id="waterLast">
+            Never
+        </span>
+
+    </div>
+
+</div>
+
+<!-- COFFEE -->
+
+<div class="card">
+
+    <h2>☕ Coffee</h2>
+
+    <div class="counter"
+         id="coffeeCount">
+
+         0 oz
+
+    </div>
+
+    <div class="controls">
+
+        <button class="action"
+          onclick="addHabit('coffee',10)">
+          Small
+        </button>
+
+        <button class="action"
+          onclick="addHabit('coffee',14)">
+          Medium
+        </button>
+
+        <button class="action"
+          onclick="addHabit('coffee',20)">
+          Large
+        </button>
+
+        <button class="action"
+          onclick="addHabit('coffee',24)">
+          XL
+        </button>
+
+    </div>
+
+    <div class="updated">
+
+        Last Updated:
+
+        <span id="coffeeLast">
+            Never
+        </span>
+
+    </div>
+
+</div>
+
+<!-- ALCOHOL -->
+
+<div class="card">
+
+    <h2>🍺 Alcohol</h2>
+
+    <select id="alcoholType">
+
+        <option>Beer</option>
+        <option>Wine</option>
+        <option>Cooler</option>
+        <option>Spirits</option>
+        <option>Cocktail</option>
+
+    </select>
 
     <button
-      class="save-btn"
-      onclick="saveJournal()">
+      class="action"
+      onclick="logAlcohol()">
 
-      Save Journal
+      Add Drink
 
     </button>
 
 </div>
 
-<div class="card summary">
+<!-- EXERCISE -->
 
-    <h2>Today's Summary</h2>
-
-    <ul id="summaryList"></ul>
-
-</div>
-
-</div>
-
-<script>
-
-const SUPABASE_URL = "https://uzbbwvihkfzdbnowhglc.supabase.co";
-const SUPABASE_KEY = "sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf";
-
-const sb =
-supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-);
-
-let currentUser = null;
-
-const habits = [
-
-{
-    key:"cigarette",
-    label:"🚬 Cigarettes"
-},
-{
-    key:"joint",
-    label:"🌿 Joints"
-},
-{
-    key:"water",
-    label:"💧 Water"
-},
-{
-    key:"coffee",
-    label:"☕ Coffee"
-},
-{
-    key:"alcohol",
-    label:"🍺 Alcohol"
-},
-{
-    key:"exercise",
-    label:"🏃 Exercise"
-}
-
-];
-
-document.getElementById("todayDate")
-.innerText =
-new Date().toLocaleDateString(
-undefined,
-{
-weekday:"long",
-year:"numeric",
-month:"long",
-day:"numeric"
-}
-);
-
-function habitCard(habit){
-
-return `
 <div class="card">
 
-<h2>${habit.label}</h2>
+    <h2>🏃 Exercise</h2>
 
-<div
- class="counter"
- id="${habit.key}Count">
+    <select id="exerciseType">
 
-0
+        <option>Walking</option>
+        <option>Running</option>
+        <option>Cycling</option>
+        <option>Hiking</option>
+        <option>Weight Training</option>
+        <option>Yoga</option>
+        <option>Stretching</option>
+        <option>Other</option>
+
+    </select>
+
+    <input
+        id="exerciseNotes"
+        placeholder="Optional details">
+
+    <select id="exerciseMinutes">
+
+        <option value="15">15 Minutes</option>
+        <option value="30">30 Minutes</option>
+        <option value="45">45 Minutes</option>
+        <option value="60">60 Minutes</option>
+        <option value="90">90 Minutes</option>
+
+    </select>
+
+    <button
+        class="action"
+        onclick="logExercise()">
+
+        Log Exercise
+
+    </button>
 
 </div>
+
+</div>
+
+<!-- MOOD -->
+
+<div class="card summary">
+
+<h2>😊 Mood</h2>
 
 <div class="controls">
 
-<button
- class="minus"
- onclick="removeHabit('${habit.key}')">
+<button onclick="saveMood(1)">😢</button>
+<button onclick="saveMood(2)">🙁</button>
+<button onclick="saveMood(3)">😐</button>
+<button onclick="saveMood(4)">🙂</button>
+<button onclick="saveMood(5)">😁</button>
 
--
+</div>
+
+<p id="currentMood">
+No mood recorded.
+</p>
+
+</div>
+
+<!-- JOURNAL -->
+
+<div class="card summary">
+
+<h2>📓 Journal</h2>
+
+<textarea
+ id="journalText"
+ placeholder="How was your day?">
+</textarea>
+
+<button
+ class="action"
+ onclick="saveJournal()">
+
+ Save Journal
 
 </button>
 
-<button
- class="plus"
- onclick="addHabit('${habit.key}')">
-
-+
-
-</button>
-
 </div>
 
-<div
- class="updated">
+<!-- SUMMARY -->
 
-Last Updated:
+<div class="card summary">
 
-<br>
+<h2>📊 Today's Summary</h2>
 
-<span id="${habit.key}Last">
+<ul id="summaryList">
 
-Never
+<li>Loading...</li>
 
-</span>
-
-</div>
+</ul>
 
 </div>
-`;
-
+<script>function getSB(){
+    return window.seshat?.supabase;
 }
 
-document.getElementById("habitGrid")
-.innerHTML =
-habits.map(habitCard).join("");
-
-async function init(){
-
-const {
-data:{user}
-}
-=
-await sb.auth.getUser();
-
-if(!user){
-
-alert(
-"Please login through SeShat Hub first."
-);
-
-location.href = "index.html";
-
-return;
-}
-
-currentUser = user;
-
-await loadHabits();
-await loadJournal();
-
-}
-
-async function addHabit(category){
-
-await sb
-.from("habit_logs")
-.insert({
-user_id:currentUser.id,
-category:category,
-quantity:1
-});
-
-await loadHabits();
-
-}
-
-async function removeHabit(category){
-
-const today =
-new Date();
-
-today.setHours(0,0,0,0);
-
-const {data}
-=
-await sb
-.from("habit_logs")
-.select("*")
-.eq("user_id",currentUser.id)
-.eq("category",category)
-.gte(
-"logged_at",
-today.toISOString()
-)
-.order(
-"logged_at",
-{ascending:false}
-)
-.limit(1);
-
-if(data.length){
-
-await sb
-.from("habit_logs")
-.delete()
-.eq("id",data[0].id);
-
-}
-
-await loadHabits();
-
-}
-
-async function loadHabits(){
-
-const today =
-new Date();
-
-today.setHours(0,0,0,0);
-
-const {data}
-=
-await sb
-.from("habit_logs")
-.select("*")
-.eq(
-"user_id",
-currentUser.id
-)
-.gte(
-"logged_at",
-today.toISOString()
-);
-
-const summary = [];
-
-for(const habit of habits){
-
-const rows =
-data.filter(
-x => x.category === habit.key
-);
-
-document.getElementById(
-habit.key+"Count"
-).innerText =
-rows.length;
-
-summary.push(
-`<li>${habit.label}: ${rows.length}</li>`
-);
-
-const latest =
-rows.sort(
-(a,b)=>
-new Date(b.logged_at)
--
-new Date(a.logged_at)
-)[0];
-
-document.getElementById(
-habit.key+"Last"
-).innerText =
-latest
-?
-new Date(
-latest.logged_at
-).toLocaleTimeString()
-:
-"Never";
-
-}
-
-document.getElementById(
-"summaryList"
-).innerHTML =
-summary.join("");
-
-}
-
-async function saveMood(value){
-
-const today =
-new Date()
-.toISOString()
-.split("T")[0];
-
-const {data}
-=
-await sb
-.from("daily_journal")
-.select("*")
-.eq("user_id",currentUser.id)
-.eq("entry_date",today)
-.limit(1);
-
-if(data.length){
-
-await sb
-.from("daily_journal")
-.update({
-mood:value,
-updated_at:new Date()
-})
-.eq("id",data[0].id);
-
-}else{
-
-await sb
-.from("daily_journal")
-.insert({
-user_id:currentUser.id,
-entry_date:today,
-mood:value
-});
-
-}
-
-await loadJournal();
-
-}
-
-async function saveJournal(){
-
-const text =
-document.getElementById(
-"journalText"
-).value;
-
-const today =
-new Date()
-.toISOString()
-.split("T")[0];
-
-const {data}
-=
-await sb
-.from("daily_journal")
-.select("*")
-.eq("user_id",currentUser.id)
-.eq("entry_date",today)
-.limit(1);
-
-if(data.length){
-
-await sb
-.from("daily_journal")
-.update({
-journal_text:text,
-updated_at:new Date()
-})
-.eq("id",data[0].id);
-
-}else{
-
-await sb
-.from("daily_journal")
-.insert({
-user_id:currentUser.id,
-entry_date:today,
-journal_text:text
-});
-
-}
-
-alert("Journal Saved");
-
-}
-
-async function loadJournal(){
-
-const today =
-new Date()
-.toISOString()
-.split("T")[0];
-
-const {data}
-=
-await sb
-.from("daily_journal")
-.select("*")
-.eq("user_id",currentUser.id)
-.eq("entry_date",today)
-.limit(1);
-
-if(!data.length) return;
-
-const entry =
-data[0];
-
-document.getElementById(
-"journalText"
-).value =
-entry.journal_text || "";
-
-const moods = {
-1:"😢",
-2:"🙁",
-3:"😐",
-4:"🙂",
-5:"😁"
-};
-
-document.getElementById(
-"currentMood"
-).innerHTML =
-`Current Mood: ${moods[entry.mood] || "Not Set"}`;
-
-}
-
-init();
-
-</script>
-
-</body>
-</html>
+let sb;
+let currentUser;</script>
+</div>
