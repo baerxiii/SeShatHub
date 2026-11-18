@@ -126,6 +126,72 @@ button{
 
     </div>
 
+    <div class="card">
+
+    <div class="title">💧 Water</div>
+
+    <div class="counter" id="waterCount">
+        0.00
+    </div>
+
+    <div style="text-align:center;margin-bottom:15px;">
+        Litres
+    </div>
+
+    <div class="controls">
+
+        <button
+            class="plus"
+            onclick="addHabit('water',0.25)">
+            ¼
+        </button>
+
+        <button
+            class="plus"
+            onclick="addHabit('water',0.5)">
+            ½
+        </button>
+
+    </div>
+
+</div>
+
+    <div class="card">
+
+    <div class="title">☕ Coffee</div>
+
+    <div class="counter" id="coffeeCount">
+        0
+    </div>
+
+    <div style="text-align:center;margin-bottom:15px;">
+        Ounces
+    </div>
+
+    <div class="controls">
+
+        <button
+            class="plus"
+            onclick="addHabit('coffee',10)">
+            S
+        </button>
+
+        <button
+            class="plus"
+            onclick="addHabit('coffee',14)">
+            M
+        </button>
+
+        <button
+            class="plus"
+            onclick="addHabit('coffee',20)">
+            L
+        </button>
+
+    </div>
+
+</div>
+
     <div class="summary">
         <h3>Today's Summary</h3>
 
@@ -136,6 +202,16 @@ button{
         <div class="stat">
             Joints: <span id="summaryJoints">0</span>
         </div>
+
+        <div class="stat">
+    Water:
+    <span id="summaryWater">0.00</span> L
+</div>
+
+<div class="stat">
+    Coffee:
+    <span id="summaryCoffee">0</span> oz
+</div>
 
     </div>
 
@@ -176,19 +252,6 @@ async function getUser() {
 
     await loadTotals();
     setupRealtime();
-}
-
-async function addHabit(category){
-
-    await client
-      .from("habit_logs")
-      .insert({
-          user_id: currentUser.id,
-          category: category,
-          quantity: 1
-      });
-
-    loadTotals();
 }
 
 async function removeHabit(category){
@@ -233,17 +296,48 @@ async function loadTotals(){
     const joints =
         data.filter(x => x.category === "joint").length;
 
+    const water =
+    data
+      .filter(x => x.category === "water")
+      .reduce(
+          (sum,row) =>
+          sum + Number(row.quantity),
+          0
+      );
+
+const coffee =
+    data
+      .filter(x => x.category === "coffee")
+      .reduce(
+          (sum,row) =>
+          sum + Number(row.quantity),
+          0
+      );
+
     document.getElementById("cigaretteCount").innerText =
         cigarettes;
 
     document.getElementById("jointCount").innerText =
         joints;
 
+    document.getElementById("waterCount").innerText =
+    water.toFixed(2);
+
+document.getElementById("coffeeCount").innerText =
+    coffee;
+
     document.getElementById("summaryCigs").innerText =
         cigarettes;
 
     document.getElementById("summaryJoints").innerText =
         joints;
+    
+document.getElementById("summaryWater").innerText =
+    water.toFixed(2);
+
+document.getElementById("summaryCoffee").innerText =
+    coffee;
+    
 }
 
 function setupRealtime(){
