@@ -1,24 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 
-<title>Smoking Tracker</title>
+<title>SeShat Habits</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+
 body{
-    background:#121212;
-    color:white;
-    font-family:Arial, sans-serif;
     margin:0;
     padding:20px;
+    font-family:Arial,sans-serif;
+    color:white;
+    background:
+        radial-gradient(circle at top left,#2563eb,#020617 40%),
+        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
 }
 
 .container{
-    max-width:500px;
+    max-width:1100px;
     margin:auto;
 }
 
@@ -28,43 +31,48 @@ body{
 }
 
 .date{
-    color:#9ca3af;
-    font-size:14px;
+    color:#cbd5e1;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:
+        repeat(auto-fit,minmax(280px,1fr));
+    gap:20px;
 }
 
 .card{
-    background:#1f1f1f;
-    border-radius:16px;
-    padding:25px;
-    margin-bottom:20px;
-    box-shadow:0 2px 10px rgba(0,0,0,0.3);
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+    backdrop-filter:blur(24px);
+    border-radius:24px;
+    padding:24px;
 }
 
-.title{
+.card h2{
+    margin-top:0;
     text-align:center;
-    font-size:22px;
-    margin-bottom:15px;
 }
 
 .counter{
     text-align:center;
-    font-size:58px;
+    font-size:56px;
     font-weight:bold;
-    margin:20px 0;
+    margin:15px 0;
 }
 
 .controls{
     display:flex;
     justify-content:center;
-    gap:30px;
+    gap:20px;
 }
 
-button{
-    width:70px;
-    height:70px;
+.controls button{
+    width:60px;
+    height:60px;
     border:none;
     border-radius:50%;
-    font-size:32px;
+    font-size:26px;
     cursor:pointer;
 }
 
@@ -78,193 +86,522 @@ button{
     color:white;
 }
 
-.summary{
-    background:#1f1f1f;
-    padding:20px;
-    border-radius:16px;
+.updated{
+    margin-top:15px;
     text-align:center;
+    color:#cbd5e1;
+    font-size:.85rem;
 }
 
-.stat{
-    margin:10px 0;
+.mood-buttons{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
 }
+
+.mood-buttons button{
+    font-size:2rem;
+    background:none;
+    border:none;
+    cursor:pointer;
+}
+
+textarea{
+    width:100%;
+    min-height:180px;
+    border:none;
+    border-radius:12px;
+    padding:12px;
+    resize:vertical;
+}
+
+.save-btn{
+    margin-top:12px;
+    width:100%;
+    border:none;
+    border-radius:12px;
+    padding:12px;
+    background:#2563eb;
+    color:white;
+    cursor:pointer;
+}
+
+.summary{
+    margin-top:30px;
+}
+
+.summary ul{
+    list-style:none;
+    padding:0;
+}
+
+.summary li{
+    margin:8px 0;
+}
+
+.back-btn{
+    display:inline-block;
+    margin-bottom:20px;
+    text-decoration:none;
+    color:white;
+}
+
 </style>
 </head>
-
 <body>
 
 <div class="container">
 
-    <div class="header">
-        <h1>Smoking Tracker</h1>
-        <div class="date" id="currentDate"></div>
-    </div>
+<a href="index.html" class="back-btn">
+← Back to Dashboard
+</a>
 
-    <div class="card">
+<div class="header">
+    <h1>🜃 SeShat Habits</h1>
+    <div class="date" id="todayDate"></div>
+</div>
 
-        <div class="title">🚬 Cigarettes</div>
+<div class="grid" id="habitGrid"></div>
 
-        <div class="counter" id="cigaretteCount">0</div>
+<div class="card">
 
-        <div class="controls">
-            <button class="minus" onclick="removeHabit('cigarette')">-</button>
-            <button class="plus" onclick="addHabit('cigarette')">+</button>
-        </div>
+    <h2>😊 Mood</h2>
 
-    </div>
+    <div class="mood-buttons">
 
-    <div class="card">
-
-        <div class="title">🌿 Joints</div>
-
-        <div class="counter" id="jointCount">0</div>
-
-        <div class="controls">
-            <button class="minus" onclick="removeHabit('joint')">-</button>
-            <button class="plus" onclick="addHabit('joint')">+</button>
-        </div>
+        <button onclick="saveMood(1)">😢</button>
+        <button onclick="saveMood(2)">🙁</button>
+        <button onclick="saveMood(3)">😐</button>
+        <button onclick="saveMood(4)">🙂</button>
+        <button onclick="saveMood(5)">😁</button>
 
     </div>
 
-    <div class="summary">
-        <h3>Today's Summary</h3>
-
-        <div class="stat">
-            Cigarettes: <span id="summaryCigs">0</span>
-        </div>
-
-        <div class="stat">
-            Joints: <span id="summaryJoints">0</span>
-        </div>
-
+    <div id="currentMood"
+         class="updated">
+         No mood logged
     </div>
+
+</div>
+
+<div class="card">
+
+    <h2>📓 Daily Journal</h2>
+
+    <textarea
+      id="journalText"
+      placeholder="What's on your mind today?">
+    </textarea>
+
+    <button
+      class="save-btn"
+      onclick="saveJournal()">
+
+      Save Journal
+
+    </button>
+
+</div>
+
+<div class="card summary">
+
+    <h2>Today's Summary</h2>
+
+    <ul id="summaryList"></ul>
+
+</div>
 
 </div>
 
 <script>
 
-const SUPABASE_URL = "https://uzbbwvihkfzdbnowhglc.supabase.co";
-const SUPABASE_KEY = "sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf";
+const SUPABASE_URL = "YOUR_SUPABASE_URL";
+const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
 
-const client = supabase.createClient(
+const sb =
+supabase.createClient(
     SUPABASE_URL,
     SUPABASE_KEY
 );
 
 let currentUser = null;
 
-document.getElementById("currentDate").innerText =
-new Date().toLocaleDateString(undefined,{
-    weekday:"long",
-    year:"numeric",
-    month:"long",
-    day:"numeric"
-});
+const habits = [
 
-async function getUser() {
+{
+    key:"cigarette",
+    label:"🚬 Cigarettes"
+},
+{
+    key:"joint",
+    label:"🌿 Joints"
+},
+{
+    key:"water",
+    label:"💧 Water"
+},
+{
+    key:"coffee",
+    label:"☕ Coffee"
+},
+{
+    key:"alcohol",
+    label:"🍺 Alcohol"
+},
+{
+    key:"exercise",
+    label:"🏃 Exercise"
+}
 
-    const {
-        data: { user }
-    } = await client.auth.getUser();
+];
 
-    currentUser = user;
+document.getElementById("todayDate")
+.innerText =
+new Date().toLocaleDateString(
+undefined,
+{
+weekday:"long",
+year:"numeric",
+month:"long",
+day:"numeric"
+}
+);
 
-    if(!currentUser){
-        alert("User not logged in.");
-        return;
-    }
+function habitCard(habit){
 
-    await loadTotals();
-    setupRealtime();
+return `
+<div class="card">
+
+<h2>${habit.label}</h2>
+
+<div
+ class="counter"
+ id="${habit.key}Count">
+
+0
+
+</div>
+
+<div class="controls">
+
+<button
+ class="minus"
+ onclick="removeHabit('${habit.key}')">
+
+-
+
+</button>
+
+<button
+ class="plus"
+ onclick="addHabit('${habit.key}')">
+
++
+
+</button>
+
+</div>
+
+<div
+ class="updated">
+
+Last Updated:
+
+<br>
+
+<span id="${habit.key}Last">
+
+Never
+
+</span>
+
+</div>
+
+</div>
+`;
+
+}
+
+document.getElementById("habitGrid")
+.innerHTML =
+habits.map(habitCard).join("");
+
+async function init(){
+
+const {
+data:{user}
+}
+=
+await sb.auth.getUser();
+
+if(!user){
+
+alert(
+"Please login through SeShat Hub first."
+);
+
+location.href = "index.html";
+
+return;
+}
+
+currentUser = user;
+
+await loadHabits();
+await loadJournal();
+
 }
 
 async function addHabit(category){
 
-    await client
-      .from("habit_logs")
-      .insert({
-          user_id: currentUser.id,
-          category: category,
-          quantity: 1
-      });
+await sb
+.from("habit_logs")
+.insert({
+user_id:currentUser.id,
+category:category,
+quantity:1
+});
 
-    loadTotals();
+await loadHabits();
+
 }
 
 async function removeHabit(category){
 
-    const start = new Date();
-    start.setHours(0,0,0,0);
+const today =
+new Date();
 
-    const { data } = await client
-      .from("habit_logs")
-      .select("*")
-      .eq("user_id", currentUser.id)
-      .eq("category", category)
-      .gte("logged_at", start.toISOString())
-      .order("logged_at", { ascending:false })
-      .limit(1);
+today.setHours(0,0,0,0);
 
-    if(data && data.length){
+const {data}
+=
+await sb
+.from("habit_logs")
+.select("*")
+.eq("user_id",currentUser.id)
+.eq("category",category)
+.gte(
+"logged_at",
+today.toISOString()
+)
+.order(
+"logged_at",
+{ascending:false}
+)
+.limit(1);
 
-        await client
-          .from("habit_logs")
-          .delete()
-          .eq("id", data[0].id);
+if(data.length){
 
-        loadTotals();
-    }
+await sb
+.from("habit_logs")
+.delete()
+.eq("id",data[0].id);
+
 }
 
-async function loadTotals(){
+await loadHabits();
 
-    const start = new Date();
-    start.setHours(0,0,0,0);
-
-    const { data } = await client
-      .from("habit_logs")
-      .select("*")
-      .eq("user_id", currentUser.id)
-      .gte("logged_at", start.toISOString());
-
-    const cigarettes =
-        data.filter(x => x.category === "cigarette").length;
-
-    const joints =
-        data.filter(x => x.category === "joint").length;
-
-    document.getElementById("cigaretteCount").innerText =
-        cigarettes;
-
-    document.getElementById("jointCount").innerText =
-        joints;
-
-    document.getElementById("summaryCigs").innerText =
-        cigarettes;
-
-    document.getElementById("summaryJoints").innerText =
-        joints;
 }
 
-function setupRealtime(){
+async function loadHabits(){
 
-    client
-      .channel("habit_updates")
-      .on(
-          "postgres_changes",
-          {
-              event:"*",
-              schema:"public",
-              table:"habit_logs"
-          },
-          () => {
-              loadTotals();
-          }
-      )
-      .subscribe();
+const today =
+new Date();
+
+today.setHours(0,0,0,0);
+
+const {data}
+=
+await sb
+.from("habit_logs")
+.select("*")
+.eq(
+"user_id",
+currentUser.id
+)
+.gte(
+"logged_at",
+today.toISOString()
+);
+
+const summary = [];
+
+for(const habit of habits){
+
+const rows =
+data.filter(
+x => x.category === habit.key
+);
+
+document.getElementById(
+habit.key+"Count"
+).innerText =
+rows.length;
+
+summary.push(
+`<li>${habit.label}: ${rows.length}</li>`
+);
+
+const latest =
+rows.sort(
+(a,b)=>
+new Date(b.logged_at)
+-
+new Date(a.logged_at)
+)[0];
+
+document.getElementById(
+habit.key+"Last"
+).innerText =
+latest
+?
+new Date(
+latest.logged_at
+).toLocaleTimeString()
+:
+"Never";
+
 }
 
-getUser();
+document.getElementById(
+"summaryList"
+).innerHTML =
+summary.join("");
+
+}
+
+async function saveMood(value){
+
+const today =
+new Date()
+.toISOString()
+.split("T")[0];
+
+const {data}
+=
+await sb
+.from("daily_journal")
+.select("*")
+.eq("user_id",currentUser.id)
+.eq("entry_date",today)
+.limit(1);
+
+if(data.length){
+
+await sb
+.from("daily_journal")
+.update({
+mood:value,
+updated_at:new Date()
+})
+.eq("id",data[0].id);
+
+}else{
+
+await sb
+.from("daily_journal")
+.insert({
+user_id:currentUser.id,
+entry_date:today,
+mood:value
+});
+
+}
+
+await loadJournal();
+
+}
+
+async function saveJournal(){
+
+const text =
+document.getElementById(
+"journalText"
+).value;
+
+const today =
+new Date()
+.toISOString()
+.split("T")[0];
+
+const {data}
+=
+await sb
+.from("daily_journal")
+.select("*")
+.eq("user_id",currentUser.id)
+.eq("entry_date",today)
+.limit(1);
+
+if(data.length){
+
+await sb
+.from("daily_journal")
+.update({
+journal_text:text,
+updated_at:new Date()
+})
+.eq("id",data[0].id);
+
+}else{
+
+await sb
+.from("daily_journal")
+.insert({
+user_id:currentUser.id,
+entry_date:today,
+journal_text:text
+});
+
+}
+
+alert("Journal Saved");
+
+}
+
+async function loadJournal(){
+
+const today =
+new Date()
+.toISOString()
+.split("T")[0];
+
+const {data}
+=
+await sb
+.from("daily_journal")
+.select("*")
+.eq("user_id",currentUser.id)
+.eq("entry_date",today)
+.limit(1);
+
+if(!data.length) return;
+
+const entry =
+data[0];
+
+document.getElementById(
+"journalText"
+).value =
+entry.journal_text || "";
+
+const moods = {
+1:"😢",
+2:"🙁",
+3:"😐",
+4:"🙂",
+5:"😁"
+};
+
+document.getElementById(
+"currentMood"
+).innerHTML =
+`Current Mood: ${moods[entry.mood] || "Not Set"}`;
+
+}
+
+init();
 
 </script>
 
