@@ -340,12 +340,26 @@ start.setHours(
     0,0,0,0
 );
 
+const end =
+    new Date(start);
 
-    const { data } = await client
+end.setDate(
+    end.getDate() + 1
+);
+
+
+   const { data } = await client
       .from("habit_logs")
       .select("*")
       .eq("user_id", currentUser.id)
-      .gte("logged_at", start.toISOString());
+      .gte(
+          "logged_at",
+          start.toISOString()
+      )
+      .lt(
+          "logged_at",
+          end.toISOString()
+      );
 
     const cigarettes =
         data.filter(x => x.category === "cigarette").length;
