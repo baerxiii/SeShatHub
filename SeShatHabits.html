@@ -1,73 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>SeShat Habits</title>
+<title>Smoking Tracker</title>
 
-<script src="seshat-core.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-
 body{
+    background:#121212;
+    color:white;
+    font-family:Arial, sans-serif;
     margin:0;
     padding:20px;
-    font-family:Arial,sans-serif;
-    background:
-        radial-gradient(circle at top left,#2563eb,#020617 40%),
-        radial-gradient(circle at bottom right,#1e293b,#020617 70%);
-    color:white;
 }
 
 .container{
-    max-width:1400px;
+    max-width:500px;
     margin:auto;
 }
 
 .header{
-    margin-bottom:25px;
+    text-align:center;
+    margin-bottom:30px;
 }
 
-.grid{
-    display:grid;
-    grid-template-columns:
-        repeat(auto-fit,minmax(320px,1fr));
-    gap:20px;
+.date{
+    color:#9ca3af;
+    font-size:14px;
 }
 
 .card{
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.12);
-    backdrop-filter:blur(24px);
-    border-radius:24px;
-    padding:24px;
+    background:#1f1f1f;
+    border-radius:16px;
+    padding:25px;
+    margin-bottom:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.3);
 }
 
-.card h2{
-    margin-top:0;
+.title{
+    text-align:center;
+    font-size:22px;
+    margin-bottom:15px;
 }
 
 .counter{
-    font-size:3rem;
     text-align:center;
-    margin:20px 0;
+    font-size:58px;
     font-weight:bold;
+    margin:20px 0;
 }
 
 .controls{
     display:flex;
     justify-content:center;
-    flex-wrap:wrap;
-    gap:10px;
+    gap:30px;
 }
 
 button{
+    width:70px;
+    height:70px;
     border:none;
-    border-radius:12px;
-    padding:10px 16px;
+    border-radius:50%;
+    font-size:32px;
     cursor:pointer;
 }
 
@@ -81,610 +78,195 @@ button{
     color:white;
 }
 
-.action{
-    background:#2563eb;
-    color:white;
-}
-
-select,
-input,
-textarea{
-    width:100%;
-    padding:10px;
-    border:none;
-    border-radius:12px;
-    margin-top:10px;
-    box-sizing:border-box;
-}
-
-textarea{
-    min-height:200px;
-}
-
-.updated{
-    margin-top:15px;
-    font-size:.85rem;
-    color:#cbd5e1;
-}
-
 .summary{
-    margin-top:25px;
+    background:#1f1f1f;
+    padding:20px;
+    border-radius:16px;
+    text-align:center;
 }
 
-.summary ul{
-    list-style:none;
-    padding:0;
+.stat{
+    margin:10px 0;
 }
-
-.summary li{
-    margin:8px 0;
-}
-
 </style>
-
 </head>
 
 <body>
 
 <div class="container">
 
-<div class="header">
+    <div class="header">
+        <h1>Smoking Tracker</h1>
+        <div class="date" id="currentDate"></div>
+    </div>
 
-    <h1>🜃 SeShat Habits</h1>
+    <div class="card">
 
-    <p id="todayDate"></p>
+        <div class="title">🚬 Cigarettes</div>
 
-</div>
+        <div class="counter" id="cigaretteCount">0</div>
 
-<div class="grid">
-
-<!-- CIGARETTES -->
-
-<div class="card">
-
-    <h2>🚬 Cigarettes</h2>
-
-    <div class="counter"
-         id="cigaretteCount">0</div>
-
-    <div class="controls">
-
-        <button
-            class="minus"
-            onclick="removeHabit('cigarette')">
-            -
-        </button>
-
-        <button
-            class="plus"
-            onclick="addHabit('cigarette',1)">
-            +
-        </button>
+        <div class="controls">
+            <button class="minus" onclick="removeHabit('cigarette')">-</button>
+            <button class="plus" onclick="addHabit('cigarette')">+</button>
+        </div>
 
     </div>
 
-    <div class="updated">
+    <div class="card">
 
-        Last Updated:
+        <div class="title">🌿 Joints</div>
 
-        <span id="cigaretteLast">
-            Never
-        </span>
+        <div class="counter" id="jointCount">0</div>
 
-    </div>
-
-</div>
-
-<!-- JOINTS -->
-
-<div class="card">
-
-    <h2>🌿 Joints</h2>
-
-    <div class="counter"
-         id="jointCount">0</div>
-
-    <div class="controls">
-
-        <button
-            class="minus"
-            onclick="removeHabit('joint')">
-            -
-        </button>
-
-        <button
-            class="plus"
-            onclick="addHabit('joint',1)">
-            +
-        </button>
+        <div class="controls">
+            <button class="minus" onclick="removeHabit('joint')">-</button>
+            <button class="plus" onclick="addHabit('joint')">+</button>
+        </div>
 
     </div>
 
-    <div class="updated">
+    <div class="summary">
+        <h3>Today's Summary</h3>
 
-        Last Updated:
+        <div class="stat">
+            Cigarettes: <span id="summaryCigs">0</span>
+        </div>
 
-        <span id="jointLast">
-            Never
-        </span>
+        <div class="stat">
+            Joints: <span id="summaryJoints">0</span>
+        </div>
 
     </div>
 
 </div>
 
-<!-- WATER -->
-
-<div class="card">
-
-    <h2>💧 Water</h2>
-
-    <div class="counter"
-         id="waterCount">
-
-         0.00 L
-
-    </div>
-
-    <div class="controls">
-
-        <button
-            class="action"
-            onclick="addHabit('water',0.25)">
-            +250ml
-        </button>
-
-        <button
-            class="action"
-            onclick="addHabit('water',0.5)">
-            +500ml
-        </button>
-
-    </div>
-
-    <div class="updated">
-
-        Last Updated:
-
-        <span id="waterLast">
-            Never
-        </span>
-
-    </div>
-
-</div>
-
-<!-- COFFEE -->
-
-<div class="card">
-
-    <h2>☕ Coffee</h2>
-
-    <div class="counter"
-         id="coffeeCount">
-
-         0 oz
-
-    </div>
-
-    <div class="controls">
-
-        <button class="action"
-          onclick="addHabit('coffee',10)">
-          Small
-        </button>
-
-        <button class="action"
-          onclick="addHabit('coffee',14)">
-          Medium
-        </button>
-
-        <button class="action"
-          onclick="addHabit('coffee',20)">
-          Large
-        </button>
-
-        <button class="action"
-          onclick="addHabit('coffee',24)">
-          XL
-        </button>
-
-    </div>
-
-    <div class="updated">
-
-        Last Updated:
-
-        <span id="coffeeLast">
-            Never
-        </span>
-
-    </div>
-
-</div>
-
-<!-- ALCOHOL -->
-
-<div class="card">
-
-    <h2>🍺 Alcohol</h2>
-
-    <select id="alcoholType">
-
-        <option>Beer</option>
-        <option>Wine</option>
-        <option>Cooler</option>
-        <option>Spirits</option>
-        <option>Cocktail</option>
-
-    </select>
-
-    <button
-      class="action"
-      onclick="logAlcohol()">
-
-      Add Drink
-
-    </button>
-
-</div>
-
-<!-- EXERCISE -->
-
-<div class="card">
-
-    <h2>🏃 Exercise</h2>
-
-    <select id="exerciseType">
-
-        <option>Walking</option>
-        <option>Running</option>
-        <option>Cycling</option>
-        <option>Hiking</option>
-        <option>Weight Training</option>
-        <option>Yoga</option>
-        <option>Stretching</option>
-        <option>Other</option>
-
-    </select>
-
-    <input
-        id="exerciseNotes"
-        placeholder="Optional details">
-
-    <select id="exerciseMinutes">
-
-        <option value="15">15 Minutes</option>
-        <option value="30">30 Minutes</option>
-        <option value="45">45 Minutes</option>
-        <option value="60">60 Minutes</option>
-        <option value="90">90 Minutes</option>
-
-    </select>
-
-    <button
-        class="action"
-        onclick="logExercise()">
-
-        Log Exercise
-
-    </button>
-
-</div>
-
-</div>
-
-<!-- MOOD -->
-
-<div class="card summary">
-
-<h2>😊 Mood</h2>
-
-<div class="controls">
-
-<button onclick="saveMood(1)">😢</button>
-<button onclick="saveMood(2)">🙁</button>
-<button onclick="saveMood(3)">😐</button>
-<button onclick="saveMood(4)">🙂</button>
-<button onclick="saveMood(5)">😁</button>
-
-</div>
-
-<p id="currentMood">
-No mood recorded.
-</p>
-
-</div>
-
-<!-- JOURNAL -->
-
-<div class="card summary">
-
-<h2>📓 Journal</h2>
-
-<textarea
- id="journalText"
- placeholder="How was your day?">
-</textarea>
-
-<button
- class="action"
- onclick="saveJournal()">
-
- Save Journal
-
-</button>
-
-</div>
-
-<!-- SUMMARY -->
-
-<div class="card summary">
-
-<h2>📊 Today's Summary</h2>
-
-<ul id="summaryList">
-
-<li>Loading...</li>
-
-</ul>
-
-</div>
-<script>function getSB(){
-    return window.seshat?.supabase;
-}
-
-let sb;
-let currentUser;</script>
-
-      <script>
-
-function getSB(){
-    return window.seshat?.supabase;
-}
-
-let sb;
-let currentUser;
-
-window.addEventListener("load", async () => {
-
-    sb = getSB();
-
-    if(!sb){
-        alert("Supabase unavailable");
-        return;
-    }
+<script>
+
+const SUPABASE_URL = "https://uzbbwvihkfzdbnowhglc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf";
+
+const client = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+let currentUser = null;
+
+document.getElementById("currentDate").innerText =
+new Date().toLocaleDateString(undefined,{
+    weekday:"long",
+    year:"numeric",
+    month:"long",
+    day:"numeric"
+});
+
+async function getUser() {
 
     const {
-        data:{user}
-    } = await sb.auth.getUser();
-
-    if(!user){
-
-        alert("Please login first");
-
-        location.href="index.html";
-
-        return;
-    }
+        data: { user }
+    } = await client.auth.getUser();
 
     currentUser = user;
 
-    document.getElementById(
-        "todayDate"
-    ).innerText =
-    new Date().toLocaleDateString(
-        undefined,
-        {
-            weekday:"long",
-            year:"numeric",
-            month:"long",
-            day:"numeric"
-        }
-    );
-
-    await loadHabits();
-
-});
-
-async function addHabit(category, quantity){
-
-    const { error } =
-    await sb
-    .from("habit_logs")
-    .insert({
-        user_id: currentUser.id,
-        category: category,
-        quantity: quantity
-    });
-
-    if(error){
-
-        console.error(error);
+    if(!currentUser){
+        alert("User not logged in.");
         return;
-
     }
 
-    await loadHabits();
+    await loadTotals();
+    setupRealtime();
+}
 
+async function addHabit(category){
+
+    await client
+      .from("habit_logs")
+      .insert({
+          user_id: currentUser.id,
+          category: category,
+          quantity: 1
+      });
+
+    loadTotals();
 }
 
 async function removeHabit(category){
 
-    const startOfDay = new Date();
+    const start = new Date();
+    start.setHours(0,0,0,0);
 
-    startOfDay.setHours(
-        0,0,0,0
-    );
+    const { data } = await client
+      .from("habit_logs")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .eq("category", category)
+      .gte("logged_at", start.toISOString())
+      .order("logged_at", { ascending:false })
+      .limit(1);
 
-    const { data,error } =
-    await sb
-    .from("habit_logs")
-    .select("*")
-    .eq(
-        "user_id",
-        currentUser.id
-    )
-    .eq(
-        "category",
-        category
-    )
-    .gte(
-        "logged_at",
-        startOfDay.toISOString()
-    )
-    .order(
-        "logged_at",
-        {
-            ascending:false
-        }
-    )
-    .limit(1);
+    if(data && data.length){
 
-    if(error){
+        await client
+          .from("habit_logs")
+          .delete()
+          .eq("id", data[0].id);
 
-        console.error(error);
-        return;
-
+        loadTotals();
     }
-
-    if(!data.length){
-        return;
-    }
-
-    await sb
-    .from("habit_logs")
-    .delete()
-    .eq(
-        "id",
-        data[0].id
-    );
-
-    await loadHabits();
-
 }
 
-async function loadHabits(){
+async function loadTotals(){
 
-    const startOfDay =
-    new Date();
+    const start = new Date();
+    start.setHours(0,0,0,0);
 
-    startOfDay.setHours(
-        0,0,0,0
-    );
-
-    const { data,error } =
-    await sb
-    .from("habit_logs")
-    .select("*")
-    .eq(
-        "user_id",
-        currentUser.id
-    )
-    .gte(
-        "logged_at",
-        startOfDay.toISOString()
-    );
-
-    if(error){
-
-        console.error(error);
-        return;
-
-    }
+    const { data } = await client
+      .from("habit_logs")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .gte("logged_at", start.toISOString());
 
     const cigarettes =
-    data.filter(
-        x =>
-        x.category ===
-        "cigarette"
-    );
+        data.filter(x => x.category === "cigarette").length;
 
     const joints =
-    data.filter(
-        x =>
-        x.category ===
-        "joint"
-    );
+        data.filter(x => x.category === "joint").length;
 
-    document
-    .getElementById(
-        "cigaretteCount"
-    )
-    .innerText =
-    cigarettes.length;
+    document.getElementById("cigaretteCount").innerText =
+        cigarettes;
 
-    document
-    .getElementById(
-        "jointCount"
-    )
-    .innerText =
-    joints.length;
+    document.getElementById("jointCount").innerText =
+        joints;
 
-    const latestCig =
-    cigarettes.sort(
-        (a,b)=>
-        new Date(
-            b.logged_at
-        )-
-        new Date(
-            a.logged_at
-        )
-    )[0];
+    document.getElementById("summaryCigs").innerText =
+        cigarettes;
 
-    const latestJoint =
-    joints.sort(
-        (a,b)=>
-        new Date(
-            b.logged_at
-        )-
-        new Date(
-            a.logged_at
-        )
-    )[0];
-
-    document
-    .getElementById(
-        "cigaretteLast"
-    )
-    .innerText =
-    latestCig
-    ?
-    new Date(
-        latestCig.logged_at
-    ).toLocaleTimeString()
-    :
-    "Never";
-
-    document
-    .getElementById(
-        "jointLast"
-    )
-    .innerText =
-    latestJoint
-    ?
-    new Date(
-        latestJoint.logged_at
-    ).toLocaleTimeString()
-    :
-    "Never";
-
-    document
-    .getElementById(
-        "summaryList"
-    )
-    .innerHTML = `
-        <li>
-            🚬 Cigarettes:
-            ${cigarettes.length}
-        </li>
-
-        <li>
-            🌿 Joints:
-            ${joints.length}
-        </li>
-    `;
-
+    document.getElementById("summaryJoints").innerText =
+        joints;
 }
 
+function setupRealtime(){
+
+    client
+      .channel("habit_updates")
+      .on(
+          "postgres_changes",
+          {
+              event:"*",
+              schema:"public",
+              table:"habit_logs"
+          },
+          () => {
+              loadTotals();
+          }
+      )
+      .subscribe();
+}
+
+getUser();
+
 </script>
-</div>
+
+</body>
+</html>
