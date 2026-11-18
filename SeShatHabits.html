@@ -96,6 +96,24 @@ button{
 <div class="container">
 
     <div class="header">
+        <div style="margin-bottom:15px;">
+
+    <a
+        href="index.html"
+        style="
+            color:white;
+            text-decoration:none;
+            background:#374151;
+            padding:10px 15px;
+            border-radius:10px;
+            display:inline-block;
+        ">
+
+        ← Back to Dashboard
+
+    </a>
+
+</div>
         <h1>Smoking Tracker</h1>
         <div class="date" id="currentDate"></div>
     </div>
@@ -192,6 +210,25 @@ button{
 
 </div>
 
+<div class="card">
+
+    <div class="title">
+        📅 Day Selector
+    </div>
+
+    <input
+        type="date"
+        id="selectedDate"
+        style="
+            width:100%;
+            padding:10px;
+            border-radius:10px;
+            margin-top:10px;
+        "
+    >
+
+</div>
+    
     <div class="summary">
         <h3>Today's Summary</h3>
 
@@ -292,10 +329,17 @@ async function removeHabit(category){
     }
 }
 
-async function loadTotals(){
+async function loadTotals(selectedDate = null){
 
-    const start = new Date();
-    start.setHours(0,0,0,0);
+    const start =
+    selectedDate
+    ? new Date(selectedDate)
+    : new Date();
+
+start.setHours(
+    0,0,0,0
+);
+
 
     const { data } = await client
       .from("habit_logs")
@@ -370,6 +414,21 @@ function setupRealtime(){
       )
       .subscribe();
 }
+
+    document
+.getElementById(
+    "selectedDate"
+)
+.addEventListener(
+    "change",
+    function(){
+
+        loadTotals(
+            this.value
+        );
+
+    }
+);
 
 getUser();
 
