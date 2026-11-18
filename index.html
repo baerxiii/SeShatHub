@@ -404,6 +404,38 @@ body{
     <small>Today</small>
 </div>
 
+    <div class="stat-card">
+
+    <span>
+        💧 Water
+    </span>
+
+    <h2 id="waterCount">
+        0
+    </h2>
+
+    <small>
+        Litres Today
+    </small>
+
+        <div class="stat-card">
+
+    <span>☕ Coffee</span>
+
+    <h2 id="coffeeCount">
+        0
+    </h2>
+
+    <small>
+        Ounces Today
+    </small>
+
+</div>
+
+</div>
+
+    
+
 </section>
 
 <h2 class="section-title">🜃 SeShat Applications</h2>
@@ -815,6 +847,54 @@ async function loadDashboardStats(){
         "eventCount"
     ).innerText =
         events.count || 0;
+
+    const water =
+    await sb
+    .from("habit_logs")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("category", "water")
+    .gte(
+        "logged_at",
+        today + "T00:00:00"
+    );
+
+const waterTotal =
+    water.data
+    ?.reduce(
+        (sum,row) =>
+        sum + Number(row.quantity),
+        0
+    ) || 0;
+
+document.getElementById(
+    "waterCount"
+).innerText =
+    waterTotal.toFixed(2);
+
+    const coffee =
+    await sb
+    .from("habit_logs")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("category", "coffee")
+    .gte(
+        "logged_at",
+        today + "T00:00:00"
+    );
+
+const coffeeTotal =
+    coffee.data
+    ?.reduce(
+        (sum,row) =>
+        sum + Number(row.quantity),
+        0
+    ) || 0;
+
+document.getElementById(
+    "coffeeCount"
+).innerText =
+    coffeeTotal;
 
     const startOfDay = new Date();
 startOfDay.setHours(0,0,0,0);
