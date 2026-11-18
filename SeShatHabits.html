@@ -249,6 +249,10 @@ async function getUser() {
         alert("User not logged in.");
         return;
     }
+   
+    await loadTotals();
+    setupRealtime();
+}
 
     async function addHabit(category, quantity = 1){
 
@@ -260,11 +264,7 @@ async function getUser() {
           quantity: quantity
       });
 
-    loadTotals();
-}
-
     await loadTotals();
-    setupRealtime();
 }
 
 async function removeHabit(category){
