@@ -848,80 +848,40 @@ async function loadDashboardStats(){
     ).innerText =
         events.count || 0;
 
-    const water =
-    await sb
-    .from("habit_logs")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("category", "water")
-    .gte(
-        "logged_at",
-        today + "T00:00:00"
-    );
+const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
-const waterTotal =
-    water.data
-    ?.reduce(
-        (sum,row) =>
-        sum + Number(row.quantity),
-        0
-    ) || 0;
+    const { data: habits, error: habitError } = await sb
+        .from("habit_logs")
+        .select("category, quantity")
+        .eq("user_id", user.id)
+        .gte("logged_at", startOfDay.toISOString());
 
-document.getElementById(
-    "waterCount"
-).innerText =
-    waterTotal.toFixed(2);
+    if (habitError) {
+        console.error("Habit logs error:", habitError);
+        return;
+    }
 
-    const coffee =
-    await sb
-    .from("habit_logs")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("category", "coffee")
-    .gte(
-        "logged_at",
-        today + "T00:00:00"
-    );
+    const waterTotal = habits
+        ?.filter(h => h.category?.toLowerCase() === "water")
+        .reduce((sum, row) => sum + (Number(row.quantity) || 0), 0) || 0;
 
-const coffeeTotal =
-    coffee.data
-    ?.reduce(
-        (sum,row) =>
-        sum + Number(row.quantity),
-        0
-    ) || 0;
+    const coffeeTotal = habits
+        ?.filter(h => h.category?.toLowerCase() === "coffee")
+        .reduce((sum, row) => sum + (Number(row.quantity) || 0), 0) || 0;
 
-document.getElementById(
-    "coffeeCount"
-).innerText =
-    coffeeTotal;
+    const cigarettes = habits
+        ?.filter(h => h.category?.toLowerCase() === "cigarette").length || 0;
 
-    const startOfDay = new Date();
-startOfDay.setHours(0,0,0,0);
+    const joints = habits
+        ?.filter(h => h.category?.toLowerCase() === "joint").length || 0;
 
-const { data: habits } = await sb
-    .from("habit_logs")
-    .select("category")
-    .eq("user_id", user.id)
-    .gte("logged_at", startOfDay.toISOString());
+    document.getElementById("waterCount").innerText = waterTotal.toFixed(2);
+    document.getElementById("coffeeCount").innerText = coffeeTotal;
+    document.getElementById("cigaretteCount").innerText = cigarettes;
+    document.getElementById("jointCount").innerText = joints;
 
-const cigarettes =
-    habits?.filter(
-        h => h.category === "cigarette"
-    ).length || 0;
-
-const joints =
-    habits?.filter(
-        h => h.category === "joint"
-    ).length || 0;
-
-document.getElementById(
-    "cigaretteCount"
-).innerText = cigarettes;
-
-document.getElementById(
-    "jointCount"
-).innerText = joints;
+    
 }    
 
 window.addEventListener("load", () => {
