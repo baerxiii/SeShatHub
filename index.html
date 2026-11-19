@@ -305,6 +305,9 @@ body {
 }
 
 .stat-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
     padding: 20px 22px;
     border-radius: 20px;
     background: var(--surface);
@@ -338,6 +341,40 @@ body {
 .stat-card small {
     font-size: 0.8rem;
     color: #94a3b8;
+}
+
+.stat-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.mini-log-btn {
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(125, 211, 252, 0.38);
+    background: rgba(56, 189, 248, 0.16);
+    color: #e0f2fe;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+}
+
+.mini-log-btn:hover,
+.mini-log-btn:focus-visible {
+    background: var(--accent-strong);
+    border-color: var(--accent);
+    color: white;
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.mini-log-btn:disabled {
+    opacity: 0.65;
+    cursor: default;
+    transform: none;
 }
 
 /* SECTIONS & APPS */
@@ -574,24 +611,38 @@ body {
         <span>🚬 Cigarettes</span>
         <h2 id="cigaretteCount">0</h2>
         <small>Today</small>
+        <div class="stat-actions">
+            <button type="button" class="mini-log-btn" onclick="quickLogHabit('cigarette', 1, this)">+1</button>
+        </div>
     </div>
 
     <div class="stat-card">
         <span>🌿 Joints</span>
         <h2 id="jointCount">0</h2>
         <small>Today</small>
+        <div class="stat-actions">
+            <button type="button" class="mini-log-btn" onclick="quickLogHabit('joint', 1, this)">+1</button>
+        </div>
     </div>
 
     <div class="stat-card">
         <span>💧 Water</span>
         <h2 id="waterCount">0</h2>
         <small>Litres Today</small>
+        <div class="stat-actions">
+            <button type="button" class="mini-log-btn" onclick="quickLogHabit('water', 0.25, this)">+0.25 L</button>
+            <button type="button" class="mini-log-btn" onclick="quickLogHabit('water', 0.5, this)">+0.5 L</button>
+        </div>
     </div>
 
     <div class="stat-card">
         <span>☕ Coffee</span>
         <h2 id="coffeeCount">0</h2>
         <small>Ounces Today</small>
+        <div class="stat-actions">
+            <button type="button" class="mini-log-btn" onclick="quickLogHabit('coffee', 8, this)">+8 oz</button>
+            <button type="button" class="mini-log-btn" onclick="quickLogHabit('coffee', 12, this)">+12 oz</button>
+        </div>
     </div>
 
 </section>
@@ -885,15 +936,15 @@ async function showDashboard(){
 
     if(user){
 
-    document.getElementById("userEmail")
-        .innerText = user.email;
+        document.getElementById("userEmail")
+            .innerText = user.email;
 
-    document.getElementById("greeting")
-        .innerText =
-        "Welcome, " + user.email;
+        document.getElementById("greeting")
+            .innerText =
+            "Welcome, " + user.email;
 
-    loadDashboardStats();
-}
+        loadDashboardStats();
+    }
 }
 
 async function checkSession(){
@@ -911,6 +962,54 @@ async function checkSession(){
 
     if(session){
         showDashboard();
+    }
+}
+
+async function quickLogHabit(category, quantity, buttonEl){
+
+    const sb = getSB();
+    if(!sb) return;
+
+    const {
+        data:{user}
+    } = await sb.auth.getUser();
+
+    if(!user) return;
+
+    const originalLabel = buttonEl ? buttonEl.innerText : "";
+    if(buttonEl){
+        buttonEl.disabled = true;
+        buttonEl.innerText = "✓";
+    }
+
+    const { error } = await sb
+        .from("habit_logs")
+        .insert({
+            user_id: user.id,
+            category: category,
+            quantity: quantity,
+            logged_at: new Date().toISOString()
+        });
+
+    if(error){
+        console.error("Quick log error:", error);
+        if(buttonEl){
+            buttonEl.innerText = "Error";
+            setTimeout(() => {
+                buttonEl.innerText = originalLabel;
+                buttonEl.disabled = false;
+            }, 1200);
+        }
+        return;
+    }
+
+    await loadDashboardStats();
+
+    if(buttonEl){
+        setTimeout(() => {
+            buttonEl.innerText = originalLabel;
+            buttonEl.disabled = false;
+        }, 500);
     }
 }
 
@@ -1034,6 +1133,12 @@ async function loadDashboardStats(){
 
 window.addEventListener("load", () => {
     checkSession();
+});
+
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        loadDashboardStats();
+    }
 });
 
 </script>
