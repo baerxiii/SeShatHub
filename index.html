@@ -12,7 +12,7 @@
 :root {
     --bg-base: #0f172a;
     --surface: rgba(30, 41, 59, 0.72);
-    --surface-hover: rgba(51, 65, 85, 0.85);
+    --surface-hover: rgba(51, 65, 85, 0.88);
     --border: rgba(255, 255, 255, 0.15);
     --border-hover: rgba(125, 211, 252, 0.65);
     --text-main: #f8fafc;
@@ -22,7 +22,13 @@
     --accent-soft: rgba(56, 189, 248, 0.18);
 }
 
-* {
+html {
+    scroll-behavior: smooth;
+}
+
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -132,7 +138,7 @@ body {
 
 .container {
     display: none;
-    padding: 28px 24px 56px;
+    padding: 28px 24px 64px;
 }
 
 .dashboard {
@@ -145,7 +151,7 @@ body {
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
     padding-bottom: 20px;
     border-bottom: 1px solid var(--border);
 }
@@ -223,12 +229,17 @@ body {
 }
 
 .hero-card {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.34), rgba(14, 165, 233, 0.16), rgba(30, 41, 59, 0.78));
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.36), rgba(14, 165, 233, 0.18), rgba(30, 41, 59, 0.82));
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(125, 211, 252, 0.35);
+    border: 1px solid rgba(125, 211, 252, 0.38);
     border-radius: 24px;
-    padding: 28px 32px;
+    padding: 26px 32px;
     box-shadow: 0 12px 32px rgba(15, 23, 42, 0.35);
 }
 
@@ -240,7 +251,26 @@ body {
 
 .hero-card p {
     color: var(--text-muted);
-    font-size: 0.98rem;
+    font-size: 0.96rem;
+}
+
+.hero-meta {
+    text-align: right;
+    min-width: 200px;
+}
+
+.hero-clock {
+    font-size: 1.45rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: #e0f2fe;
+}
+
+.hero-date {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-top: 2px;
 }
 
 /* PANELS & QUICK ACTIONS */
@@ -263,24 +293,48 @@ body {
     margin-bottom: 28px;
 }
 
-.quick-actions-panel h2 {
+.quick-actions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
     margin-bottom: 14px;
+}
+
+.quick-actions-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.quick-actions-group + .quick-actions-group {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.quick-group-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    margin-right: 4px;
 }
 
 .quick-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 16px;
-    margin-top: 0;
-    margin-right: 8px;
-    margin-bottom: 8px;
+    padding: 9px 15px;
     border: 1px solid rgba(125, 211, 252, 0.38);
     border-radius: 999px;
     cursor: pointer;
     background: var(--accent-soft);
     color: #e0f2fe;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     font-weight: 600;
     text-decoration: none;
     transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
@@ -295,6 +349,19 @@ body {
     outline: none;
 }
 
+.jump-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: var(--text-main);
+}
+
+.jump-btn:hover,
+.jump-btn:focus-visible {
+    background: rgba(56, 189, 248, 0.24);
+    border-color: var(--border-hover);
+    color: #f0f9ff;
+}
+
 /* STATS GRID */
 
 .stats-grid {
@@ -302,6 +369,7 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
     gap: 16px;
     margin-bottom: 40px;
+    scroll-margin-top: 24px;
 }
 
 .stat-card {
@@ -314,13 +382,17 @@ body {
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border);
+    text-decoration: none;
+    color: inherit;
     transition: border-color 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
 }
 
-.stat-card:hover {
+.stat-card:hover,
+.stat-card:focus-visible {
     background: var(--surface-hover);
-    border-color: rgba(125, 211, 252, 0.35);
+    border-color: rgba(125, 211, 252, 0.45);
     transform: translateY(-2px);
+    outline: none;
 }
 
 .stat-card > span {
@@ -377,17 +449,114 @@ body {
     transform: none;
 }
 
-/* SECTIONS & APPS */
+/* SECTIONS & APP SEARCH BAR */
+
+.apps-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 24px;
+}
 
 .section-title {
     font-size: 1.35rem;
     font-weight: 700;
     letter-spacing: -0.02em;
-    margin-bottom: 20px;
+    scroll-margin-top: 24px;
+}
+
+.app-search-wrap {
+    position: relative;
+    flex: 1 1 300px;
+    max-width: 420px;
+}
+
+.app-search-input {
+    width: 100%;
+    padding: 11px 68px 11px 38px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    color: var(--text-main);
+    font-size: 0.92rem;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.app-search-input::placeholder {
+    color: #94a3b8;
+}
+
+.app-search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    background: rgba(15, 23, 42, 0.92);
+}
+
+.app-search-icon {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9rem;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.app-search-kbd {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    pointer-events: none;
+}
+
+.app-search-clear {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: none;
+    border: none;
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--text-main);
+    border-radius: 999px;
+    width: 22px;
+    height: 22px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.app-search-clear:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.empty-search-state {
+    display: none;
+    text-align: center;
+    padding: 36px 20px;
+    margin-bottom: 28px;
+    border-radius: 20px;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
 }
 
 .category-section {
     margin-bottom: 36px;
+    scroll-margin-top: 24px;
 }
 
 .category-title {
@@ -406,6 +575,7 @@ body {
 }
 
 .app-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     text-decoration: none;
@@ -428,6 +598,21 @@ body {
     outline: none;
 }
 
+.app-card[target="_blank"]::after {
+    content: "↗";
+    position: absolute;
+    top: 18px;
+    right: 20px;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.app-card[target="_blank"]:hover::after {
+    color: var(--accent);
+    transform: translate(2px, -2px);
+}
+
 .icon {
     font-size: 1.65rem;
     line-height: 1;
@@ -446,10 +631,11 @@ body {
     color: var(--text-muted);
 }
 
-/* BOTTOM ACTIVITY */
+/* BOTTOM ACTIVITY & FOOTER */
 
 .bottom-grid {
     margin-top: 36px;
+    scroll-margin-top: 24px;
 }
 
 .activity-list {
@@ -463,9 +649,35 @@ body {
     margin-top: 6px;
 }
 
+.hub-footer {
+    margin-top: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.back-top-btn {
+    color: #bae6fd;
+    text-decoration: none;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--border);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.back-top-btn:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: var(--border-hover);
+}
+
 @media (max-width: 768px) {
     .container {
-        padding: 20px 16px 44px;
+        padding: 20px 16px 48px;
     }
 
     .topbar {
@@ -477,14 +689,22 @@ body {
         padding: 22px;
     }
 
+    .hero-meta {
+        text-align: left;
+    }
+
     .stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
     }
+
+    .app-search-wrap {
+        max-width: 100%;
+    }
 }
 </style>
 </head>
-<body>
+<body id="top">
 
 <!-- LOGIN -->
 
@@ -548,64 +768,85 @@ body {
 <section class="hero">
 
     <div class="hero-card">
-        <h2>Welcome to SeShat Hub</h2>
-        <p>
-            Your personal productivity and life
-            management platform.
-        </p>
+        <div>
+            <h2>Welcome to SeShat Hub</h2>
+            <p id="heroSummary">
+                Your personal productivity and life management platform.
+            </p>
+        </div>
+        <div class="hero-meta">
+            <div id="heroClock" class="hero-clock">--:--</div>
+            <div id="heroDate" class="hero-date">Loading date...</div>
+        </div>
     </div>
 
 </section>
 
 <section class="panel quick-actions-panel">
 
-    <h2>⚡ Quick Actions</h2>
+    <div class="quick-actions-header">
+        <h2>⚡ Quick Actions</h2>
+    </div>
 
-    <a class="quick-btn" href="tasks.html#create-task">+ Task</a>
-    <a class="quick-btn" href="notes.html#create-note">+ Note</a>
-    <a class="quick-btn" href="passwordvault.html#add-password">+ Password</a>
-    <a class="quick-btn" href="calendar.html#create-event">+ Event</a>
-    <a class="quick-btn" href="ebook-reader.html">📚 SeShat Reader</a>
+    <div class="quick-actions-group">
+        <span class="quick-group-label">Create &amp; Open</span>
+        <a class="quick-btn" href="tasks.html#create-task">+ Task</a>
+        <a class="quick-btn" href="notes.html#create-note">+ Note</a>
+        <a class="quick-btn" href="passwordvault.html#add-password">+ Password</a>
+        <a class="quick-btn" href="calendar.html#create-event">+ Event</a>
+        <a class="quick-btn" href="SeShatHabits.html">🚬 Habits</a>
+        <a class="quick-btn" href="ebook-reader.html">📚 SeShat Reader</a>
+    </div>
+
+    <div class="quick-actions-group">
+        <span class="quick-group-label">Jump To</span>
+        <a class="quick-btn jump-btn" href="#section-stats">📊 Stats</a>
+        <a class="quick-btn jump-btn" href="#section-core">🜃 Core</a>
+        <a class="quick-btn jump-btn" href="#section-finance">💰 Finance</a>
+        <a class="quick-btn jump-btn" href="#section-home-life">🏠 Home &amp; Life</a>
+        <a class="quick-btn jump-btn" href="#section-media">🎧 Media &amp; Utilities</a>
+        <a class="quick-btn jump-btn" href="#section-activity">📋 Activity</a>
+    </div>
 
 </section>
 
-<section class="stats-grid">
+<section id="section-stats" class="stats-grid">
 
-    <div class="stat-card">
+    <a href="tasks.html" class="stat-card">
         <span>✅ Open Tasks</span>
         <h2 id="taskCount">0</h2>
         <small>Pending Tasks</small>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="calendar.html" class="stat-card">
         <span>📅 Upcoming Events</span>
         <h2 id="eventCount">0</h2>
         <small>Future Events</small>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="notes.html" class="stat-card">
         <span>📝 Notes</span>
         <h2 id="noteCount">0</h2>
         <small>Saved Notes</small>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="passwordvault.html" class="stat-card">
         <span>🔐 Passwords</span>
         <h2 id="passwordCount">0</h2>
         <small>Stored Credentials</small>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="documentvault.html" class="stat-card">
         <span>📂 Documents</span>
         <h2 id="documentCount">0</h2>
         <small>Uploaded Documents</small>
-    </div>
+    </a>
 
-    <div class="stat-card">
+    <a href="homemaintenance.html" class="stat-card">
         <span>🏠 Maintenance</span>
         <h2 id="maintenanceCount">0</h2>
         <small>Maintenance Items</small>
-    </div>
+    </a>
 
     <div class="stat-card">
         <span>🚬 Cigarettes</span>
@@ -647,9 +888,28 @@ body {
 
 </section>
 
-<h2 class="section-title">🜃 SeShat Applications</h2>
+<div class="apps-header">
+    <h2 class="section-title">🜃 SeShat Applications</h2>
 
-<section class="category-section">
+    <div class="app-search-wrap">
+        <span class="app-search-icon">🔍</span>
+        <input
+            type="text"
+            id="appSearchInput"
+            class="app-search-input"
+            placeholder="Filter apps (e.g. radio, recipes, vault)..."
+            aria-label="Filter applications"
+        >
+        <span id="appSearchKbd" class="app-search-kbd">/</span>
+        <button type="button" id="appSearchClear" class="app-search-clear" aria-label="Clear filter">✕</button>
+    </div>
+</div>
+
+<div id="emptySearchState" class="empty-search-state">
+    No matching applications found. Press <strong>Esc</strong> or click clear to reset.
+</div>
+
+<section id="section-core" class="category-section" data-category="Core SeShat">
 
     <h3 class="category-title">🜃 Core SeShat</h3>
 
@@ -701,7 +961,7 @@ body {
 
 </section>
 
-<section class="category-section">
+<section id="section-finance" class="category-section" data-category="Finance">
 
     <h3 class="category-title">💰 Finance</h3>
 
@@ -709,6 +969,7 @@ body {
 
         <a href="https://baerxiii.github.io/SeShatMoney/"
            target="_blank"
+           rel="noopener noreferrer"
            class="app-card">
             <div class="icon">💳</div>
             <h3>SeShat Money</h3>
@@ -717,6 +978,7 @@ body {
 
         <a href="https://baerxiii.github.io/SeShatPayEstimator/"
            target="_blank"
+           rel="noopener noreferrer"
            class="app-card">
             <div class="icon">💵</div>
             <h3>SeShat Pay Estimator</h3>
@@ -727,9 +989,9 @@ body {
 
 </section>
 
-<section class="category-section">
+<section id="section-home-life" class="category-section" data-category="Home & Life">
 
-    <h3 class="category-title">🏠 Home & Life</h3>
+    <h3 class="category-title">🏠 Home &amp; Life</h3>
 
     <div class="apps-grid">
 
@@ -747,6 +1009,7 @@ body {
 
         <a href="https://seshatpantry.ai.studio/"
            target="_blank"
+           rel="noopener noreferrer"
            class="app-card">
             <div class="icon">🥫</div>
             <h3>SeShat Pantry</h3>
@@ -755,6 +1018,7 @@ body {
 
         <a href="https://baerxiii.github.io/SeShatEats/index.html"
            target="_blank"
+           rel="noopener noreferrer"
            class="app-card">
             <div class="icon">🍁</div>
             <h3>SeShatEats</h3>
@@ -766,6 +1030,7 @@ body {
 
         <a href="https://fuel-flow-track-burrowing.base44.app/"
            target="_blank"
+           rel="noopener noreferrer"
            class="app-card">
             <div class="icon">⛽</div>
             <h3>Colonel Baer's Fuel Tracker Spectacular</h3>
@@ -774,6 +1039,7 @@ body {
 
         <a href="https://baerxiii.github.io/SargesSugars/"
            target="_blank"
+           rel="noopener noreferrer"
            class="app-card">
             <div class="icon">🩸</div>
             <h3>Sarge's Sugars</h3>
@@ -794,9 +1060,9 @@ body {
 
 </section>
 
-<section class="category-section">
+<section id="section-media" class="category-section" data-category="Media & Utilities">
 
-    <h3 class="category-title">🎧 Media & Utilities</h3>
+    <h3 class="category-title">🎧 Media &amp; Utilities</h3>
 
     <div class="apps-grid">
 
@@ -808,6 +1074,7 @@ body {
 
         <a href="https://baerxiii.github.io/stern-archive/"
            target="_blank"
+           rel="noopener noreferrer"
            class="app-card">
             <div class="icon">📻</div>
             <h3>SeShat Radio</h3>
@@ -818,12 +1085,12 @@ body {
 
 </section>
 
-<section class="bottom-grid">
+<section id="section-activity" class="bottom-grid">
     <div class="panel">
 
         <h2>📋 Recent Activity</h2>
 
-        <ul class="activity-list">
+        <ul id="activityList" class="activity-list">
             <li>System ready</li>
             <li>Authentication connected</li>
             <li>Supabase online</li>
@@ -832,6 +1099,11 @@ body {
 
     </div>
 </section>
+
+<footer class="hub-footer">
+    <span>🜃 SeShat Hub • Press <strong>/</strong> anytime to filter apps</span>
+    <a href="#top" class="back-top-btn">Back to Top ↑</a>
+</footer>
 
 </div>
 
@@ -846,6 +1118,102 @@ body {
 
 function getSB(){
     return window.seshat?.supabase;
+}
+
+function updateHeroClock(){
+    const clockEl = document.getElementById("heroClock");
+    const dateEl = document.getElementById("heroDate");
+    const now = new Date();
+
+    if(clockEl){
+        clockEl.textContent = now.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+    }
+
+    if(dateEl){
+        dateEl.textContent = now.toLocaleDateString([], {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric"
+        });
+    }
+}
+
+function setupAppFilter(){
+    const input = document.getElementById("appSearchInput");
+    const clearBtn = document.getElementById("appSearchClear");
+    const kbdHint = document.getElementById("appSearchKbd");
+    const emptyState = document.getElementById("emptySearchState");
+    const sections = [...document.querySelectorAll(".category-section")];
+
+    if(!input) return;
+
+    function applyFilter(){
+        const query = input.value.trim().toLowerCase();
+        const hasQuery = query.length > 0;
+
+        if(clearBtn) clearBtn.style.display = hasQuery ? "inline-block" : "none";
+        if(kbdHint) kbdHint.style.display = hasQuery ? "none" : "inline-block";
+
+        let totalVisibleCards = 0;
+
+        sections.forEach(section => {
+            const categoryText = (section.dataset.category || "").toLowerCase();
+            const cards = [...section.querySelectorAll(".app-card")];
+            let sectionVisible = 0;
+
+            cards.forEach(card => {
+                const text = `${card.textContent} ${categoryText}`.toLowerCase();
+                const matches = !hasQuery || text.includes(query);
+                card.style.display = matches ? "flex" : "none";
+                if(matches){
+                    sectionVisible++;
+                    totalVisibleCards++;
+                }
+            });
+
+            section.style.display = sectionVisible > 0 ? "block" : "none";
+        });
+
+        if(emptyState){
+            emptyState.style.display = totalVisibleCards === 0 ? "block" : "none";
+        }
+    }
+
+    input.addEventListener("input", applyFilter);
+
+    input.addEventListener("keydown", event => {
+        if(event.key === "Escape"){
+            input.value = "";
+            applyFilter();
+            input.blur();
+        } else if(event.key === "Enter"){
+            const visibleCards = [...document.querySelectorAll(".app-card")]
+                .filter(card => card.style.display !== "none");
+            if(visibleCards.length === 1){
+                visibleCards[0].click();
+            }
+        }
+    });
+
+    clearBtn?.addEventListener("click", () => {
+        input.value = "";
+        applyFilter();
+        input.focus();
+    });
+
+    document.addEventListener("keydown", event => {
+        const tag = document.activeElement?.tagName;
+        const isTyping = tag === "INPUT" || tag === "TEXTAREA";
+        if(event.key === "/" && !isTyping){
+            event.preventDefault();
+            input.focus();
+            input.select();
+        }
+    });
 }
 
 async function signup(){
@@ -944,6 +1312,7 @@ async function showDashboard(){
             "Welcome, " + user.email;
 
         loadDashboardStats();
+        loadRecentActivity(user.id);
     }
 }
 
@@ -1003,13 +1372,85 @@ async function quickLogHabit(category, quantity, buttonEl){
         return;
     }
 
-    await loadDashboardStats();
+    await Promise.all([
+        loadDashboardStats(),
+        loadRecentActivity(user.id)
+    ]);
 
     if(buttonEl){
         setTimeout(() => {
             buttonEl.innerText = originalLabel;
             buttonEl.disabled = false;
         }, 500);
+    }
+}
+
+async function loadRecentActivity(userId){
+
+    const sb = getSB();
+    const listEl = document.getElementById("activityList");
+    if(!sb || !userId || !listEl) return;
+
+    const items = [];
+
+    try {
+        const { data: recentHabits } = await sb
+            .from("habit_logs")
+            .select("category, quantity, logged_at")
+            .eq("user_id", userId)
+            .order("logged_at", { ascending: false })
+            .limit(3);
+
+        recentHabits?.forEach(h => {
+            const timeStr = h.logged_at
+                ? new Date(h.logged_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                : "";
+            items.push({
+                ts: h.logged_at ? new Date(h.logged_at).getTime() : 0,
+                text: `Logged ${h.quantity} ${h.category}${timeStr ? ` at ${timeStr}` : ""}`
+            });
+        });
+    } catch (_) {}
+
+    try {
+        const { data: recentNotes } = await sb
+            .from("notes")
+            .select("title, created_at")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(2);
+
+        recentNotes?.forEach(n => {
+            items.push({
+                ts: n.created_at ? new Date(n.created_at).getTime() : 0,
+                text: `Note: ${n.title || "Untitled"}`
+            });
+        });
+    } catch (_) {}
+
+    try {
+        const { data: recentTasks } = await sb
+            .from("tasks")
+            .select("title, created_at")
+            .eq("user_id", userId)
+            .eq("completed", false)
+            .order("created_at", { ascending: false })
+            .limit(2);
+
+        recentTasks?.forEach(t => {
+            items.push({
+                ts: t.created_at ? new Date(t.created_at).getTime() : 0,
+                text: `Open task: ${t.title || "Task"}`
+            });
+        });
+    } catch (_) {}
+
+    if(items.length > 0){
+        items.sort((a, b) => b.ts - a.ts);
+        listEl.innerHTML = items
+            .slice(0, 5)
+            .map(item => `<li>${item.text}</li>`)
+            .join("");
     }
 }
 
@@ -1030,10 +1471,8 @@ async function loadDashboardStats(){
         .eq("user_id",user.id)
         .eq("completed",false);
 
-    document.getElementById(
-        "taskCount"
-    ).innerText =
-        tasks.count || 0;
+    const openTaskCount = tasks.count || 0;
+    document.getElementById("taskCount").innerText = openTaskCount;
 
     const notes =
         await sb
@@ -1041,10 +1480,7 @@ async function loadDashboardStats(){
         .select("*",{count:"exact",head:true})
         .eq("user_id",user.id);
 
-    document.getElementById(
-        "noteCount"
-    ).innerText =
-        notes.count || 0;
+    document.getElementById("noteCount").innerText = notes.count || 0;
 
     const passwords =
         await sb
@@ -1052,10 +1488,7 @@ async function loadDashboardStats(){
         .select("*",{count:"exact",head:true})
         .eq("user_id",user.id);
 
-    document.getElementById(
-        "passwordCount"
-    ).innerText =
-        passwords.count || 0;
+    document.getElementById("passwordCount").innerText = passwords.count || 0;
 
     const documents =
         await sb
@@ -1063,10 +1496,7 @@ async function loadDashboardStats(){
         .select("*",{count:"exact",head:true})
         .eq("user_id",user.id);
 
-    document.getElementById(
-        "documentCount"
-    ).innerText =
-        documents.count || 0;
+    document.getElementById("documentCount").innerText = documents.count || 0;
 
     const maintenance =
         await sb
@@ -1074,10 +1504,7 @@ async function loadDashboardStats(){
         .select("*",{count:"exact",head:true})
         .eq("user_id",user.id);
 
-    document.getElementById(
-        "maintenanceCount"
-    ).innerText =
-        maintenance.count || 0;
+    document.getElementById("maintenanceCount").innerText = maintenance.count || 0;
 
     const today =
         new Date()
@@ -1091,10 +1518,8 @@ async function loadDashboardStats(){
         .eq("user_id",user.id)
         .gte("event_date",today);
 
-    document.getElementById(
-        "eventCount"
-    ).innerText =
-        events.count || 0;
+    const upcomingEventCount = events.count || 0;
+    document.getElementById("eventCount").innerText = upcomingEventCount;
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -1129,14 +1554,26 @@ async function loadDashboardStats(){
     document.getElementById("cigaretteCount").innerText = cigarettes;
     document.getElementById("jointCount").innerText = joints;
 
+    const heroSummary = document.getElementById("heroSummary");
+    if(heroSummary){
+        heroSummary.textContent =
+            `${openTaskCount} open task${openTaskCount === 1 ? "" : "s"} • ` +
+            `${upcomingEventCount} upcoming event${upcomingEventCount === 1 ? "" : "s"} • ` +
+            `${waterTotal.toFixed(2)} L water logged today`;
+    }
+
 }
 
 window.addEventListener("load", () => {
+    updateHeroClock();
+    setInterval(updateHeroClock, 30000);
+    setupAppFilter();
     checkSession();
 });
 
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
+        updateHeroClock();
         loadDashboardStats();
     }
 });
