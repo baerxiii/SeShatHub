@@ -368,7 +368,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
     gap: 16px;
-    margin-bottom: 40px;
+    margin-bottom: 32px;
     scroll-margin-top: 24px;
 }
 
@@ -447,6 +447,136 @@ body {
     opacity: 0.65;
     cursor: default;
     transform: none;
+}
+
+/* LOCAL RADAR: WEATHER & FUEL MAP */
+
+.local-grid {
+    display: grid;
+    grid-template-columns: minmax(290px, 1fr) minmax(320px, 1.4fr);
+    gap: 18px;
+    margin-bottom: 40px;
+    scroll-margin-top: 24px;
+}
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.widget-header h2 {
+    font-size: 1.08rem;
+    font-weight: 700;
+}
+
+.widget-pill-btn {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.08);
+    color: #e0f2fe;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.widget-pill-btn:hover,
+.widget-pill-btn:focus-visible {
+    background: var(--accent-strong);
+    border-color: var(--accent);
+    color: white;
+    outline: none;
+}
+
+.weather-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 10px 0 16px;
+}
+
+.weather-icon {
+    font-size: 2.75rem;
+    line-height: 1;
+}
+
+.weather-temp {
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+}
+
+.weather-desc {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.weather-location {
+    font-size: 0.86rem;
+    color: #7dd3fc;
+    font-weight: 600;
+}
+
+.weather-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.weather-meta-item {
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 10px 12px;
+}
+
+.weather-meta-item span {
+    display: block;
+    font-size: 0.74rem;
+    color: #94a3b8;
+}
+
+.weather-meta-item strong {
+    font-size: 0.94rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.fuel-map-frame {
+    width: 100%;
+    height: 205px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.8);
+    display: block;
+}
+
+.fuel-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.fuel-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.fuel-coords {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
 }
 
 /* SECTIONS & APP SEARCH BAR */
@@ -675,6 +805,12 @@ body {
     border-color: var(--border-hover);
 }
 
+@media (max-width: 860px) {
+    .local-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 20px 16px 48px;
@@ -801,6 +937,7 @@ body {
     <div class="quick-actions-group">
         <span class="quick-group-label">Jump To</span>
         <a class="quick-btn jump-btn" href="#section-stats">📊 Stats</a>
+        <a class="quick-btn jump-btn" href="#section-local">🌤️ Weather &amp; Fuel</a>
         <a class="quick-btn jump-btn" href="#section-core">🜃 Core</a>
         <a class="quick-btn jump-btn" href="#section-finance">💰 Finance</a>
         <a class="quick-btn jump-btn" href="#section-home-life">🏠 Home &amp; Life</a>
@@ -883,6 +1020,70 @@ body {
         <div class="stat-actions">
             <button type="button" class="mini-log-btn" onclick="quickLogHabit('coffee', 8, this)">+8 oz</button>
             <button type="button" class="mini-log-btn" onclick="quickLogHabit('coffee', 12, this)">+12 oz</button>
+        </div>
+    </div>
+
+</section>
+
+<!-- LOCAL WEATHER & FUELFI RADAR -->
+
+<section id="section-local" class="local-grid">
+
+    <div class="panel">
+        <div class="widget-header">
+            <h2>🌤️ Local Weather</h2>
+            <button type="button" class="widget-pill-btn" onclick="initLocalWidgets(true)">↻ Refresh</button>
+        </div>
+
+        <div id="weatherLocation" class="weather-location">Detecting location...</div>
+
+        <div class="weather-main">
+            <div id="weatherIcon" class="weather-icon">🌡️</div>
+            <div>
+                <div id="weatherTemp" class="weather-temp">--°C</div>
+                <div id="weatherDesc" class="weather-desc">Waiting for location permission...</div>
+            </div>
+        </div>
+
+        <div class="weather-meta-grid">
+            <div class="weather-meta-item">
+                <span>Feels Like</span>
+                <strong id="weatherFeels">--°C</strong>
+            </div>
+            <div class="weather-meta-item">
+                <span>High / Low</span>
+                <strong id="weatherHiLo">--° / --°</strong>
+            </div>
+            <div class="weather-meta-item">
+                <span>Wind</span>
+                <strong id="weatherWind">-- km/h</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="widget-header">
+            <h2>⛽ Local Map &amp; FuelFi Prices</h2>
+            <a id="fuelfiMainLink" href="https://fuelfi.ca/" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">Open FuelFi ↗</a>
+        </div>
+
+        <iframe
+            id="localMapFrame"
+            class="fuel-map-frame"
+            title="Local Area Map"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            src="https://www.openstreetmap.org/export/embed.html?bbox=-119.35%2C50.22%2C-119.20%2C50.30&layer=mapnik">
+        </iframe>
+
+        <div class="fuel-actions">
+            <div class="fuel-links">
+                <a id="fuelfiRegularLink" href="https://fuelfi.ca/" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">⛽ Regular</a>
+                <a id="fuelfiPremiumLink" href="https://fuelfi.ca/" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">🔥 Premium</a>
+                <a id="fuelfiDieselLink" href="https://fuelfi.ca/" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">🚛 Diesel</a>
+                <a id="nearbyStationsMapLink" href="https://www.google.com/maps/search/gas+stations" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">🗺️ Stations Map</a>
+            </div>
+            <span id="fuelCoordsLabel" class="fuel-coords">Location: pending</span>
         </div>
     </div>
 
@@ -1142,6 +1343,173 @@ function updateHeroClock(){
     }
 }
 
+function describeWeatherCode(code){
+    const map = {
+        0: ["☀️", "Clear sky"],
+        1: ["🌤️", "Mainly clear"],
+        2: ["⛅", "Partly cloudy"],
+        3: ["☁️", "Overcast"],
+        45: ["🌫️", "Foggy"],
+        48: ["🌫️", "Depositing rime fog"],
+        51: ["🌦️", "Light drizzle"],
+        53: ["🌦️", "Moderate drizzle"],
+        55: ["🌧️", "Dense drizzle"],
+        61: ["🌧️", "Slight rain"],
+        63: ["🌧️", "Moderate rain"],
+        65: ["🌧️", "Heavy rain"],
+        71: ["🌨️", "Slight snow"],
+        73: ["🌨️", "Moderate snow"],
+        75: ["❄️", "Heavy snow"],
+        77: ["🌨️", "Snow grains"],
+        80: ["🌦️", "Slight rain showers"],
+        81: ["🌧️", "Moderate rain showers"],
+        82: ["⛈️", "Violent rain showers"],
+        85: ["🌨️", "Slight snow showers"],
+        86: ["❄️", "Heavy snow showers"],
+        95: ["⛈️", "Thunderstorm"],
+        96: ["⛈️", "Thunderstorm with hail"],
+        99: ["⛈️", "Severe thunderstorm"]
+    };
+    return map[code] || ["🌡️", "Current conditions"];
+}
+
+function updateFuelAndMap(lat, lon, cityLabel = ""){
+    const mapFrame = document.getElementById("localMapFrame");
+    const coordsLabel = document.getElementById("fuelCoordsLabel");
+    const mainLink = document.getElementById("fuelfiMainLink");
+    const regLink = document.getElementById("fuelfiRegularLink");
+    const premLink = document.getElementById("fuelfiPremiumLink");
+    const dieselLink = document.getElementById("fuelfiDieselLink");
+    const stationsMapLink = document.getElementById("nearbyStationsMapLink");
+
+    const delta = 0.045;
+    const minLon = (lon - delta).toFixed(5);
+    const minLat = (lat - delta).toFixed(5);
+    const maxLon = (lon + delta).toFixed(5);
+    const maxLat = (lat + delta).toFixed(5);
+
+    if(mapFrame){
+        mapFrame.src =
+            `https://www.openstreetmap.org/export/embed.html?bbox=${minLon}%2C${minLat}%2C${maxLon}%2C${maxLat}&layer=mapnik&marker=${lat.toFixed(5)}%2C${lon.toFixed(5)}`;
+    }
+
+    if(coordsLabel){
+        coordsLabel.textContent = cityLabel
+            ? `${cityLabel} (${lat.toFixed(2)}, ${lon.toFixed(2)})`
+            : `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+    }
+
+    const encodedQuery = encodeURIComponent(cityLabel || `${lat.toFixed(4)},${lon.toFixed(4)}`);
+    const fuelFiBase = `https://fuelfi.ca/?lat=${lat.toFixed(5)}&lng=${lon.toFixed(5)}${cityLabel ? `&q=${encodedQuery}` : ""}`;
+
+    if(mainLink) mainLink.href = fuelFiBase;
+    if(regLink) regLink.href = `${fuelFiBase}&fuel=regular`;
+    if(premLink) premLink.href = `${fuelFiBase}&fuel=premium`;
+    if(dieselLink) dieselLink.href = `${fuelFiBase}&fuel=diesel`;
+    if(stationsMapLink){
+        stationsMapLink.href = `https://www.google.com/maps/search/gas+stations/@${lat.toFixed(5)},${lon.toFixed(5)},13z`;
+    }
+}
+
+async function fetchWeatherForCoords(lat, lon){
+    const locationEl = document.getElementById("weatherLocation");
+    const iconEl = document.getElementById("weatherIcon");
+    const tempEl = document.getElementById("weatherTemp");
+    const descEl = document.getElementById("weatherDesc");
+    const feelsEl = document.getElementById("weatherFeels");
+    const hiLoEl = document.getElementById("weatherHiLo");
+    const windEl = document.getElementById("weatherWind");
+
+    let cityLabel = "";
+
+    try {
+        const geoRes = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+        );
+        if(geoRes.ok){
+            const geo = await geoRes.json();
+            const place = geo.city || geo.locality || geo.principalSubdivision || "";
+            const region = geo.principalSubdivisionCode ? geo.principalSubdivisionCode.split("-").pop() : "";
+            cityLabel = [place, region].filter(Boolean).join(", ");
+        }
+    } catch (_) {}
+
+    if(locationEl){
+        locationEl.textContent = cityLabel || `Lat ${lat.toFixed(2)}, Lon ${lon.toFixed(2)}`;
+    }
+
+    updateFuelAndMap(lat, lon, cityLabel);
+
+    try {
+        const weatherUrl =
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+            `&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m` +
+            `&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`;
+
+        const res = await fetch(weatherUrl);
+        if(!res.ok) throw new Error("Weather request failed");
+        const data = await res.json();
+
+        const current = data.current || {};
+        const daily = data.daily || {};
+        const [icon, label] = describeWeatherCode(current.weather_code);
+
+        if(iconEl) iconEl.textContent = icon;
+        if(tempEl && Number.isFinite(current.temperature_2m)){
+            tempEl.textContent = `${Math.round(current.temperature_2m)}°C`;
+        }
+        if(descEl) descEl.textContent = label;
+        if(feelsEl && Number.isFinite(current.apparent_temperature)){
+            feelsEl.textContent = `${Math.round(current.apparent_temperature)}°C`;
+        }
+        if(hiLoEl && Array.isArray(daily.temperature_2m_max) && Array.isArray(daily.temperature_2m_min)){
+            hiLoEl.textContent = `${Math.round(daily.temperature_2m_max[0])}° / ${Math.round(daily.temperature_2m_min[0])}°`;
+        }
+        if(windEl && Number.isFinite(current.wind_speed_10m)){
+            windEl.textContent = `${Math.round(current.wind_speed_10m)} km/h`;
+        }
+    } catch (error) {
+        console.error("Weather fetch error:", error);
+        if(descEl) descEl.textContent = "Unable to load live weather right now.";
+    }
+}
+
+function initLocalWidgets(forceRefresh = false){
+    const locationEl = document.getElementById("weatherLocation");
+    const descEl = document.getElementById("weatherDesc");
+
+    const cached = !forceRefresh
+        ? JSON.parse(localStorage.getItem("seshatLastCoords") || "null")
+        : null;
+
+    if(cached && Number.isFinite(cached.lat) && Number.isFinite(cached.lon)){
+        fetchWeatherForCoords(cached.lat, cached.lon);
+    }
+
+    if(!("geolocation" in navigator)){
+        if(locationEl) locationEl.textContent = "Geolocation unavailable";
+        if(descEl) descEl.textContent = "Enable browser location to load local weather.";
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            localStorage.setItem("seshatLastCoords", JSON.stringify({ lat, lon }));
+            fetchWeatherForCoords(lat, lon);
+        },
+        err => {
+            console.warn("Geolocation blocked or unavailable:", err.message);
+            if(!cached){
+                if(locationEl) locationEl.textContent = "Location permission needed";
+                if(descEl) descEl.textContent = "Allow location access in your browser to see local weather & map.";
+            }
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+    );
+}
+
 function setupAppFilter(){
     const input = document.getElementById("appSearchInput");
     const clearBtn = document.getElementById("appSearchClear");
@@ -1301,6 +1669,8 @@ async function showDashboard(){
 
     document.querySelector(".container")
         .style.display = "block";
+
+    initLocalWidgets();
 
     if(user){
 
