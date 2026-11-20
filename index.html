@@ -6,6 +6,8 @@
 <meta name="theme-color" content="#0f172a">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <title>SeShat Hub</title>
 
 <style>
@@ -453,7 +455,7 @@ body {
 
 .local-grid {
     display: grid;
-    grid-template-columns: minmax(290px, 1fr) minmax(320px, 1.4fr);
+    grid-template-columns: minmax(290px, 1fr) minmax(340px, 1.45fr);
     gap: 18px;
     margin-bottom: 40px;
     scroll-margin-top: 24px;
@@ -463,6 +465,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 14px;
 }
@@ -491,6 +494,12 @@ body {
     border-color: var(--accent);
     color: white;
     outline: none;
+}
+
+.fuel-grade-btn.active {
+    background: var(--accent-strong);
+    border-color: var(--accent);
+    color: #ffffff;
 }
 
 .weather-main {
@@ -549,13 +558,32 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
-.fuel-map-frame {
+#localMapCanvas {
     width: 100%;
-    height: 205px;
+    height: 230px;
     border: 1px solid var(--border);
     border-radius: 16px;
-    background: rgba(15, 23, 42, 0.8);
-    display: block;
+    background: rgba(15, 23, 42, 0.85);
+    z-index: 1;
+}
+
+.fuel-price-pin {
+    background: #0f172a;
+    color: #7dd3fc;
+    border: 1.5px solid #38bdf8;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(2, 6, 23, 0.65);
+    text-align: center;
+}
+
+.fuel-price-pin.cheapest {
+    background: #065f46;
+    color: #a7f3d0;
+    border-color: #34d399;
 }
 
 .fuel-actions {
@@ -577,6 +605,33 @@ body {
     font-size: 0.8rem;
     color: #94a3b8;
     font-variant-numeric: tabular-nums;
+}
+
+.fuel-stations-list {
+    margin-top: 12px;
+    max-height: 210px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.fuel-station-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.fuel-station-row:hover {
+    border-color: var(--border-hover);
+    background: rgba(30, 41, 59, 0.85);
 }
 
 /* SECTIONS & APP SEARCH BAR */
@@ -1064,26 +1119,26 @@ body {
     <div class="panel">
         <div class="widget-header">
             <h2>⛽ Local Map &amp; FuelFi Prices</h2>
-            <a id="fuelfiMainLink" href="https://fuelfi.ca/" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">Open FuelFi ↗</a>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button type="button" class="widget-pill-btn" onclick="refreshFuelWidget()">↻ Refresh</button>
+                <a id="fuelfiMainLink" href="https://fuelfi.ca/" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">Open FuelFi ↗</a>
+            </div>
         </div>
 
-        <iframe
-            id="localMapFrame"
-            class="fuel-map-frame"
-            title="Local Area Map"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            src="https://www.openstreetmap.org/export/embed.html?bbox=-119.35%2C50.22%2C-119.20%2C50.30&layer=mapnik">
-        </iframe>
+        <div id="localMapCanvas" aria-label="Local Area Fuel Map"></div>
 
         <div class="fuel-actions">
             <div class="fuel-links">
-                <a id="fuelfiRegularLink" href="https://fuelfi.ca/" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">⛽ Regular</a>
-                <a id="fuelfiPremiumLink" href="https://fuelfi.ca/" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">🔥 Premium</a>
-                <a id="fuelfiDieselLink" href="https://fuelfi.ca/" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">🚛 Diesel</a>
-                <a id="nearbyStationsMapLink" href="https://www.google.com/maps/search/gas+stations" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">🗺️ Stations Map</a>
+                <button type="button" class="widget-pill-btn fuel-grade-btn active" data-grade="regular" onclick="selectFuelGrade('regular', this)">⛽ Regular</button>
+                <button type="button" class="widget-pill-btn fuel-grade-btn" data-grade="premium" onclick="selectFuelGrade('premium', this)">🔥 Premium</button>
+                <button type="button" class="widget-pill-btn fuel-grade-btn" data-grade="diesel" onclick="selectFuelGrade('diesel', this)">🚛 Diesel</button>
+                <a id="nearbyStationsMapLink" href="https://www.google.com/maps/search/gas+stations" target="_blank" rel="noopener noreferrer" class="widget-pill-btn">🗺️ Maps</a>
             </div>
             <span id="fuelCoordsLabel" class="fuel-coords">Location: pending</span>
+        </div>
+
+        <div id="fuelStationsList" class="fuel-stations-list">
+            <div style="font-size:0.86rem;color:var(--text-muted);">Waiting for GPS &amp; FuelFi prices...</div>
         </div>
     </div>
 
@@ -1373,25 +1428,240 @@ function describeWeatherCode(code){
     return map[code] || ["🌡️", "Current conditions"];
 }
 
+// --- LEAFLET FUEL MAP & BASE44 FUELFI PRICES ---
+const FUEL_API_URL = "https://fuel-flow-track-burrowing.base44.app/api/apps/6a24d10e805d1426a813ae28/functions/getNearbyGasPrices";
+const FALLBACK_COORDS = { lat: 50.240535656980164, lng: -119.3354145959252 };
+const FUEL_RADIUS_KM = 15;
+
+let fuelMap = null;
+let fuelMarkersLayer = null;
+let cachedFuelStations = [];
+let activeFuelGrade = "regular";
+let currentFuelCoords = { ...FALLBACK_COORDS };
+
+function ensureFuelMap(lat, lng) {
+    if (!window.L) return;
+    if (!fuelMap) {
+        fuelMap = L.map("localMapCanvas", { zoomControl: true }).setView([lat, lng], 12);
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+            attribution: "&copy; OpenStreetMap &copy; CARTO",
+            subdomains: "abcd",
+            maxZoom: 19
+        }).addTo(fuelMap);
+        fuelMarkersLayer = L.layerGroup().addTo(fuelMap);
+    } else {
+        fuelMap.setView([lat, lng], 12);
+    }
+    setTimeout(() => fuelMap && fuelMap.invalidateSize(), 60);
+}
+
+function normalizeStations(raw) {
+    console.log("FuelFi / Base44 raw payload:", raw);
+
+    const list =
+        Array.isArray(raw) ? raw :
+        Array.isArray(raw?.stations) ? raw.stations :
+        Array.isArray(raw?.prices) ? raw.prices :
+        Array.isArray(raw?.results) ? raw.results :
+        Array.isArray(raw?.data) ? raw.data :
+        Array.isArray(raw?.data?.stations) ? raw.data.stations :
+        [];
+
+    return list.map((st, idx) => {
+        const lat = Number(st.lat ?? st.latitude ?? st.location?.lat ?? st.coords?.lat);
+        const lng = Number(st.lng ?? st.lon ?? st.longitude ?? st.location?.lng ?? st.coords?.lng);
+
+        const regular = Number(st.regular ?? st.regularPrice ?? st.regular_price ?? st.prices?.regular ?? st.price);
+        const premium = Number(st.premium ?? st.premiumPrice ?? st.premium_price ?? st.prices?.premium);
+        const diesel  = Number(st.diesel  ?? st.dieselPrice  ?? st.diesel_price  ?? st.prices?.diesel);
+
+        return {
+            id: st.id ?? idx,
+            name: st.name || st.stationName || st.station_name || st.brand || "Gas Station",
+            address: st.address || st.vicinity || st.street || "",
+            lat: Number.isFinite(lat) ? lat : null,
+            lng: Number.isFinite(lng) ? lng : null,
+            distanceKm: Number(st.distanceKm ?? st.distance_km ?? st.distance),
+            prices: {
+                regular: Number.isFinite(regular) && regular > 0 ? regular : null,
+                premium: Number.isFinite(premium) && premium > 0 ? premium : null,
+                diesel:  Number.isFinite(diesel)  && diesel  > 0 ? diesel  : null
+            }
+        };
+    });
+}
+
+function formatFuelPrice(num) {
+    if (!Number.isFinite(num) || num <= 0) return null;
+    return num < 10 ? `$${num.toFixed(3)}` : `${num.toFixed(1)}¢`;
+}
+
+function renderFuelWidget() {
+    const listEl = document.getElementById("fuelStationsList");
+    if (!listEl) return;
+
+    if (fuelMarkersLayer) {
+        fuelMarkersLayer.clearLayers();
+    }
+
+    if (fuelMap && fuelMarkersLayer) {
+        L.circleMarker([currentFuelCoords.lat, currentFuelCoords.lng], {
+            radius: 7,
+            color: "#ffffff",
+            weight: 2,
+            fillColor: "#38bdf8",
+            fillOpacity: 1
+        })
+        .bindPopup("<strong>You are here</strong>")
+        .addTo(fuelMarkersLayer);
+    }
+
+    const sorted = [...cachedFuelStations].sort((a, b) => {
+        const pa = a.prices[activeFuelGrade] ?? Infinity;
+        const pb = b.prices[activeFuelGrade] ?? Infinity;
+        return pa - pb;
+    });
+
+    const lowestPrice = sorted.find((s) => s.prices[activeFuelGrade] !== null)?.prices[activeFuelGrade] ?? null;
+
+    if (!sorted.length) {
+        listEl.innerHTML = `<div style="font-size:0.86rem;color:var(--text-muted);">No stations returned within ${FUEL_RADIUS_KM} km.</div>`;
+        return;
+    }
+
+    const bounds = [[currentFuelCoords.lat, currentFuelCoords.lng]];
+    const markerById = new Map();
+
+    sorted.forEach((st) => {
+        const val = st.prices[activeFuelGrade];
+        const priceLabel = formatFuelPrice(val) || "—";
+        const isCheapest = val !== null && val === lowestPrice;
+
+        if (fuelMap && fuelMarkersLayer && st.lat !== null && st.lng !== null) {
+            bounds.push([st.lat, st.lng]);
+            const pinHtml = `<div class="fuel-price-pin ${isCheapest ? "cheapest" : ""}">${priceLabel}</div>`;
+            const icon = L.divIcon({
+                className: "",
+                html: pinHtml,
+                iconSize: [58, 24],
+                iconAnchor: [29, 12]
+            });
+
+            const popupLines = [
+                `<strong>${st.name}</strong>`,
+                st.address ? `<div style="font-size:12px;opacity:0.85;">${st.address}</div>` : "",
+                `<div style="margin-top:4px;font-size:12px;">` +
+                    `Reg: <b>${formatFuelPrice(st.prices.regular) || "—"}</b> · ` +
+                    `Prem: <b>${formatFuelPrice(st.prices.premium) || "—"}</b> · ` +
+                    `Diesel: <b>${formatFuelPrice(st.prices.diesel) || "—"}</b>` +
+                `</div>`
+            ].join("");
+
+            const marker = L.marker([st.lat, st.lng], { icon })
+                .bindPopup(popupLines)
+                .addTo(fuelMarkersLayer);
+
+            markerById.set(st.id, marker);
+        }
+    });
+
+    if (fuelMap && bounds.length > 1) {
+        fuelMap.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
+    }
+
+    listEl.innerHTML = sorted.map((st) => {
+        const val = st.prices[activeFuelGrade];
+        const priceLabel = formatFuelPrice(val) || "N/A";
+        const isCheapest = val !== null && val === lowestPrice;
+        const dist = Number.isFinite(st.distanceKm) ? `${st.distanceKm.toFixed(1)} km` : "";
+
+        return `
+            <div class="fuel-station-row" data-station-id="${st.id}">
+                <div style="min-width:0;">
+                    <div style="font-weight:600;font-size:0.88rem;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${st.name}
+                    </div>
+                    <div style="font-size:0.76rem;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${st.address || "Nearby station"}
+                    </div>
+                </div>
+                <div style="text-align:right;white-space:nowrap;">
+                    <div style="font-weight:700;font-size:0.92rem;color:${isCheapest ? "#34d399" : "#7dd3fc"};">
+                        ${priceLabel}
+                    </div>
+                    ${dist ? `<div style="font-size:0.74rem;color:#94a3b8;">${dist}</div>` : ""}
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    listEl.querySelectorAll(".fuel-station-row").forEach((row) => {
+        row.addEventListener("click", () => {
+            const id = Number(row.dataset.stationId);
+            const marker = markerById.get(id);
+            if (marker && fuelMap) {
+                fuelMap.setView(marker.getLatLng(), 15);
+                marker.openPopup();
+            }
+        });
+    });
+}
+
+function selectFuelGrade(grade, btnEl) {
+    activeFuelGrade = grade;
+    document.querySelectorAll(".fuel-grade-btn").forEach((b) => b.classList.remove("active"));
+    if (btnEl) btnEl.classList.add("active");
+    renderFuelWidget();
+}
+
+async function fetchNearbyFuelPrices(lat, lng) {
+    const listEl = document.getElementById("fuelStationsList");
+    if (listEl) {
+        listEl.innerHTML = `<div style="font-size:0.86rem;color:var(--text-muted);">Fetching local FuelFi prices...</div>`;
+    }
+
+    try {
+        const res = await fetch(FUEL_API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                lat,
+                lng,
+                radiusKm: FUEL_RADIUS_KM
+            })
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        cachedFuelStations = normalizeStations(data);
+        renderFuelWidget();
+    } catch (err) {
+        console.error("Fuel widget error:", err);
+        if (listEl) {
+            listEl.innerHTML = `<div style="font-size:0.86rem;color:#fca5a5;">Could not load fuel prices (${err.message}).</div>`;
+        }
+    }
+}
+
+function refreshFuelWidget() {
+    const coordsLabel = document.getElementById("fuelCoordsLabel");
+    ensureFuelMap(currentFuelCoords.lat, currentFuelCoords.lng);
+    if (coordsLabel) {
+        coordsLabel.textContent = `${currentFuelCoords.lat.toFixed(4)}, ${currentFuelCoords.lng.toFixed(4)}`;
+    }
+    fetchNearbyFuelPrices(currentFuelCoords.lat, currentFuelCoords.lng);
+}
+
 function updateFuelAndMap(lat, lon, cityLabel = ""){
-    const mapFrame = document.getElementById("localMapFrame");
+    currentFuelCoords = { lat, lng: lon };
     const coordsLabel = document.getElementById("fuelCoordsLabel");
     const mainLink = document.getElementById("fuelfiMainLink");
-    const regLink = document.getElementById("fuelfiRegularLink");
-    const premLink = document.getElementById("fuelfiPremiumLink");
-    const dieselLink = document.getElementById("fuelfiDieselLink");
     const stationsMapLink = document.getElementById("nearbyStationsMapLink");
 
-    const delta = 0.045;
-    const minLon = (lon - delta).toFixed(5);
-    const minLat = (lat - delta).toFixed(5);
-    const maxLon = (lon + delta).toFixed(5);
-    const maxLat = (lat + delta).toFixed(5);
-
-    if(mapFrame){
-        mapFrame.src =
-            `https://www.openstreetmap.org/export/embed.html?bbox=${minLon}%2C${minLat}%2C${maxLon}%2C${maxLat}&layer=mapnik&marker=${lat.toFixed(5)}%2C${lon.toFixed(5)}`;
-    }
+    ensureFuelMap(lat, lon);
 
     if(coordsLabel){
         coordsLabel.textContent = cityLabel
@@ -1403,12 +1673,11 @@ function updateFuelAndMap(lat, lon, cityLabel = ""){
     const fuelFiBase = `https://fuelfi.ca/?lat=${lat.toFixed(5)}&lng=${lon.toFixed(5)}${cityLabel ? `&q=${encodedQuery}` : ""}`;
 
     if(mainLink) mainLink.href = fuelFiBase;
-    if(regLink) regLink.href = `${fuelFiBase}&fuel=regular`;
-    if(premLink) premLink.href = `${fuelFiBase}&fuel=premium`;
-    if(dieselLink) dieselLink.href = `${fuelFiBase}&fuel=diesel`;
     if(stationsMapLink){
         stationsMapLink.href = `https://www.google.com/maps/search/gas+stations/@${lat.toFixed(5)},${lon.toFixed(5)},13z`;
     }
+
+    fetchNearbyFuelPrices(lat, lon);
 }
 
 async function fetchWeatherForCoords(lat, lon){
@@ -1484,6 +1753,8 @@ function initLocalWidgets(forceRefresh = false){
 
     if(cached && Number.isFinite(cached.lat) && Number.isFinite(cached.lon)){
         fetchWeatherForCoords(cached.lat, cached.lon);
+    } else {
+        updateFuelAndMap(FALLBACK_COORDS.lat, FALLBACK_COORDS.lng, "Vernon, BC");
     }
 
     if(!("geolocation" in navigator)){
@@ -1502,8 +1773,9 @@ function initLocalWidgets(forceRefresh = false){
         err => {
             console.warn("Geolocation blocked or unavailable:", err.message);
             if(!cached){
-                if(locationEl) locationEl.textContent = "Location permission needed";
-                if(descEl) descEl.textContent = "Allow location access in your browser to see local weather & map.";
+                if(locationEl) locationEl.textContent = "Vernon, BC (fallback)";
+                if(descEl) descEl.textContent = "Allow location access in your browser for live GPS.";
+                fetchWeatherForCoords(FALLBACK_COORDS.lat, FALLBACK_COORDS.lng);
             }
         },
         { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
