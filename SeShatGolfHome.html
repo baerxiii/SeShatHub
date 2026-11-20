@@ -14,17 +14,19 @@
       --muted: #94a3b8;
       --accent: #22c55e;
       --accent-dark: #16a34a;
+      --danger: #ef4444;
       --border: #334155;
     }
     * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
     body { margin: 0; background: var(--bg); color: var(--text); padding: 16px; }
-    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
-    h1 { margin: 0; font-size: 1.35rem; }
-    .sub { color: var(--muted); font-size: 0.9rem; }
+    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    h1 { margin: 0; font-size: 1.3rem; }
+    h2, h3 { margin-top: 0; font-size: 1.05rem; }
+    .sub { color: var(--muted); font-size: 0.88rem; }
     .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
     button {
       background: var(--panel); color: var(--text); border: 1px solid var(--border);
-      padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9rem;
+      padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.88rem;
     }
     button:hover { border-color: var(--accent); }
     button.primary { background: var(--accent); color: #052e16; border: none; font-weight: 600; }
@@ -32,7 +34,6 @@
     button.active { background: var(--accent); color: #052e16; border: none; font-weight: 600; }
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
     .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-    .card h2, .card h3 { margin-top: 0; font-size: 1.05rem; }
     label { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 8px; margin-bottom: 4px; }
     input, select, textarea {
       width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
@@ -40,26 +41,33 @@
     }
     .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .row > * { flex: 1 1 120px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.88rem; }
-    th, td { border: 1px solid var(--border); padding: 8px; text-align: center; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.86rem; }
+    th, td { border: 1px solid var(--border); padding: 7px 8px; text-align: center; }
     th { background: var(--panel-2); }
     .hidden { display: none; }
     .status { font-size: 0.85rem; color: #86efac; margin-top: 8px; min-height: 1.2em; }
-    .hole-pill { display: inline-flex; align-items: center; gap: 6px; }
-    .stroke-btn { padding: 4px 8px; font-weight: 700; }
+    .error { color: #fca5a5; }
+    .hole-pill { display: inline-flex; align-items: center; gap: 5px; }
+    .stroke-btn { padding: 3px 8px; font-weight: 700; }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>Seshat Hub — Golf Manager</h1>
-      <div class="sub" id="active-round-banner">No active round selected</div>
+      <h1>Seshat Hub — Golf Course & Scorecard Manager</h1>
+      <div class="sub" id="active-round-banner">Loading...</div>
     </div>
-    <div class="row" style="max-width: 460px;">
+    <div class="row" style="max-width: 560px;">
       <select id="round-selector"></select>
+      <button id="seed-coldstream-btn" class="primary">Seed Coldstream</button>
       <button id="refresh-all-btn">Refresh</button>
     </div>
   </header>
+
+  <div class="card" style="padding: 10px 14px; margin-bottom: 14px;">
+    <span class="sub" id="global-status">Connecting to Supabase...</span>
+  </div>
 
   <nav class="tabs">
     <button class="tab-btn active" data-tab="scorecard">Scorecard & GPS</button>
@@ -71,17 +79,31 @@
   <!-- TAB 1: SCORECARD + SINGLE HOLE + GPS SHOT TRACKER -->
   <section id="tab-scorecard" class="tab-panel">
     <div class="card">
-      <div class="row" style="justify-content: space-between;">
-        <h2 style="margin:0;">Scorecard View</h2>
+      <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+        <div>
+          <h2 style="margin:0;">Scorecard</h2>
+          <div class="sub" id="scorecard-course-meta"></div>
+        </div>
         <div class="row" style="max-width: 280px; flex: 0 0 auto;">
           <button id="view-overview-btn" class="active">Full Overview</button>
           <button id="view-single-btn">Single Hole</button>
         </div>
       </div>
 
-      <!-- Full Scorecard Grid -->
+      <!-- Add / Toggle Players in Current Round -->
+      <div class="row" style="background: var(--panel-2); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+        <div style="flex: 2 1 180px;">
+          <label for="round-add-player-select" style="margin-top:0;">Add Player to Active Round</label>
+          <select id="round-add-player-select"></select>
+        </div>
+        <div style="flex: 0 0 auto; align-self: flex-end;">
+          <button id="add-player-to-round-btn" class="primary">Add to Round</button>
+        </div>
+      </div>
+
+      <!-- Full Overview -->
       <div id="scorecard-overview">
-        <div id="scorecard-table-wrap"></div>
+        <div class="table-wrap" id="scorecard-table-wrap"></div>
       </div>
 
       <!-- Single Hole View -->
@@ -99,7 +121,7 @@
     <!-- Multi-Golfer GPS Shot Marker -->
     <div class="card">
       <h2>GPS Shot Marker ("Mark Spot on Next Hit")</h2>
-      <div class="sub">Each player's shots are tracked separately. Clicking Mark Spot records where the ball is struck now and calculates the distance of their previous shot.</div>
+      <div class="sub">Each golfer's shots are tracked independently. Hit 1 marks the start spot; the next time that golfer hits, Mark Spot records the new spot and calculates how far their previous shot went.</div>
       <div class="row">
         <div>
           <label for="gps-player-select">Active Golfer</label>
@@ -110,16 +132,26 @@
           <select id="gps-hole-select"></select>
         </div>
         <div>
-          <label for="gps-club-input">Club Used (optional)</label>
-          <input id="gps-club-input" type="text" placeholder="e.g., Driver, 7 Iron, Wedge" />
+          <label for="gps-club-input">Club Used</label>
+          <input id="gps-club-input" type="text" placeholder="Driver, 7 Iron, Wedge..." />
+        </div>
+      </div>
+      <div class="row" style="margin-top: 10px;">
+        <div>
+          <label for="gps-manual-lat">Override / Manual Lat (optional)</label>
+          <input id="gps-manual-lat" type="number" step="any" placeholder="Uses live GPS if blank" />
+        </div>
+        <div>
+          <label for="gps-manual-lng">Override / Manual Lng (optional)</label>
+          <input id="gps-manual-lng" type="number" step="any" placeholder="Uses live GPS if blank" />
         </div>
       </div>
       <div class="row" style="margin-top: 12px;">
         <button id="mark-gps-shot-btn" class="primary">Mark Spot (Next Hit)</button>
-        <button id="sync-strokes-btn">Sync Shot Count to Hole Score</button>
+        <button id="sync-strokes-btn">Sync Shot Count to Score</button>
       </div>
       <div class="status" id="gps-status"></div>
-      <div id="gps-shots-table-wrap"></div>
+      <div class="table-wrap" id="gps-shots-table-wrap"></div>
     </div>
   </section>
 
@@ -173,16 +205,44 @@
     </div>
 
     <div class="card">
-      <h3>Course Holes & Tee Boxes</h3>
+      <h3>Edit Individual Hole Par & Yardage</h3>
+      <div class="row">
+        <div>
+          <label for="edit-hole-course">Course</label>
+          <select id="edit-hole-course"></select>
+        </div>
+        <div>
+          <label for="edit-hole-number">Hole</label>
+          <select id="edit-hole-number"></select>
+        </div>
+        <div>
+          <label for="edit-hole-par">Par</label>
+          <input id="edit-hole-par" type="number" value="4" />
+        </div>
+        <div>
+          <label for="edit-hole-yards">Yards</label>
+          <input id="edit-hole-yards" type="number" value="250" />
+        </div>
+      </div>
+      <label for="edit-hole-notes">Notes</label>
+      <input id="edit-hole-notes" type="text" placeholder="Dogleg right, water on left..." />
+      <div style="margin-top: 10px;">
+        <button id="save-hole-btn" class="primary">Update Hole</button>
+      </div>
+      <div class="status" id="hole-edit-status"></div>
+    </div>
+
+    <div class="card">
+      <h3>All Courses, Holes & Tee Boxes</h3>
       <div id="course-holes-wrap"></div>
     </div>
   </section>
 
-  <!-- TAB 3: PLAYERS & NEW ROUND -->
+  <!-- TAB 3: PLAYERS & ROUNDS -->
   <section id="tab-players-rounds" class="tab-panel hidden">
     <div class="grid-2">
       <div class="card">
-        <h2>Add Player</h2>
+        <h2>Add New Player</h2>
         <label for="player-name-input">Player Name</label>
         <input id="player-name-input" type="text" placeholder="e.g., Jordan" />
         <label for="player-handicap-input">Handicap</label>
@@ -191,7 +251,7 @@
           <button id="add-player-btn" class="primary">Add Player</button>
         </div>
         <div class="status" id="player-status"></div>
-        <div id="players-list-wrap"></div>
+        <div class="table-wrap" id="players-list-wrap"></div>
       </div>
 
       <div class="card">
@@ -200,14 +260,14 @@
         <select id="new-round-course"></select>
         <label for="new-round-date">Date</label>
         <input id="new-round-date" type="date" />
-        <label for="new-round-holes">Holes Played (9 or 18)</label>
+        <label for="new-round-holes">Holes Played</label>
         <select id="new-round-holes">
           <option value="9">9 Holes</option>
           <option value="18">18 Holes</option>
         </select>
         <label for="new-round-notes">Notes</label>
         <input id="new-round-notes" type="text" placeholder="Morning round, windy..." />
-        <label>Select Golfers in Round</label>
+        <label>Golfers in Round</label>
         <div id="round-player-checkboxes"></div>
         <div style="margin-top: 12px;">
           <button id="create-round-btn" class="primary">Start Round</button>
@@ -221,14 +281,19 @@
   <section id="tab-history" class="tab-panel hidden">
     <div class="card">
       <h2>Historic Rounds</h2>
-      <div id="history-list-wrap"></div>
+      <div class="table-wrap" id="history-list-wrap"></div>
+    </div>
+    <div class="card hidden" id="history-detail-card">
+      <h3 id="history-detail-title">Round Breakdown</h3>
+      <div class="table-wrap" id="history-scores-wrap"></div>
+      <div class="table-wrap" id="history-shots-wrap" style="margin-top: 12px;"></div>
     </div>
   </section>
 
   <script>
-    // Replace these with your Supabase project credentials
-    const SUPABASE_URL = "YOUR_SUPABASE_URL";
-    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    // Replace with your Supabase Project URL and Anon Public Key
+    const SUPABASE_URL = "https://uzbbwvihkfzdbnowhglc.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const state = {
@@ -240,26 +305,32 @@
       activeRoundId: null,
       scores: [],
       shots: [],
-      currentHole: 1,
-      scorecardMode: "overview"
+      currentHole: 1
     };
 
     document.getElementById("new-round-date").valueAsDate = new Date();
 
-    // Tab switching
-    document.querySelectorAll(".tab-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        const tab = btn.dataset.tab;
-        document.querySelectorAll(".tab-panel").forEach((p) => p.classList.add("hidden"));
-        document.getElementById(`tab-${tab}`).classList.remove("hidden");
+    function setGlobalStatus(msg, isError = false) {
+      const el = document.getElementById("global-status");
+      el.textContent = msg;
+      el.className = isError ? "error" : "sub";
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll(".tab-btn").forEach((b) => {
+        b.classList.toggle("active", b.dataset.tab === tabName);
       });
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.add("hidden"));
+      const panel = document.getElementById(`tab-${tabName}`);
+      if (panel) panel.classList.remove("hidden");
+    }
+
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => switchTab(btn.dataset.tab));
     });
 
     // Scorecard view toggle
     document.getElementById("view-overview-btn").addEventListener("click", () => {
-      state.scorecardMode = "overview";
       document.getElementById("view-overview-btn").classList.add("active");
       document.getElementById("view-single-btn").classList.remove("active");
       document.getElementById("scorecard-overview").classList.remove("hidden");
@@ -268,7 +339,6 @@
     });
 
     document.getElementById("view-single-btn").addEventListener("click", () => {
-      state.scorecardMode = "single";
       document.getElementById("view-single-btn").classList.add("active");
       document.getElementById("view-overview-btn").classList.remove("active");
       document.getElementById("scorecard-single").classList.remove("hidden");
@@ -278,7 +348,7 @@
 
     function getCurrentPosition() {
       return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) return reject(new Error("Geolocation unavailable."));
+        if (!navigator.geolocation) return reject(new Error("Geolocation not supported in this browser/context."));
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
           timeout: 12000,
@@ -286,6 +356,60 @@
         });
       });
     }
+
+    // Seed Coldstream Golf Course
+    document.getElementById("seed-coldstream-btn").addEventListener("click", async () => {
+      setGlobalStatus("Seeding Coldstream Golf Course...");
+      const existing = state.courses.find((c) => c.name.toLowerCase().includes("coldstream"));
+      if (existing) {
+        setGlobalStatus(`Coldstream Golf Course already exists (ID #${existing.id}).`);
+        return;
+      }
+
+      const { data: course, error: cErr } = await sb
+        .from("golf_courses")
+        .insert({ name: "Coldstream Golf Course", location: "15 Dure Meadow Rd, Lumby, BC", total_par: 36 })
+        .select()
+        .single();
+
+      if (cErr) return setGlobalStatus(`Seed error: ${cErr.message}`, true);
+
+      const coldstreamHoles = [
+        [1, 4, 144, "Black tees | Stroke Index 13"],
+        [2, 3, 228, "Black tees | Stroke Index 5"],
+        [3, 4, 321, "Black tees | Stroke Index 9"],
+        [4, 4, 306, "Black tees | Stroke Index 7"],
+        [5, 4, 285, "Black tees | Stroke Index 15"],
+        [6, 4, 264, "Black tees | Stroke Index 11"],
+        [7, 5, 600, "Black tees | Stroke Index 1"],
+        [8, 4, 242, "Black tees | Stroke Index 17"],
+        [9, 4, 325, "Black tees | Stroke Index 3"]
+      ];
+
+      const { data: insertedHoles, error: hErr } = await sb
+        .from("golf_course_holes")
+        .insert(coldstreamHoles.map(([hole_number, par, yards, notes]) => ({
+          course_id: course.id, hole_number, par, yards, notes
+        })))
+        .select();
+
+      if (hErr) return setGlobalStatus(`Hole seed error: ${hErr.message}`, true);
+
+      const { data: tee, error: tErr } = await sb
+        .from("golf_course_tees")
+        .insert({ course_id: course.id, name: "Black", color_hex: "#1f2937", total_yards: 2715, total_par: 36 })
+        .select()
+        .single();
+
+      if (!tErr && tee && insertedHoles?.length) {
+        await sb.from("golf_hole_tee_boxes").insert(
+          insertedHoles.map((h) => ({ hole_id: h.id, tee_id: tee.id, yards: h.yards }))
+        );
+      }
+
+      setGlobalStatus("Coldstream Golf Course (9 holes + Black tee) added!");
+      await loadBaseData();
+    });
 
     async function loadBaseData() {
       const [coursesRes, holesRes, teeBoxesRes, playersRes, roundsRes] = await Promise.all([
@@ -295,6 +419,13 @@
         sb.from("golf_players").select("*").order("player_name"),
         sb.from("golf_rounds").select("*, golf_courses(name)").order("round_date", { ascending: false }).order("id", { ascending: false })
       ]);
+
+      const firstErr = [coursesRes.error, holesRes.error, teeBoxesRes.error, playersRes.error, roundsRes.error].find(Boolean);
+      if (firstErr) {
+        setGlobalStatus(`Supabase error: ${firstErr.message}`, true);
+      } else {
+        setGlobalStatus(`Connected — ${coursesRes.data?.length || 0} course(s), ${playersRes.data?.length || 0} player(s), ${roundsRes.data?.length || 0} round(s).`);
+      }
 
       state.courses = coursesRes.data || [];
       state.holes = holesRes.data || [];
@@ -315,7 +446,7 @@
 
     async function loadActiveRoundDetails() {
       if (!state.activeRoundId) {
-        document.getElementById("active-round-banner").textContent = "No active round selected";
+        document.getElementById("active-round-banner").textContent = "No round yet — start one in Players & Rounds";
         state.scores = [];
         state.shots = [];
         renderScorecard();
@@ -331,11 +462,14 @@
 
       const [scoresRes, shotsRes] = await Promise.all([
         sb.from("golf_scores").select("*").eq("round_id", state.activeRoundId),
-        sb.from("v_golf_round_shots").select("*").eq("round_id", state.activeRoundId).order("shot_number")
+        sb.from("golf_shots").select("*, golf_players(player_name)").eq("round_id", state.activeRoundId).order("shot_number")
       ]);
 
       state.scores = scoresRes.data || [];
-      state.shots = shotsRes.data || [];
+      state.shots = (shotsRes.data || []).map((s) => ({
+        ...s,
+        player_name: s.golf_players?.player_name || `Player #${s.player_id}`
+      }));
 
       renderScorecard();
       renderSingleHole();
@@ -351,9 +485,11 @@
       const courseOptions = state.courses.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
       document.getElementById("new-round-course").innerHTML = courseOptions || `<option value="">No courses</option>`;
       document.getElementById("tee-course-select").innerHTML = courseOptions || `<option value="">No courses</option>`;
+      document.getElementById("edit-hole-course").innerHTML = courseOptions || `<option value="">No courses</option>`;
 
-      const playerOptions = state.players.map((p) => `<option value="${p.id}">${p.player_name} (${p.handicap ?? 0})</option>`).join("");
+      const playerOptions = state.players.map((p) => `<option value="${p.id}">${p.player_name} (HCP ${p.handicap ?? 0})</option>`).join("");
       document.getElementById("gps-player-select").innerHTML = playerOptions || `<option value="">No players</option>`;
+      document.getElementById("round-add-player-select").innerHTML = playerOptions || `<option value="">No players</option>`;
 
       const activeRound = state.rounds.find((r) => r.id === Number(state.activeRoundId));
       const roundHoles = activeRound
@@ -363,14 +499,14 @@
       document.getElementById("gps-hole-select").innerHTML = holeOptions || `<option value="1">Hole 1</option>`;
       document.getElementById("single-hole-select").innerHTML = holeOptions || `<option value="1">Hole 1</option>`;
 
-      // Checkboxes for new round players
       document.getElementById("round-player-checkboxes").innerHTML = state.players.length
         ? state.players.map((p) => `<label style="display:inline-flex;align-items:center;gap:6px;margin-right:12px;color:var(--text);">
             <input type="checkbox" class="round-player-cb" value="${p.id}" style="width:auto;" /> ${p.player_name}
           </label>`).join("")
-        : `<div class="sub">Add players first.</div>`;
+        : `<div class="sub">Add players on the left first.</div>`;
 
       updateTeeHoleDropdown();
+      updateEditHoleDropdown();
     }
 
     function updateTeeHoleDropdown() {
@@ -381,19 +517,56 @@
         .join("");
     }
 
+    function updateEditHoleDropdown() {
+      const courseId = Number(document.getElementById("edit-hole-course").value);
+      const courseHoles = state.holes.filter((h) => h.course_id === courseId).sort((a, b) => a.hole_number - b.hole_number);
+      const sel = document.getElementById("edit-hole-number");
+      sel.innerHTML = courseHoles.map((h) => `<option value="${h.hole_number}">Hole ${h.hole_number}</option>`).join("");
+      syncHoleEditorFields();
+    }
+
+    function syncHoleEditorFields() {
+      const courseId = Number(document.getElementById("edit-hole-course").value);
+      const holeNum = Number(document.getElementById("edit-hole-number").value);
+      const hole = state.holes.find((h) => h.course_id === courseId && h.hole_number === holeNum);
+      if (hole) {
+        document.getElementById("edit-hole-par").value = hole.par;
+        document.getElementById("edit-hole-yards").value = hole.yards;
+        document.getElementById("edit-hole-notes").value = hole.notes || "";
+      }
+    }
+
     document.getElementById("round-selector").addEventListener("change", async (e) => {
       state.activeRoundId = Number(e.target.value) || null;
       await loadActiveRoundDetails();
     });
-
     document.getElementById("refresh-all-btn").addEventListener("click", loadBaseData);
     document.getElementById("tee-course-select").addEventListener("change", updateTeeHoleDropdown);
+    document.getElementById("edit-hole-course").addEventListener("change", updateEditHoleDropdown);
+    document.getElementById("edit-hole-number").addEventListener("change", syncHoleEditorFields);
+
+    // Add player to active round
+    document.getElementById("add-player-to-round-btn").addEventListener("click", async () => {
+      const playerId = Number(document.getElementById("round-add-player-select").value);
+      const activeRound = state.rounds.find((r) => r.id === Number(state.activeRoundId));
+      if (!activeRound || !playerId) return;
+
+      const holes = state.holes.filter((h) => h.course_id === activeRound.course_id);
+      const rows = holes
+        .filter((h) => !state.scores.some((s) => s.player_id === playerId && s.hole_number === h.hole_number))
+        .map((h) => ({ round_id: activeRound.id, player_id: playerId, hole_number: h.hole_number, strokes: 0 }));
+
+      if (rows.length) {
+        const { error } = await sb.from("golf_scores").insert(rows);
+        if (error) return setGlobalStatus(error.message, true);
+      }
+      await loadActiveRoundDetails();
+    });
 
     function getRoundPlayerIds() {
-      const idsFromScores = [...new Set(state.scores.map((s) => s.player_id))];
-      const idsFromShots = [...new Set(state.shots.map((s) => s.player_id))];
-      const combined = [...new Set([...idsFromScores, ...idsFromShots])];
-      return combined.length ? combined : state.players.map((p) => p.id);
+      const fromScores = state.scores.map((s) => s.player_id);
+      const fromShots = state.shots.map((s) => s.player_id);
+      return [...new Set([...fromScores, ...fromShots])];
     }
 
     function getStrokes(playerId, holeNumber) {
@@ -407,47 +580,43 @@
       const existing = state.scores.find((s) => s.player_id === Number(playerId) && s.hole_number === Number(holeNumber));
 
       if (existing) {
-        const { data, error } = await sb
-          .from("golf_scores")
-          .update({ strokes: clamped })
-          .eq("id", existing.id)
-          .select()
-          .single();
-        if (!error && data) {
-          existing.strokes = data.strokes;
-        }
+        const { data, error } = await sb.from("golf_scores").update({ strokes: clamped }).eq("id", existing.id).select().single();
+        if (error) return setGlobalStatus(error.message, true);
+        if (data) existing.strokes = data.strokes;
       } else {
         const { data, error } = await sb
           .from("golf_scores")
-          .insert({
-            round_id: Number(state.activeRoundId),
-            player_id: Number(playerId),
-            hole_number: Number(holeNumber),
-            strokes: clamped
-          })
+          .insert({ round_id: Number(state.activeRoundId), player_id: Number(playerId), hole_number: Number(holeNumber), strokes: clamped })
           .select()
           .single();
-        if (!error && data) {
-          state.scores.push(data);
-        }
+        if (error) return setGlobalStatus(error.message, true);
+        if (data) state.scores.push(data);
       }
-
       renderScorecard();
       renderSingleHole();
     }
 
     function renderScorecard() {
       const wrap = document.getElementById("scorecard-table-wrap");
+      const meta = document.getElementById("scorecard-course-meta");
       const activeRound = state.rounds.find((r) => r.id === Number(state.activeRoundId));
       if (!activeRound) {
-        wrap.innerHTML = `<div class="sub" style="margin-top:10px;">Create or select a round to view the scorecard.</div>`;
+        meta.textContent = "";
+        wrap.innerHTML = `<div class="sub">No active round selected. Add a course and players, then start a round.</div>`;
         return;
       }
 
       const holes = state.holes.filter((h) => h.course_id === activeRound.course_id).sort((a, b) => a.hole_number - b.hole_number);
+      const totalPar = holes.reduce((sum, h) => sum + (h.par || 0), 0);
+      const totalYards = holes.reduce((sum, h) => sum + (h.yards || 0), 0);
+      meta.textContent = `${activeRound.golf_courses?.name || "Course"} · ${holes.length} holes · Par ${totalPar} · ${totalYards} yds`;
+
       const playerIds = getRoundPlayerIds();
       const players = state.players.filter((p) => playerIds.includes(p.id));
-      const totalPar = holes.reduce((acc, h) => acc + (h.par || 0), 0);
+      if (!players.length) {
+        wrap.innerHTML = `<div class="sub">Select a player in "Add Player to Active Round" above to start scoring.</div>`;
+        return;
+      }
 
       let html = `<table><thead><tr><th>Player</th>`;
       holes.forEach((h) => { html += `<th>H${h.hole_number}<br><span class="sub">P${h.par} · ${h.yards}y</span></th>`; });
@@ -455,26 +624,24 @@
 
       players.forEach((p) => {
         let total = 0;
-        let playedPar = 0;
+        let parPlayed = 0;
         html += `<tr><td><strong>${p.player_name}</strong></td>`;
         holes.forEach((h) => {
           const st = getStrokes(p.id, h.hole_number);
           total += st;
-          if (st > 0) playedPar += h.par;
-          html += `<td>
-            <div class="hole-pill">
-              <button class="stroke-btn" onclick="setStrokes(${p.id}, ${h.hole_number}, ${st - 1})">-</button>
-              <span>${st || "-"}</span>
-              <button class="stroke-btn" onclick="setStrokes(${p.id}, ${h.hole_number}, ${st + 1})">+</button>
-            </div>
-          </td>`;
+          if (st > 0) parPlayed += h.par;
+          html += `<td><div class="hole-pill">
+            <button class="stroke-btn" onclick="setStrokes(${p.id}, ${h.hole_number}, ${st - 1})">-</button>
+            <span>${st || "-"}</span>
+            <button class="stroke-btn" onclick="setStrokes(${p.id}, ${h.hole_number}, ${st + 1})">+</button>
+          </div></td>`;
         });
-        const diff = total > 0 ? total - playedPar : 0;
+        const diff = total > 0 ? total - parPlayed : 0;
         const diffLabel = total === 0 ? "-" : diff === 0 ? "E" : diff > 0 ? `+${diff}` : `${diff}`;
         html += `<td><strong>${total}</strong></td><td>${diffLabel}</td></tr>`;
       });
 
-      html += `</tbody></table><div class="sub" style="margin-top:6px;">Course Par: ${totalPar}</div>`;
+      html += `</tbody></table>`;
       wrap.innerHTML = html;
     }
 
@@ -492,21 +659,23 @@
       document.getElementById("single-hole-select").value = hole.hole_number;
       document.getElementById("gps-hole-select").value = hole.hole_number;
 
-      metaEl.innerHTML = `<strong>Hole ${hole.hole_number}</strong> — Par ${hole.par} · ${hole.yards} yards ${hole.notes ? `· ${hole.notes}` : ""}`;
+      metaEl.innerHTML = `<strong>Hole ${hole.hole_number}</strong> — Par ${hole.par} · ${hole.yards} yds ${hole.notes ? `· ${hole.notes}` : ""}`;
 
       const playerIds = getRoundPlayerIds();
       const players = state.players.filter((p) => playerIds.includes(p.id));
-      playersEl.innerHTML = players.map((p) => {
-        const st = getStrokes(p.id, hole.hole_number);
-        return `<div class="row" style="margin-top:8px;padding:8px;background:var(--panel-2);border-radius:8px;">
-          <strong>${p.player_name}</strong>
-          <div class="row" style="justify-content:flex-end;flex:0 0 auto;">
-            <button class="stroke-btn" onclick="setStrokes(${p.id}, ${hole.hole_number}, ${st - 1})">-</button>
-            <span style="min-width:28px;text-align:center;">${st}</span>
-            <button class="stroke-btn" onclick="setStrokes(${p.id}, ${hole.hole_number}, ${st + 1})">+</button>
-          </div>
-        </div>`;
-      }).join("");
+      playersEl.innerHTML = players.length
+        ? players.map((p) => {
+            const st = getStrokes(p.id, hole.hole_number);
+            return `<div class="row" style="margin-top:8px;padding:8px 12px;background:var(--panel-2);border-radius:8px;">
+              <strong>${p.player_name}</strong>
+              <div class="row" style="justify-content:flex-end;flex:0 0 auto;">
+                <button class="stroke-btn" onclick="setStrokes(${p.id}, ${hole.hole_number}, ${st - 1})">-</button>
+                <span style="min-width:28px;text-align:center;">${st}</span>
+                <button class="stroke-btn" onclick="setStrokes(${p.id}, ${hole.hole_number}, ${st + 1})">+</button>
+              </div>
+            </div>`;
+          }).join("")
+        : `<div class="sub" style="margin-top:8px;">No players in this round yet.</div>`;
     }
 
     document.getElementById("single-hole-select").addEventListener("change", (e) => {
@@ -522,22 +691,36 @@
       renderSingleHole();
     });
 
-    // GPS Shot Logging ("Mark Spot on Next Hit")
+    // GPS Shot Marker
     document.getElementById("mark-gps-shot-btn").addEventListener("click", async () => {
       const statusEl = document.getElementById("gps-status");
       const playerId = Number(document.getElementById("gps-player-select").value);
       const holeNumber = Number(document.getElementById("gps-hole-select").value);
       const clubUsed = document.getElementById("gps-club-input").value.trim() || null;
+      const manualLat = document.getElementById("gps-manual-lat").value;
+      const manualLng = document.getElementById("gps-manual-lng").value;
 
       if (!state.activeRoundId || !playerId) {
         statusEl.textContent = "Select an active round and a golfer first.";
+        statusEl.className = "status error";
         return;
       }
 
-      statusEl.textContent = "Acquiring GPS coordinates...";
+      statusEl.textContent = "Getting location...";
+      statusEl.className = "status";
+
       try {
-        const pos = await getCurrentPosition();
-        const { latitude, longitude, accuracy } = pos.coords;
+        let latitude, longitude, accuracy;
+        if (manualLat !== "" && manualLng !== "") {
+          latitude = Number(manualLat);
+          longitude = Number(manualLng);
+          accuracy = 1;
+        } else {
+          const pos = await getCurrentPosition();
+          latitude = pos.coords.latitude;
+          longitude = pos.coords.longitude;
+          accuracy = pos.coords.accuracy;
+        }
 
         const { data, error } = await sb.rpc("log_golf_shot", {
           p_round_id: Number(state.activeRoundId),
@@ -550,10 +733,11 @@
         });
 
         if (error) throw error;
-        statusEl.textContent = `Marked Shot #${data.shot_number} on Hole ${holeNumber} (${latitude.toFixed(5)}, ${longitude.toFixed(5)}). Previous shot distance updates automatically when you hit again.`;
+        statusEl.textContent = `Marked Shot #${data.shot_number} on Hole ${holeNumber} (${latitude.toFixed(5)}, ${longitude.toFixed(5)}).`;
         await loadActiveRoundDetails();
       } catch (err) {
-        statusEl.textContent = `GPS error: ${err.message}`;
+        statusEl.textContent = `GPS/Shot error: ${err.message}`;
+        statusEl.className = "status error";
       }
     });
 
@@ -562,39 +746,46 @@
       const holeNumber = Number(document.getElementById("gps-hole-select").value);
       const count = state.shots.filter((s) => s.player_id === playerId && s.hole_number === holeNumber).length;
       await setStrokes(playerId, holeNumber, count);
-      document.getElementById("gps-status").textContent = `Synced ${count} logged GPS shot(s) to Hole ${holeNumber} score.`;
+      document.getElementById("gps-status").textContent = `Synced ${count} GPS shot(s) to Hole ${holeNumber} score.`;
     });
 
     function renderShots() {
       const wrap = document.getElementById("gps-shots-table-wrap");
       if (!state.shots.length) {
-        wrap.innerHTML = `<div class="sub" style="margin-top:10px;">No GPS shots logged yet for this round.</div>`;
+        wrap.innerHTML = `<div class="sub" style="margin-top:10px;">No GPS shots logged yet in this round.</div>`;
         return;
       }
       wrap.innerHTML = `<table>
-        <thead><tr><th>Golfer</th><th>Hole</th><th>Shot #</th><th>Club</th><th>Distance to Next Hit</th><th>Coords</th></tr></thead>
+        <thead><tr><th>Golfer</th><th>Hole</th><th>Shot #</th><th>Club</th><th>Shot Distance</th><th>Spot (Lat, Lng)</th></tr></thead>
         <tbody>${state.shots.map((s) => `
           <tr>
             <td>${s.player_name}</td>
             <td>H${s.hole_number}</td>
             <td>#${s.shot_number}</td>
             <td>${s.club_used || "-"}</td>
-            <td>${s.distance_to_next_yards != null ? `<strong>${s.distance_to_next_yards} yds</strong>` : "Awaiting next hit"}</td>
+            <td>${s.distance_to_next_yards != null ? `<strong>${s.distance_to_next_yards} yds</strong>` : "Mark next hit to measure"}</td>
             <td>${Number(s.latitude).toFixed(5)}, ${Number(s.longitude).toFixed(5)}</td>
           </tr>
         `).join("")}</tbody>
       </table>`;
     }
 
-    // Courses & Tee Boxes
+    // ADD COURSE & HOLES
     document.getElementById("create-course-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("course-status");
       const name = document.getElementById("course-name").value.trim();
       const location = document.getElementById("course-location").value.trim();
       const total_par = Number(document.getElementById("course-par").value) || 36;
       const holeCount = Number(document.getElementById("course-holes-count").value) || 9;
-      const statusEl = document.getElementById("course-status");
 
-      if (!name) return (statusEl.textContent = "Enter a course name.");
+      if (!name) {
+        statusEl.textContent = "Enter a course name.";
+        statusEl.className = "status error";
+        return;
+      }
+
+      statusEl.textContent = "Creating course...";
+      statusEl.className = "status";
 
       const { data: course, error } = await sb
         .from("golf_courses")
@@ -602,9 +793,13 @@
         .select()
         .single();
 
-      if (error) return (statusEl.textContent = error.message);
+      if (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = "status error";
+        return;
+      }
 
-      const defaultPar = Math.round(total_par / holeCount) || 4;
+      const defaultPar = Math.max(3, Math.round(total_par / holeCount) || 4);
       const holeRows = Array.from({ length: holeCount }, (_, i) => ({
         course_id: course.id,
         hole_number: i + 1,
@@ -613,21 +808,66 @@
         notes: ""
       }));
 
-      await sb.from("golf_course_holes").insert(holeRows);
-      statusEl.textContent = `Created "${course.name}" with ${holeCount} holes.`;
+      const { error: holesErr } = await sb.from("golf_course_holes").insert(holeRows);
+      if (holesErr) {
+        statusEl.textContent = `Course created, but holes failed: ${holesErr.message}`;
+        statusEl.className = "status error";
+        return;
+      }
+
+      document.getElementById("course-name").value = "";
+      document.getElementById("course-location").value = "";
+      statusEl.textContent = `Created "${course.name}" with ${holeCount} holes!`;
       await loadBaseData();
     });
 
+    // EDIT INDIVIDUAL HOLE
+    document.getElementById("save-hole-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("hole-edit-status");
+      const courseId = Number(document.getElementById("edit-hole-course").value);
+      const holeNum = Number(document.getElementById("edit-hole-number").value);
+      const par = Number(document.getElementById("edit-hole-par").value) || 4;
+      const yards = Number(document.getElementById("edit-hole-yards").value) || 250;
+      const notes = document.getElementById("edit-hole-notes").value.trim();
+
+      const hole = state.holes.find((h) => h.course_id === courseId && h.hole_number === holeNum);
+      if (!hole) return;
+
+      const { error } = await sb
+        .from("golf_course_holes")
+        .update({ par, yards, notes })
+        .eq("id", hole.id);
+
+      if (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = "status error";
+        return;
+      }
+
+      // Recalculate total_par on the course
+      const updatedTotalPar = state.holes
+        .filter((h) => h.course_id === courseId)
+        .reduce((sum, h) => sum + (h.id === hole.id ? par : h.par), 0);
+      await sb.from("golf_courses").update({ total_par: updatedTotalPar }).eq("id", courseId);
+
+      statusEl.textContent = `Updated Hole ${holeNum} (Par ${par}, ${yards} yds).`;
+      statusEl.className = "status";
+      await loadBaseData();
+    });
+
+    // TEE BOXES
     document.getElementById("use-current-gps-for-tee-btn").addEventListener("click", async () => {
       const statusEl = document.getElementById("tee-status");
-      statusEl.textContent = "Getting GPS position...";
+      statusEl.textContent = "Getting current GPS...";
+      statusEl.className = "status";
       try {
         const pos = await getCurrentPosition();
         document.getElementById("tee-lat-input").value = pos.coords.latitude.toFixed(6);
         document.getElementById("tee-lng-input").value = pos.coords.longitude.toFixed(6);
-        statusEl.textContent = "Filled coordinates from current GPS.";
+        statusEl.textContent = "Filled coordinates from GPS.";
       } catch (err) {
         statusEl.textContent = err.message;
+        statusEl.className = "status error";
       }
     });
 
@@ -645,58 +885,87 @@
         p_hole_number: holeNumber,
         p_tee_name: teeName,
         p_yards: yards,
-        p_latitude: latVal ? Number(latVal) : null,
-        p_longitude: lngVal ? Number(lngVal) : null
+        p_latitude: latVal !== "" ? Number(latVal) : null,
+        p_longitude: lngVal !== "" ? Number(lngVal) : null
       });
 
-      if (error) return (statusEl.textContent = error.message);
-      statusEl.textContent = `Updated ${teeName} tee on Hole ${holeNumber} (${yards} yds).`;
+      if (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = "status error";
+        return;
+      }
+      statusEl.textContent = `Saved ${teeName} tee box for Hole ${holeNumber} (${yards} yds).`;
+      statusEl.className = "status";
       await loadBaseData();
     });
 
     function renderCoursesAndTees() {
       const wrap = document.getElementById("course-holes-wrap");
       if (!state.courses.length) {
-        wrap.innerHTML = `<div class="sub">No courses yet.</div>`;
+        wrap.innerHTML = `<div class="sub">No courses yet. Add one above or click "Seed Coldstream".</div>`;
         return;
       }
       wrap.innerHTML = state.courses.map((c) => {
         const cHoles = state.holes.filter((h) => h.course_id === c.id).sort((a, b) => a.hole_number - b.hole_number);
-        return `<div style="margin-bottom:14px;">
+        return `<div style="margin-bottom:16px;">
           <strong>${c.name}</strong> <span class="sub">— ${c.location || ""} (Par ${c.total_par})</span>
-          <table><thead><tr><th>Hole</th><th>Par</th><th>Default Yards</th><th>Tee Box GPS / Yards</th></tr></thead><tbody>
-          ${cHoles.map((h) => {
-            const boxes = state.teeBoxes.filter((tb) => tb.hole_id === h.id);
-            const boxSummary = boxes.length
-              ? boxes.map((b) => `${b.golf_course_tees?.name || "Tee"}: ${b.yards}y (${b.latitude ? `${Number(b.latitude).toFixed(4)}, ${Number(b.longitude).toFixed(4)}` : "no GPS"})`).join(" | ")
-              : "Using hole default yardage";
-            return `<tr><td>H${h.hole_number}</td><td>${h.par}</td><td>${h.yards}</td><td>${boxSummary}</td></tr>`;
-          }).join("")}
-          </tbody></table>
+          <div class="table-wrap">
+            <table><thead><tr><th>Hole</th><th>Par</th><th>Default Yards</th><th>Notes</th><th>Tee Boxes (GPS / Yards)</th></tr></thead><tbody>
+            ${cHoles.map((h) => {
+              const boxes = state.teeBoxes.filter((tb) => tb.hole_id === h.id);
+              const boxSummary = boxes.length
+                ? boxes.map((b) => `${b.golf_course_tees?.name || "Tee"}: ${b.yards}y (${b.latitude != null ? `${Number(b.latitude).toFixed(4)}, ${Number(b.longitude).toFixed(4)}` : "no GPS"})`).join(" | ")
+                : "Default";
+              return `<tr><td>H${h.hole_number}</td><td>${h.par}</td><td>${h.yards}</td><td>${h.notes || "-"}</td><td>${boxSummary}</td></tr>`;
+            }).join("")}
+            </tbody></table>
+          </div>
         </div>`;
       }).join("");
     }
 
-    // Players & Rounds
+    // ADD NEW PLAYER
     document.getElementById("add-player-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("player-status");
       const player_name = document.getElementById("player-name-input").value.trim();
       const handicap = Number(document.getElementById("player-handicap-input").value) || 0;
-      const statusEl = document.getElementById("player-status");
-      if (!player_name) return (statusEl.textContent = "Enter a player name.");
+
+      if (!player_name) {
+        statusEl.textContent = "Enter a player name.";
+        statusEl.className = "status error";
+        return;
+      }
+
+      statusEl.textContent = "Adding player...";
+      statusEl.className = "status";
 
       const { error } = await sb.from("golf_players").insert({ player_name, handicap });
-      if (error) return (statusEl.textContent = error.message);
+      if (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = "status error";
+        return;
+      }
+
       document.getElementById("player-name-input").value = "";
-      statusEl.textContent = `Added ${player_name}.`;
+      statusEl.textContent = `Added player "${player_name}" (HCP ${handicap}).`;
       await loadBaseData();
     });
 
     function renderPlayers() {
-      document.getElementById("players-list-wrap").innerHTML = state.players.length
-        ? `<table><thead><tr><th>Player</th><th>Handicap</th></tr></thead><tbody>${state.players.map((p) => `<tr><td>${p.player_name}</td><td>${p.handicap ?? 0}</td></tr>`).join("")}</tbody></table>`
-        : `<div class="sub" style="margin-top:8px;">No players added yet.</div>`;
+      const wrap = document.getElementById("players-list-wrap");
+      if (!state.players.length) {
+        wrap.innerHTML = `<div class="sub" style="margin-top:10px;">No players added yet.</div>`;
+        return;
+      }
+      wrap.innerHTML = `<table>
+        <thead><tr><th>ID</th><th>Player Name</th><th>Handicap</th></tr></thead>
+        <tbody>${state.players.map((p) => `
+          <tr><td>#${p.id}</td><td><strong>${p.player_name}</strong></td><td>${p.handicap ?? 0}</td></tr>
+        `).join("")}</tbody>
+      </table>`;
     }
 
+    // START NEW ROUND
     document.getElementById("create-round-btn").addEventListener("click", async () => {
       const statusEl = document.getElementById("round-status");
       const course_id = Number(document.getElementById("new-round-course").value);
@@ -705,7 +974,14 @@
       const notes = document.getElementById("new-round-notes").value.trim();
       const selectedPlayers = [...document.querySelectorAll(".round-player-cb:checked")].map((cb) => Number(cb.value));
 
-      if (!course_id) return (statusEl.textContent = "Select a course.");
+      if (!course_id) {
+        statusEl.textContent = "Select or add a course first.";
+        statusEl.className = "status error";
+        return;
+      }
+
+      statusEl.textContent = "Starting round...";
+      statusEl.className = "status";
 
       const { data: round, error } = await sb
         .from("golf_rounds")
@@ -713,22 +989,37 @@
         .select()
         .single();
 
-      if (error) return (statusEl.textContent = error.message);
+      if (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = "status error";
+        return;
+      }
 
       if (selectedPlayers.length) {
         const holeRows = state.holes.filter((h) => h.course_id === course_id);
         const seedScores = [];
         selectedPlayers.forEach((pid) => {
-          holeRows.forEach((h) => seedScores.push({ round_id: round.id, player_id: pid, hole_number: h.hole_number, strokes: 0 }));
+          holeRows.forEach((h) => {
+            seedScores.push({ round_id: round.id, player_id: pid, hole_number: h.hole_number, strokes: 0 });
+          });
         });
-        if (seedScores.length) await sb.from("golf_scores").insert(seedScores);
+        if (seedScores.length) {
+          const { error: scoreErr } = await sb.from("golf_scores").insert(seedScores);
+          if (scoreErr) {
+            statusEl.textContent = `Round started, but score setup failed: ${scoreErr.message}`;
+            statusEl.className = "status error";
+            return;
+          }
+        }
       }
 
       state.activeRoundId = round.id;
-      statusEl.textContent = `Started Round #${round.id}.`;
+      statusEl.textContent = `Started Round #${round.id}!`;
       await loadBaseData();
+      switchTab("scorecard");
     });
 
+    // HISTORIC ROUNDS
     function renderHistory() {
       const wrap = document.getElementById("history-list-wrap");
       if (!state.rounds.length) {
@@ -736,7 +1027,7 @@
         return;
       }
       wrap.innerHTML = `<table>
-        <thead><tr><th>Round</th><th>Date</th><th>Course</th><th>Holes</th><th>Notes</th><th>Action</th></tr></thead>
+        <thead><tr><th>Round</th><th>Date</th><th>Course</th><th>Holes</th><th>Notes</th><th>Actions</th></tr></thead>
         <tbody>${state.rounds.map((r) => `
           <tr>
             <td>#${r.id}</td>
@@ -744,7 +1035,10 @@
             <td>${r.golf_courses?.name || "-"}</td>
             <td>${r.holes_played || 9}</td>
             <td>${r.notes || "-"}</td>
-            <td><button onclick="openRoundInScorecard(${r.id})">Open Scorecard</button></td>
+            <td>
+              <button onclick="openRoundInScorecard(${r.id})">Open Scorecard</button>
+              <button onclick="inspectHistoricRound(${r.id})">View Breakdown</button>
+            </td>
           </tr>
         `).join("")}</tbody>
       </table>`;
@@ -752,8 +1046,58 @@
 
     window.openRoundInScorecard = async (roundId) => {
       state.activeRoundId = Number(roundId);
-      document.querySelector('.tab-btn[data-tab="scorecard"]').click();
+      switchTab("scorecard");
       await loadActiveRoundDetails();
+    };
+
+    window.inspectHistoricRound = async (roundId) => {
+      const card = document.getElementById("history-detail-card");
+      const title = document.getElementById("history-detail-title");
+      const scoresWrap = document.getElementById("history-scores-wrap");
+      const shotsWrap = document.getElementById("history-shots-wrap");
+
+      const round = state.rounds.find((r) => r.id === Number(roundId));
+      title.textContent = `Round #${roundId} Breakdown — ${round?.golf_courses?.name || ""} (${round?.round_date || ""})`;
+      card.classList.remove("hidden");
+
+      const [scoresRes, shotsRes] = await Promise.all([
+        sb.from("golf_scores").select("*, golf_players(player_name)").eq("round_id", roundId).order("hole_number"),
+        sb.from("golf_shots").select("*, golf_players(player_name)").eq("round_id", roundId).order("hole_number").order("shot_number")
+      ]);
+
+      const scores = scoresRes.data || [];
+      const shots = shotsRes.data || [];
+
+      if (!scores.length) {
+        scoresWrap.innerHTML = `<div class="sub">No hole scores recorded for this round.</div>`;
+      } else {
+        const byPlayer = {};
+        scores.forEach((s) => {
+          const name = s.golf_players?.player_name || `Player #${s.player_id}`;
+          byPlayer[name] = (byPlayer[name] || 0) + (s.strokes || 0);
+        });
+        scoresWrap.innerHTML = `<strong>Player Totals</strong><table>
+          <thead><tr><th>Player</th><th>Total Strokes</th></tr></thead>
+          <tbody>${Object.entries(byPlayer).map(([name, total]) => `<tr><td>${name}</td><td><strong>${total}</strong></td></tr>`).join("")}</tbody>
+        </table>`;
+      }
+
+      if (!shots.length) {
+        shotsWrap.innerHTML = `<div class="sub">No GPS shots logged for this round.</div>`;
+      } else {
+        shotsWrap.innerHTML = `<strong>Logged GPS Shots</strong><table>
+          <thead><tr><th>Player</th><th>Hole</th><th>Shot #</th><th>Club</th><th>Distance</th></tr></thead>
+          <tbody>${shots.map((s) => `
+            <tr>
+              <td>${s.golf_players?.player_name || `Player #${s.player_id}`}</td>
+              <td>H${s.hole_number}</td>
+              <td>#${s.shot_number}</td>
+              <td>${s.club_used || "-"}</td>
+              <td>${s.distance_to_next_yards != null ? `${s.distance_to_next_yards} yds` : "-"}</td>
+            </tr>
+          `).join("")}</tbody>
+        </table>`;
+      }
     };
 
     window.setStrokes = setStrokes;
