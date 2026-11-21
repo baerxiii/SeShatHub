@@ -124,6 +124,11 @@
         <div id="single-hole-meta" class="sub" style="margin-top: 10px;"></div>
         <div id="single-hole-players"></div>
       </div>
+
+      <!-- Live Shot Spot & Distance to Green Reading -->
+      <div id="scorecard-shot-reading" class="sub" style="margin-top: 10px; padding: 8px 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;">
+        Tap <strong>+</strong> on any hole to record the spot you're taking that shot from and estimate distance to the green.
+      </div>
     </div>
 
     <!-- Course Scorecard, Layout & Hole Images -->
@@ -135,7 +140,7 @@
     <!-- Multi-Golfer GPS Shot Marker -->
     <div class="card">
       <h2>GPS Shot Marker ("Mark Spot on Next Hit")</h2>
-      <div class="sub">Each golfer's shots are tracked independently. Hit 1 marks the start spot; the next time that golfer hits, Mark Spot records the new spot and calculates how far their previous shot went.</div>
+      <div class="sub">Each golfer's shots are tracked independently. Marking a spot records where you're hitting from, calculates shot distance from your prior spot, and estimates distance to the green.</div>
       <div class="row">
         <div>
           <label for="gps-player-select">Active Golfer</label>
@@ -512,6 +517,195 @@
           maximumAge: 0
         });
       });
+    }
+
+    function computeYardsBetween(lat1, lng1, lat2, lng2) {
+      if ([lat1, lng1, lat2, lng2].some((v) => v == null || Number.isNaN(Number(v)))) return null;
+      const toRad = (deg) => (Number(deg) * Math.PI) / 180;
+      const R_YARDS = 6971237.0;
+      const dLat = toRad(Number(lat2) - Number(lat1));
+      const dLng = toRad(Number(lng2) - Number(lng1));
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+      return Math.round(2 * R_YARDS * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
+    function getHoleRecordForActiveRound(holeNumber) {
+      const activeRound = state.rounds.find((r) => r.id === Number(state.activeRoundId));
+      if (!activeRound) return null;
+      return state.holes.find((h) => h.course_id === activeRound.course_id && Number(h.hole_number) === Number(holeNumber)) || null;
+    }
+
+    // Estimates distance to green:
+    // 1) If hole has saved green_latitude & green_longitude, compute exact GPS distance to green.
+    // 2) Otherwise, estimate from hole yardage minus cumulative shot distances on that hole.
+    function estimateDistanceToGreenYards(playerId, holeNumber, currentLat, currentLng, holeShotsSoFar = []) {
+      const hole = getHoleRecordForActiveRound(holeNumber);
+      if (hole?.green_latitude != null && hole?.green_longitude != null && currentLat != null && currentLng != null) {
+        const directYards = computeYardsBetween(currentLat, currentLng, hole.green_latitude, hole.green_longitude);
+        if (directYards != null) {
+          return { yards: Math.max(0, directYards), mode: "GPS to Green" };
+        }
+      }
+
+      const holeTotalYards = Number(hole?.yards);
+      if (holeTotalYards > 0) {
+        const traveled = holeShotsSoFar.reduce((sum, s) => {
+          const d = Number(s.distance_to_next_yards);
+          return sum + (Number.isFinite(d) && d > 0 ? d : 0);
+        }, 0);
+        return { yards: Math.max(0, Math.round(holeTotalYards - traveled)), mode: "Est. Remaining" };
+      }
+
+      return null;
+    }
+
+    async function resolveShotCoordinates() {
+      const manualLat = document.getElementById("gps-manual-lat")?.value;
+      const manualLng = document.getElementById("gps-manual-lng")?.value;
+      if (manualLat !== "" && manualLat != null && manualLng !== "" && manualLng != null) {
+        return {
+          latitude: Number(manualLat),
+          longitude: Number(manualLng),
+          accuracy: 1,
+          source: "manual"
+        };
+      }
+      try {
+        const pos = await getCurrentPosition();
+        return {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          source: "gps"
+        };
+      } catch (err) {
+        return { latitude: null, longitude: null, accuracy: null, source: "unavailable", error: err.message };
+      }
+    }
+
+    function renderScorecardShotReading(playerId, holeNumber, shotRecord, prevShotRecord, greenInfo = null) {
+      const box = document.getElementById("scorecard-shot-reading");
+      if (!box) return;
+      const player = state.players.find((p) => p.id === Number(playerId));
+      const pName = player?.player_name || `Player #${playerId}`;
+
+      if (!shotRecord || shotRecord.latitude == null || shotRecord.longitude == null) {
+        const greenPart = greenInfo ? ` · <strong>${greenInfo.yards} yds</strong> to green (${greenInfo.mode})` : "";
+        box.innerHTML = `<strong>${pName} · Hole ${holeNumber}</strong>: Stroke recorded, but GPS location was unavailable (${shotRecord?.error || "enable location or enter manual Lat/Lng"})${greenPart}.`;
+        return;
+      }
+
+      const latStr = Number(shotRecord.latitude).toFixed(5);
+      const lngStr = Number(shotRecord.longitude).toFixed(5);
+      const accStr = shotRecord.accuracy_meters != null ? ` (±${Math.round(shotRecord.accuracy_meters)}m)` : "";
+
+      let distText = "First spot marked on this hole";
+      if (prevShotRecord && prevShotRecord.latitude != null && prevShotRecord.longitude != null) {
+        const yds = shotRecord.distance_to_next_yards ?? computeYardsBetween(
+          prevShotRecord.latitude,
+          prevShotRecord.longitude,
+          shotRecord.latitude,
+          shotRecord.longitude
+        );
+        if (yds != null) {
+          distText = `<strong>${yds} yds</strong> from previous spot`;
+        }
+      }
+
+      const greenText = greenInfo
+        ? ` · <strong>${greenInfo.yards} yds</strong> to green (${greenInfo.mode})`
+        : "";
+
+      box.innerHTML = `<strong>Taking Shot #${shotRecord.shot_number} (${pName} · Hole ${holeNumber})</strong> from <strong>${latStr}, ${lngStr}</strong>${accStr} · ${distText}${greenText}`;
+    }
+
+    async function recordShotSpotForStroke(playerId, holeNumber, shotNumber) {
+      const roundId = Number(state.activeRoundId);
+      if (!roundId) return null;
+
+      const clubUsed = document.getElementById("gps-club-input")?.value.trim() || null;
+      const coords = await resolveShotCoordinates();
+
+      const existingHoleShots = state.shots
+        .filter((s) => s.player_id === Number(playerId) && s.hole_number === Number(holeNumber))
+        .sort((a, b) => a.shot_number - b.shot_number);
+      const prevShot = existingHoleShots[existingHoleShots.length - 1] || null;
+
+      const computedDist =
+        prevShot && coords.latitude != null && coords.longitude != null
+          ? computeYardsBetween(prevShot.latitude, prevShot.longitude, coords.latitude, coords.longitude)
+          : null;
+
+      const shotsForGreenCalc = [
+        ...existingHoleShots,
+        ...(computedDist != null ? [{ distance_to_next_yards: computedDist }] : [])
+      ];
+      const greenInfo = estimateDistanceToGreenYards(playerId, holeNumber, coords.latitude, coords.longitude, shotsForGreenCalc);
+
+      if (coords.latitude == null || coords.longitude == null) {
+        const fallbackRec = {
+          round_id: roundId,
+          player_id: Number(playerId),
+          hole_number: Number(holeNumber),
+          shot_number: shotNumber,
+          latitude: null,
+          longitude: null,
+          accuracy_meters: null,
+          club_used: clubUsed,
+          error: coords.error
+        };
+        renderScorecardShotReading(playerId, holeNumber, fallbackRec, prevShot, greenInfo);
+        return fallbackRec;
+      }
+
+      const { data: rpcData, error: rpcErr } = await sb.rpc("log_golf_shot", {
+        p_round_id: roundId,
+        p_player_id: Number(playerId),
+        p_hole_number: Number(holeNumber),
+        p_latitude: coords.latitude,
+        p_longitude: coords.longitude,
+        p_accuracy_meters: coords.accuracy,
+        p_club_used: clubUsed
+      });
+
+      let savedShot = rpcData;
+      if (rpcErr) {
+        const { data: insData } = await sb
+          .from("golf_shots")
+          .insert({
+            round_id: roundId,
+            player_id: Number(playerId),
+            hole_number: Number(holeNumber),
+            shot_number: shotNumber,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracy_meters: coords.accuracy,
+            club_used: clubUsed,
+            distance_to_next_yards: computedDist
+          })
+          .select()
+          .single();
+
+        if (prevShot && computedDist != null) {
+          await sb
+            .from("golf_shots")
+            .update({ distance_to_next_yards: computedDist })
+            .eq("id", prevShot.id);
+        }
+        savedShot = insData;
+      }
+
+      await loadActiveRoundDetails();
+      const finalShot = savedShot || {
+        shot_number: shotNumber,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        accuracy_meters: coords.accuracy
+      };
+      renderScorecardShotReading(playerId, holeNumber, finalShot, prevShot, greenInfo);
+      return finalShot;
     }
 
     function fileToDataUrl(file, maxWidth = 1000) {
@@ -927,6 +1121,7 @@
 
     async function setStrokes(playerId, holeNumber, newStrokes) {
       if (!state.activeRoundId) return;
+      const prevStrokes = getStrokes(playerId, holeNumber);
       const clamped = Math.max(0, Number(newStrokes) || 0);
       const existing = state.scores.find((s) => s.player_id === Number(playerId) && s.hole_number === Number(holeNumber));
 
@@ -943,8 +1138,14 @@
         if (error) return setGlobalStatus(error.message, true);
         if (data) state.scores.push(data);
       }
+
       renderScorecard();
       renderSingleHole();
+
+      // When adding a stroke (+), record shot spot & distance to green
+      if (clamped > prevStrokes) {
+        await recordShotSpotForStroke(playerId, holeNumber, clamped);
+      }
     }
 
     function renderScorecard() {
@@ -1141,7 +1342,17 @@
         });
 
         if (error) throw error;
-        statusEl.textContent = `Marked Shot #${data.shot_number} on Hole ${holeNumber} (${latitude.toFixed(5)}, ${longitude.toFixed(5)}).`;
+
+        const holeShotsSoFar = state.shots.filter(
+          (s) => s.player_id === playerId && Number(s.hole_number) === holeNumber
+        );
+        const greenInfo = estimateDistanceToGreenYards(playerId, holeNumber, latitude, longitude, [
+          ...holeShotsSoFar,
+          data
+        ]);
+        renderScorecardShotReading(playerId, holeNumber, data, holeShotsSoFar[holeShotsSoFar.length - 1] || null, greenInfo);
+
+        statusEl.textContent = `Marked Shot #${data.shot_number} on Hole ${holeNumber} (${latitude.toFixed(5)}, ${longitude.toFixed(5)})${greenInfo ? ` · ${greenInfo.yards} yds to green` : ""}.`;
         await loadActiveRoundDetails();
       } catch (err) {
         statusEl.textContent = `GPS/Shot error: ${err.message}`;
@@ -1163,18 +1374,40 @@
         wrap.innerHTML = `<div class="sub" style="margin-top:10px;">No GPS shots logged yet in this round.</div>`;
         return;
       }
+
+      const byPlayerHole = {};
+      state.shots.forEach((s) => {
+        const key = `${s.player_id}-${s.hole_number}`;
+        byPlayerHole[key] = byPlayerHole[key] || [];
+        byPlayerHole[key].push(s);
+      });
+
       wrap.innerHTML = `<table>
-        <thead><tr><th>Golfer</th><th>Hole</th><th>Shot #</th><th>Club</th><th>Shot Distance</th><th>Spot (Lat, Lng)</th></tr></thead>
-        <tbody>${state.shots.map((s) => `
-          <tr>
-            <td>${s.player_name}</td>
-            <td>H${s.hole_number}</td>
-            <td>#${s.shot_number}</td>
-            <td>${s.club_used || "-"}</td>
-            <td>${s.distance_to_next_yards != null ? `<strong>${s.distance_to_next_yards} yds</strong>` : "Mark next hit to measure"}</td>
-            <td>${Number(s.latitude).toFixed(5)}, ${Number(s.longitude).toFixed(5)}</td>
-          </tr>
-        `).join("")}</tbody>
+        <thead><tr><th>Golfer</th><th>Hole</th><th>Shot #</th><th>Club</th><th>Shot Distance</th><th>To Green</th><th>Spot (Lat, Lng)</th></tr></thead>
+        <tbody>${state.shots.map((s) => {
+          const key = `${s.player_id}-${s.hole_number}`;
+          const series = (byPlayerHole[key] || []).sort((a, b) => a.shot_number - b.shot_number);
+          const idx = series.findIndex((item) => item.id === s.id);
+          const upToHere = idx >= 0 ? series.slice(0, idx + 1) : series;
+          const greenInfo = estimateDistanceToGreenYards(
+            s.player_id,
+            s.hole_number,
+            s.latitude,
+            s.longitude,
+            upToHere
+          );
+          return `
+            <tr>
+              <td>${s.player_name}</td>
+              <td>H${s.hole_number}</td>
+              <td>#${s.shot_number}</td>
+              <td>${s.club_used || "-"}</td>
+              <td>${s.distance_to_next_yards != null ? `<strong>${s.distance_to_next_yards} yds</strong>` : "Mark next hit to measure"}</td>
+              <td>${greenInfo ? `<strong>${greenInfo.yards} yds</strong> <span class="sub">(${greenInfo.mode})</span>` : "-"}</td>
+              <td>${s.latitude != null && s.longitude != null ? `${Number(s.latitude).toFixed(5)}, ${Number(s.longitude).toFixed(5)}` : "No GPS"}</td>
+            </tr>
+          `;
+        }).join("")}</tbody>
       </table>`;
     }
 
