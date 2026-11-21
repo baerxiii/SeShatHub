@@ -147,38 +147,26 @@ textarea{
 }
 
 .progress-container{
-
     display:none;
-
     margin-top:15px;
 }
 
 .progress-track{
-
     height:20px;
-
     border-radius:10px;
-
     overflow:hidden;
-
     background:#1e293b;
-
     margin-top:8px;
 }
 
 .progress-bar{
-
     width:0%;
-
     height:100%;
-
     background:#22c55e;
-
     transition:width .3s ease;
 }
 
 @media(max-width:768px){
-
     .grid{
         grid-template-columns:1fr;
     }
@@ -196,21 +184,11 @@ textarea{
 <div class="container">
 
     <div class="header">
-
         <h1>📂 Document Vault</h1>
-
-        <a
-            href="index.html"
-            class="dashboard-btn">
-
-            Dashboard
-
-        </a>
-
+        <a href="index.html" class="dashboard-btn">Dashboard</a>
     </div>
 
     <div class="stats">
-
         <div class="stat-card">
             <small>Total Documents</small>
             <h2 id="docCount">0</h2>
@@ -225,7 +203,6 @@ textarea{
             <small>Insurance Docs</small>
             <h2 id="insuranceCount">0</h2>
         </div>
-
     </div>
 
     <button
@@ -234,23 +211,17 @@ textarea{
         aria-controls="create-document"
         aria-expanded="false"
         onclick="openDocumentForm()">
-
         Add Document
-
     </button>
 
     <div class="card" id="create-document" hidden>
 
         <h2>Add Document</h2>
 
-        <input
-            id="title"
-            placeholder="Document Title">
+        <input id="title" placeholder="Document Title">
 
         <div class="grid">
-
             <select id="category">
-
                 <option>Vehicle</option>
                 <option>Home</option>
                 <option>Insurance</option>
@@ -259,56 +230,29 @@ textarea{
                 <option>Receipts</option>
                 <option>Manuals</option>
                 <option>Other</option>
-
             </select>
 
             <input
                 type="file"
-                id="documentFile">
-
+                id="documentFile"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.txt,.md,.csv,.json,.xml">
         </div>
 
-        <textarea
-            id="notes"
-            placeholder="Notes"></textarea>
+        <textarea id="notes" placeholder="Notes"></textarea>
 
-        <div
-            id="uploadContainer"
-            class="progress-container">
-
+        <div id="uploadContainer" class="progress-container">
             <strong>Uploading...</strong>
-
             <div class="progress-track">
-
-                <div
-                    id="uploadBar"
-                    class="progress-bar">
-                </div>
-
+                <div id="uploadBar" class="progress-bar"></div>
             </div>
-
         </div>
 
-        <button
-            class="btn add-btn"
-            onclick="addDocument()">
-
-            Upload Document
-
-        </button>
-
-        <button
-            class="btn cancel-btn"
-            onclick="closeDocumentForm()">
-
-            Cancel
-
-        </button>
+        <button class="btn add-btn" onclick="addDocument()">Upload Document</button>
+        <button class="btn cancel-btn" onclick="closeDocumentForm()">Cancel</button>
 
     </div>
 
     <div class="card">
-
         <input
             id="searchBox"
             placeholder="🔍 Search Documents"
@@ -317,7 +261,6 @@ textarea{
         <br><br>
 
         <div id="documentList"></div>
-
     </div>
 
 </div>
@@ -332,7 +275,6 @@ function getSB(){
 }
 
 async function getUser(){
-
     const {
         data:{user}
     } = await getSB().auth.getUser();
@@ -353,129 +295,111 @@ function closeDocumentForm(){
     document.getElementById("showDocumentForm").setAttribute("aria-expanded","false");
 }
 
+function isAllowedFile(file){
+    const allowedExtensions = new Set([
+        ".pdf",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".txt",
+        ".md",
+        ".csv",
+        ".json",
+        ".xml"
+    ]);
+
+    const allowedMimeTypes = new Set([
+        "application/pdf",
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "text/plain",
+        "text/markdown",
+        "text/x-markdown",
+        "text/csv",
+        "application/csv",
+        "application/json",
+        "text/json",
+        "application/xml",
+        "text/xml",
+        "application/octet-stream",
+        ""
+    ]);
+
+    const dotIndex = file.name.lastIndexOf(".");
+    const ext = dotIndex >= 0 ? file.name.slice(dotIndex).toLowerCase() : "";
+
+    return allowedExtensions.has(ext) && allowedMimeTypes.has((file.type || "").toLowerCase());
+}
+
 async function addDocument(){
 
-    const user =
-        await getUser();
+    const user = await getUser();
 
-    const title =
-        document
-        .getElementById("title")
-        .value
-        .trim();
+    const title = document.getElementById("title").value.trim();
 
     if(!title){
-
-        alert(
-            "Document title is required."
-        );
-
+        alert("Document title is required.");
         return;
     }
 
-    const file =
-        document
-        .getElementById(
-            "documentFile"
-        )
-        .files[0];
+    const file = document.getElementById("documentFile").files[0];
 
     if(!file){
-
-        alert(
-            "Please select a file."
-        );
-
+        alert("Please select a file.");
         return;
     }
 
-    const allowedTypes = [
-
-        "application/pdf",
-
-        "image/png",
-
-        "image/jpeg",
-
-        "application/msword",
-
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-
-        "application/vnd.ms-excel",
-
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-    ];
-
-    if(
-        !allowedTypes.includes(
-            file.type
-        )
-    ){
-
-        alert(
-            "Unsupported file type."
-        );
-
+    if(!isAllowedFile(file)){
+        alert("Unsupported file type. Supported formats: PDF, PNG, JPG, WEBP, DOC, DOCX, XLS, XLSX, TXT, MD, CSV, JSON, XML.");
         return;
     }
 
-    const maxSize =
-        25 * 1024 * 1024;
+    const maxSize = 25 * 1024 * 1024;
 
     if(file.size > maxSize){
-
-        alert(
-            "Maximum file size is 25 MB."
-        );
-
+        alert("Maximum file size is 25 MB.");
         return;
     }
 
-    const uploadContainer =
-        document.getElementById(
-            "uploadContainer"
-        );
+    const uploadContainer = document.getElementById("uploadContainer");
+    const uploadBar = document.getElementById("uploadBar");
 
-    const uploadBar =
-        document.getElementById(
-            "uploadBar"
-        );
-
-    uploadContainer.style.display =
-        "block";
-
+    uploadContainer.style.display = "block";
     uploadBar.style.width = "15%";
 
-const safeFileName =
-    file.name
-        .replace(/[^a-zA-Z0-9._-]/g,"_");
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+    const storagePath = `${user.id}/${Date.now()}_${safeFileName}`;
 
-const storagePath =
-    `${user.id}/${Date.now()}_${safeFileName}`;
-
-console.log("Storage Path:", storagePath);
+    console.log("Storage Path:", storagePath);
 
     uploadBar.style.width = "40%";
 
     const {
         error:uploadError
-    } =
-    await getSB()
+    } = await getSB()
         .storage
         .from("documents")
         .upload(
             storagePath,
-            file
+            file,
+            {
+                contentType: file.type || "text/plain; charset=utf-8"
+            }
         );
 
     if(uploadError){
-
         alert(uploadError.message);
-
-        uploadContainer.style.display =
-            "none";
-
+        uploadContainer.style.display = "none";
         return;
     }
 
@@ -483,63 +407,33 @@ console.log("Storage Path:", storagePath);
 
     const {
         error
-    } =
-    await getSB()
+    } = await getSB()
         .from("documents")
         .insert({
-
             user_id:user.id,
-
             title:title,
-
-            category:
-                document
-                .getElementById("category")
-                .value,
-
-            notes:
-                document
-                .getElementById("notes")
-                .value,
-
+            category:document.getElementById("category").value,
+            notes:document.getElementById("notes").value,
             file_name:file.name,
-
             storage_path:storagePath
-
         });
 
     if(error){
-
         alert(error.message);
-
-        uploadContainer.style.display =
-            "none";
-
+        uploadContainer.style.display = "none";
         return;
     }
 
     uploadBar.style.width = "100%";
 
     setTimeout(()=>{
-
         uploadBar.style.width = "0%";
-
-        uploadContainer.style.display =
-            "none";
-
+        uploadContainer.style.display = "none";
     },500);
 
-    document.getElementById(
-        "title"
-    ).value = "";
-
-    document.getElementById(
-        "notes"
-    ).value = "";
-
-    document.getElementById(
-        "documentFile"
-    ).value = "";
+    document.getElementById("title").value = "";
+    document.getElementById("notes").value = "";
+    document.getElementById("documentFile").value = "";
 
     closeDocumentForm();
     loadDocuments();
@@ -550,8 +444,7 @@ async function openDocument(path){
     const {
         data,
         error
-    } =
-    await getSB()
+    } = await getSB()
         .storage
         .from("documents")
         .createSignedUrl(
@@ -560,7 +453,6 @@ async function openDocument(path){
         );
 
     if(error){
-
         alert(error.message);
         return;
     }
@@ -571,69 +463,26 @@ async function openDocument(path){
     );
 }
 
-async function editDocument(doc){
-
-    const title =
-        prompt(
-            "Document Title",
-            doc.title
-        );
-
-    if(title === null)
-        return;
-
-    const notes =
-        prompt(
-            "Notes",
-            doc.notes || ""
-        );
-
-    if(notes === null)
-        return;
-
-    await getSB()
-        .from("documents")
-        .update({
-            title,
-            notes
-        })
-        .eq("id",doc.id);
-
-    loadDocuments();
-}
-
-    async function editDocumentById(id){
+async function editDocumentById(id){
 
     const {
         data,
         error
-    } =
-    await getSB()
+    } = await getSB()
         .from("documents")
         .select("*")
         .eq("id", id)
         .single();
 
     if(error){
-
         alert(error.message);
         return;
     }
 
-    const title =
-        prompt(
-            "Document Title",
-            data.title
-        );
-
+    const title = prompt("Document Title", data.title);
     if(title === null) return;
 
-    const notes =
-        prompt(
-            "Notes",
-            data.notes || ""
-        );
-
+    const notes = prompt("Notes", data.notes || "");
     if(notes === null) return;
 
     await getSB()
@@ -649,11 +498,7 @@ async function editDocument(doc){
 
 async function deleteDocument(id){
 
-    if(
-        !confirm(
-            "Delete document?"
-        )
-    ){
+    if(!confirm("Delete document?")){
         return;
     }
 
@@ -667,24 +512,15 @@ async function deleteDocument(id){
 
 async function loadDocuments(){
 
-    const user =
-        await getUser();
-
+    const user = await getUser();
     if(!user) return;
 
-    const search =
-        document
-        .getElementById(
-            "searchBox"
-        )
-        .value
-        .toLowerCase();
+    const search = document.getElementById("searchBox").value.toLowerCase();
 
     const {
         data,
         error
-    } =
-    await getSB()
+    } = await getSB()
         .from("documents")
         .select("*")
         .eq("user_id",user.id)
@@ -696,7 +532,6 @@ async function loadDocuments(){
         );
 
     if(error){
-
         console.error(error);
         return;
     }
@@ -704,29 +539,20 @@ async function loadDocuments(){
     let vehicle = 0;
     let insurance = 0;
 
-    const list =
-        document.getElementById(
-            "documentList"
-        );
-
+    const list = document.getElementById("documentList");
     list.innerHTML = "";
 
     data.forEach(doc=>{
 
         if(
             search &&
-            !doc.title
-                .toLowerCase()
-                .includes(search)
+            !doc.title.toLowerCase().includes(search)
         ){
             return;
         }
 
-        if(doc.category==="Vehicle")
-            vehicle++;
-
-        if(doc.category==="Insurance")
-            insurance++;
+        if(doc.category==="Vehicle") vehicle++;
+        if(doc.category==="Insurance") insurance++;
 
         list.innerHTML += `
 
@@ -735,21 +561,15 @@ async function loadDocuments(){
             <h3>${doc.title}</h3>
 
             <div class="badge">
-
                 ${doc.category}
-
             </div>
 
             <p style="margin-top:10px;">
-
                 📄 ${doc.file_name || "No File"}
-
             </p>
 
             <p style="margin-top:10px;">
-
                 ${doc.notes || ""}
-
             </p>
 
             <div class="doc-actions">
@@ -757,51 +577,31 @@ async function loadDocuments(){
                 <button
                     class="btn open-btn"
                     onclick="openDocument('${doc.storage_path}')">
-
                     Open
-
                 </button>
 
                 <button
-    class="btn edit-btn"
-    onclick="editDocumentById(${doc.id})">
-
-    Edit
-
-</button>
+                    class="btn edit-btn"
+                    onclick="editDocumentById(${doc.id})">
+                    Edit
+                </button>
 
                 <button
                     class="btn delete-btn"
                     onclick="deleteDocument(${doc.id})">
-
                     Delete
-
                 </button>
 
             </div>
 
         </div>
 
-        `
-        .replace("__ID__",doc.id)
-        .replace("__TITLE__",(doc.title||"").replace(/"/g,"&quot;"))
-        .replace("__NOTES__",(doc.notes||"").replace(/"/g,"&quot;"));
+        `;
     });
 
-    document.getElementById(
-        "docCount"
-    ).textContent =
-        data.length;
-
-    document.getElementById(
-        "vehicleCount"
-    ).textContent =
-        vehicle;
-
-    document.getElementById(
-        "insuranceCount"
-    ).textContent =
-        insurance;
+    document.getElementById("docCount").textContent = data.length;
+    document.getElementById("vehicleCount").textContent = vehicle;
+    document.getElementById("insuranceCount").textContent = insurance;
 }
 
 loadDocuments();
