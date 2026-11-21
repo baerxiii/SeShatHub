@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Seshat Hub — Golf Course & Scorecard Manager</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     :root {
       --bg: #0f172a;
@@ -198,14 +199,22 @@
         <input id="course-name" type="text" placeholder="e.g., Coldstream Golf Course" />
         <label for="course-location">Location</label>
         <input id="course-location" type="text" placeholder="e.g., Lumby, BC" />
-        <label for="course-par">Total Par</label>
+        <label for="course-par">Total Par (auto-synced to hole pars on save)</label>
         <input id="course-par" type="number" value="36" />
         <label for="course-holes-count">Number of Holes</label>
-        <input id="course-holes-count" type="number" value="9" />
+        <input id="course-holes-count" type="number" min="1" max="27" value="9" />
         <label for="course-scorecard-url">Scorecard Image URL (optional)</label>
         <input id="course-scorecard-url" type="text" placeholder="https://..." />
+        <label for="course-scorecard-file">Or Upload Scorecard Image to Glean Pars, Yards &amp; Tee Names</label>
+        <input id="course-scorecard-file" type="file" accept="image/*" />
+        <div class="row" style="margin-top: 8px;">
+          <button type="button" id="glean-scorecard-btn">Glean Pars, Yards &amp; Tees from Scorecard</button>
+        </div>
         <label for="course-layout-url">Course Layout / Map Image URL (optional)</label>
         <input id="course-layout-url" type="text" placeholder="https://..." />
+
+        <div id="new-course-holes-grid" style="margin-top: 12px;"></div>
+
         <div style="margin-top: 12px;">
           <button id="create-course-btn" class="primary">Create Course & Holes</button>
         </div>
@@ -287,11 +296,11 @@
         </div>
         <div>
           <label for="edit-hole-par">Par</label>
-          <input id="edit-hole-par" type="number" min="3" max="6" value="4" />
+          <input id="edit-hole-par" type="number" min="3" max="6" />
         </div>
         <div>
           <label for="edit-hole-yards">Yards</label>
-          <input id="edit-hole-yards" type="number" min="50" max="800" value="250" />
+          <input id="edit-hole-yards" type="number" min="50" max="800" />
         </div>
       </div>
       <label for="edit-hole-image-url">Hole Layout Image URL</label>
@@ -441,8 +450,14 @@
       gpsPhotos: [],
       bag: null,
       clubs: [],
+      gleamedTees: {},
       currentHole: 1
     };
+
+    const COMMON_TEE_NAMES = [
+      "Championship", "Tournament", "Pro", "Back",
+      "Black", "Blue", "White", "Gold", "Red", "Green", "Silver", "Burgundy"
+    ];
 
     document.getElementById("new-round-date").valueAsDate = new Date();
 
@@ -1233,13 +1248,133 @@
       `).join("");
     }
 
-    // ADD COURSE & HOLES
+    // DYNAMIC PER-HOLE GRID (NO FAKE DEFAULTS) + SCORECARD OCR WITH TEE NAME DETECTION
+    function renderNewCourseHolesGrid(prefillHoles = []) {
+      const count = Math.max(1, Math.min(27, Number(document.getElementById("course-holes-count")?.value) || 9));
+      const grid = document.getElementById("new-course-holes-grid");
+      if (!grid) return;
+
+      let html = `<div class="sub" style="margin-bottom:6px;">Enter Par and Yards for each hole (or glean from a scorecard image above):</div>
+      <table><thead><tr><th>Hole</th><th>Par</th><th>Yards</th></tr></thead><tbody>`;
+
+      for (let i = 0; i < count; i++) {
+        const holeNum = i + 1;
+        const pre = prefillHoles.find((h) => Number(h.hole_number) === holeNum) || {};
+        const parVal = pre.par ?? "";
+        const ydsVal = pre.yards ?? "";
+        html += `<tr>
+          <td><strong>H${holeNum}</strong></td>
+          <td><input type="number" min="3" max="6" class="new-hole-par" data-hole="${holeNum}" value="${parVal}" placeholder="Par" /></td>
+          <td><input type="number" min="50" max="800" class="new-hole-yards" data-hole="${holeNum}" value="${ydsVal}" placeholder="Yards" /></td>
+        </tr>`;
+      }
+
+      html += `</tbody></table>`;
+      grid.innerHTML = html;
+    }
+
+    function detectTeeNameFromLine(line) {
+      const lower = line.toLowerCase();
+      for (const name of COMMON_TEE_NAMES) {
+        const regex = new RegExp(`\\b${name.toLowerCase()}\\b`, "i");
+        if (regex.test(lower)) return name;
+      }
+      return null;
+    }
+
+    document.getElementById("course-holes-count")?.addEventListener("change", () => renderNewCourseHolesGrid());
+    renderNewCourseHolesGrid();
+
+    document.getElementById("glean-scorecard-btn")?.addEventListener("click", async () => {
+      const statusEl = document.getElementById("course-status");
+      const file = document.getElementById("course-scorecard-file")?.files?.[0];
+      const url = document.getElementById("course-scorecard-url")?.value.trim();
+
+      const source = file || url;
+      if (!source) {
+        statusEl.textContent = "Upload a scorecard image or enter a Scorecard Image URL first.";
+        statusEl.className = "status error";
+        return;
+      }
+
+      if (typeof Tesseract === "undefined") {
+        statusEl.textContent = "Tesseract.js is not loaded.";
+        statusEl.className = "status error";
+        return;
+      }
+
+      statusEl.textContent = "Scanning scorecard for pars, yardages, and tee box names...";
+      statusEl.className = "status";
+      state.gleamedTees = {};
+
+      try {
+        const { data } = await Tesseract.recognize(source, "eng");
+        const lines = (data.text || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        const holeCount = Math.max(1, Number(document.getElementById("course-holes-count").value) || 9);
+        const parsedHoles = [];
+
+        for (const line of lines) {
+          const nums = (line.match(/\b\d+\b/g) || []).map(Number);
+          const teeName = detectTeeNameFromLine(line);
+
+          if (teeName && nums.length > 0) {
+            const yardCandidates = nums.filter((n) => n >= 60 && n <= 750);
+            if (yardCandidates.length > 0) {
+              state.gleamedTees[teeName] = state.gleamedTees[teeName] || {};
+              yardCandidates.slice(0, holeCount).forEach((yds, idx) => {
+                state.gleamedTees[teeName][idx + 1] = yds;
+              });
+            }
+          }
+
+          if (nums.length >= 2) {
+            const hNum = nums[0];
+            if (hNum >= 1 && hNum <= holeCount) {
+              const parCandidate = nums.slice(1).find((n) => n >= 3 && n <= 6);
+              const ydsCandidate = nums.slice(1).find((n) => n >= 60 && n <= 750);
+              parsedHoles.push({
+                hole_number: hNum,
+                par: parCandidate ?? "",
+                yards: ydsCandidate ?? ""
+              });
+            }
+          }
+        }
+
+        renderNewCourseHolesGrid(parsedHoles);
+
+        const detectedTeeNames = Object.keys(state.gleamedTees);
+        if (detectedTeeNames.length > 0) {
+          const primaryTee = detectedTeeNames[0];
+          const teeInput = document.getElementById("tee-name-input");
+          if (teeInput) teeInput.value = primaryTee;
+
+          for (let h = 1; h <= holeCount; h++) {
+            const teeYds = state.gleamedTees[primaryTee]?.[h];
+            const ydsInput = document.querySelector(`.new-hole-yards[data-hole="${h}"]`);
+            if (teeYds && ydsInput && !ydsInput.value) {
+              ydsInput.value = teeYds;
+            }
+          }
+        }
+
+        statusEl.textContent = detectedTeeNames.length
+          ? `Gleamed ${parsedHoles.length} hole row(s) and tee box(es): ${detectedTeeNames.join(", ")}. Verify values before creating course.`
+          : parsedHoles.length
+            ? `Gleamed ${parsedHoles.length} hole row(s) (no tee box label detected on scorecard). Verify values below.`
+            : "Couldn't clearly parse scorecard text — enter Par and Yards manually in the table below.";
+      } catch (err) {
+        statusEl.textContent = `Scorecard scan error: ${err.message}`;
+        statusEl.className = "status error";
+      }
+    });
+
+    // ADD COURSE & HOLES (USING DIRECT HOLE INPUTS + GLEAMED TEE BOXES)
     document.getElementById("create-course-btn").addEventListener("click", async () => {
       const statusEl = document.getElementById("course-status");
       const name = document.getElementById("course-name").value.trim();
       const location = document.getElementById("course-location").value.trim();
-      const total_par = Number(document.getElementById("course-par").value) || 36;
-      const holeCount = Number(document.getElementById("course-holes-count").value) || 9;
+      const holeCount = Math.max(1, Number(document.getElementById("course-holes-count").value) || 9);
       const scorecard_image_url = document.getElementById("course-scorecard-url").value.trim() || null;
       const layout_image_url = document.getElementById("course-layout-url").value.trim() || null;
 
@@ -1248,6 +1383,25 @@
         statusEl.className = "status error";
         return;
       }
+
+      const holeInputs = [];
+      let sumPar = 0;
+      for (let i = 1; i <= holeCount; i++) {
+        const parEl = document.querySelector(`.new-hole-par[data-hole="${i}"]`);
+        const ydsEl = document.querySelector(`.new-hole-yards[data-hole="${i}"]`);
+        const par = Number(parEl?.value);
+        const yards = Number(ydsEl?.value);
+
+        if (!par || !yards) {
+          statusEl.textContent = `Enter both Par and Yards for Hole ${i} (or glean from a scorecard image first).`;
+          statusEl.className = "status error";
+          return;
+        }
+        sumPar += par;
+        holeInputs.push({ hole_number: i, par, yards, notes: "" });
+      }
+
+      const total_par = Number(document.getElementById("course-par").value) || sumPar;
 
       statusEl.textContent = "Creating course...";
       statusEl.className = "status";
@@ -1264,27 +1418,61 @@
         return;
       }
 
-      const defaultPar = Math.max(3, Math.round(total_par / holeCount) || 4);
-      const holeRows = Array.from({ length: holeCount }, (_, i) => ({
-        course_id: course.id,
-        hole_number: i + 1,
-        par: defaultPar,
-        yards: 250,
-        notes: ""
-      }));
+      const { data: insertedHoles, error: holesErr } = await sb
+        .from("golf_course_holes")
+        .insert(holeInputs.map((h) => ({ course_id: course.id, ...h })))
+        .select();
 
-      const { error: holesErr } = await sb.from("golf_course_holes").insert(holeRows);
       if (holesErr) {
         statusEl.textContent = `Course created, but holes failed: ${holesErr.message}`;
         statusEl.className = "status error";
         return;
       }
 
+      await sb.from("golf_courses").update({ total_par: sumPar }).eq("id", course.id);
+
+      const detectedTees = Object.entries(state.gleamedTees || {});
+      for (const [teeName, holeYardMap] of detectedTees) {
+        const holeEntries = Object.entries(holeYardMap);
+        if (!holeEntries.length) continue;
+
+        const totalTeeYards = holeEntries.reduce((sum, [, yds]) => sum + Number(yds || 0), 0);
+        const { data: teeRow, error: teeErr } = await sb
+          .from("golf_course_tees")
+          .insert({
+            course_id: course.id,
+            name: teeName,
+            total_yards: totalTeeYards,
+            total_par: sumPar
+          })
+          .select()
+          .single();
+
+        if (!teeErr && teeRow && insertedHoles?.length) {
+          const boxRows = insertedHoles
+            .filter((h) => holeYardMap[h.hole_number] != null)
+            .map((h) => ({
+              hole_id: h.id,
+              tee_id: teeRow.id,
+              yards: Number(holeYardMap[h.hole_number])
+            }));
+
+          if (boxRows.length) {
+            await sb.from("golf_hole_tee_boxes").insert(boxRows);
+          }
+        }
+      }
+      state.gleamedTees = {};
+
       document.getElementById("course-name").value = "";
       document.getElementById("course-location").value = "";
       document.getElementById("course-scorecard-url").value = "";
       document.getElementById("course-layout-url").value = "";
-      statusEl.textContent = `Created "${course.name}" with ${holeCount} holes!`;
+      const scFileEl = document.getElementById("course-scorecard-file");
+      if (scFileEl) scFileEl.value = "";
+      renderNewCourseHolesGrid();
+
+      statusEl.textContent = `Created "${course.name}" with ${holeCount} holes (Par ${sumPar})!`;
       await loadBaseData();
     });
 
@@ -1320,19 +1508,19 @@
       }
     });
 
-    // EDIT INDIVIDUAL HOLE (OPTION 3)
+    // EDIT INDIVIDUAL HOLE
     document.getElementById("save-hole-btn").addEventListener("click", async () => {
       const statusEl = document.getElementById("hole-edit-status");
       const courseId = Number(document.getElementById("edit-hole-course").value);
       const holeNum = Number(document.getElementById("edit-hole-number").value);
-      const par = Number(document.getElementById("edit-hole-par").value) || 4;
-      const yards = Number(document.getElementById("edit-hole-yards").value) || 250;
+      const par = Number(document.getElementById("edit-hole-par").value);
+      const yards = Number(document.getElementById("edit-hole-yards").value);
       let holeImageUrl = document.getElementById("edit-hole-image-url").value.trim() || null;
       const holeFile = document.getElementById("edit-hole-image-file").files?.[0];
       const notes = document.getElementById("edit-hole-notes").value.trim();
 
       const hole = state.holes.find((h) => h.course_id === courseId && h.hole_number === holeNum);
-      if (!hole) return;
+      if (!hole || !par || !yards) return;
 
       statusEl.textContent = "Updating hole...";
       statusEl.className = "status";
