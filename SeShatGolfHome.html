@@ -52,6 +52,9 @@
     .stroke-btn { padding: 3px 8px; font-weight: 700; }
     .media-img { width: 100%; max-height: 260px; object-fit: contain; background: var(--panel-2); border-radius: 8px; border: 1px solid var(--border); }
     .photo-card-img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.76rem; background: var(--panel-2); border: 1px solid var(--border); }
+    .badge-done { color: #86efac; border-color: #16a34a; }
+    .badge-open { color: #fde68a; border-color: #ca8a04; }
   </style>
 </head>
 <body>
@@ -60,9 +63,10 @@
       <h1>Seshat Hub — Golf Course & Scorecard Manager</h1>
       <div class="sub" id="active-round-banner">Loading...</div>
     </div>
-    <div class="row" style="max-width: 560px;">
+    <div class="row" style="max-width: 680px;">
       <select id="round-selector"></select>
-      <button id="seed-coldstream-btn" class="primary">Seed Coldstream</button>
+      <button id="end-save-round-btn" class="primary">End &amp; Save Round</button>
+      <button id="seed-coldstream-btn">Seed Coldstream</button>
       <button id="refresh-all-btn">Refresh</button>
     </div>
   </header>
@@ -354,8 +358,8 @@
 
   <script>
     // Replace with your Supabase Project URL and Anon Public Key
-    const SUPABASE_URL = "https://uzbbwvihkfzdbnowhglc.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf";
+    const SUPABASE_URL = "YOUR_SUPABASE_URL";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
     const GOLF_BUCKET = "golf-media";
 
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -374,6 +378,12 @@
     };
 
     document.getElementById("new-round-date").valueAsDate = new Date();
+
+    function isRoundCompleted(round) {
+      if (!round) return false;
+      if (typeof round.is_completed === "boolean") return round.is_completed;
+      return /\bcompleted\b/i.test(round.notes || "");
+    }
 
     function setGlobalStatus(msg, isError = false) {
       const el = document.getElementById("global-status");
@@ -530,8 +540,12 @@
       state.players = playersRes.data || [];
       state.rounds = roundsRes.data || [];
 
+      if (state.activeRoundId && !state.rounds.some((r) => r.id === Number(state.activeRoundId))) {
+        state.activeRoundId = null;
+      }
       if (!state.activeRoundId && state.rounds.length > 0) {
-        state.activeRoundId = state.rounds[0].id;
+        const openRound = state.rounds.find((r) => !isRoundCompleted(r));
+        state.activeRoundId = (openRound || state.rounds[0]).id;
       }
 
       renderSelectors();
@@ -543,8 +557,10 @@
     }
 
     async function loadActiveRoundDetails() {
+      const endBtn = document.getElementById("end-save-round-btn");
       if (!state.activeRoundId) {
         document.getElementById("active-round-banner").textContent = "No round yet — start one in Players & Rounds";
+        if (endBtn) endBtn.disabled = true;
         state.scores = [];
         state.shots = [];
         state.gpsPhotos = [];
@@ -557,8 +573,14 @@
       }
 
       const activeRound = state.rounds.find((r) => r.id === Number(state.activeRoundId));
+      const completed = isRoundCompleted(activeRound);
+      if (endBtn) {
+        endBtn.disabled = !activeRound || completed;
+        endBtn.textContent = completed ? "Round Saved" : "End & Save Round";
+      }
+
       document.getElementById("active-round-banner").textContent = activeRound
-        ? `Round #${activeRound.id} — ${activeRound.golf_courses?.name || "Course"} (${activeRound.round_date})`
+        ? `Round #${activeRound.id} — ${activeRound.golf_courses?.name || "Course"} (${activeRound.round_date})${completed ? " · Saved/Completed" : " · Active"}`
         : `Round #${state.activeRoundId}`;
 
       const [scoresRes, shotsRes, photosRes] = await Promise.all([
@@ -581,10 +603,111 @@
       renderCourseVisuals();
     }
 
+    // END & SAVE ROUND
+    document.getElementById("end-save-round-btn")?.addEventListener("click", async () => {
+      const activeRound = state.rounds.find((r) => r.id === Number(state.activeRoundId));
+      if (!activeRound) {
+        setGlobalStatus("No active round to end and save.", true);
+        return;
+      }
+
+      const confirmed = confirm(`End and save Round #${activeRound.id} (${activeRound.golf_courses?.name || "Course"})?`);
+      if (!confirmed) return;
+
+      setGlobalStatus(`Saving and closing Round #${activeRound.id}...`);
+
+      const holes = state.holes.filter((h) => h.course_id === activeRound.course_id);
+      const playerIds = getRoundPlayerIds();
+
+      for (const pid of playerIds) {
+        for (const h of holes) {
+          const existing = state.scores.find((s) => s.player_id === pid && s.hole_number === h.hole_number);
+          if (!existing) {
+            const { data: inserted } = await sb
+              .from("golf_scores")
+              .insert({
+                round_id: activeRound.id,
+                player_id: pid,
+                hole_number: h.hole_number,
+                strokes: 0
+              })
+              .select()
+              .single();
+            if (inserted) state.scores.push(inserted);
+          }
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      let { error } = await sb
+        .from("golf_rounds")
+        .update({ is_completed: true, completed_at: nowIso })
+        .eq("id", activeRound.id);
+
+      if (error && /is_completed|completed_at|column/i.test(error.message)) {
+        const stamp = `Completed ${new Date().toLocaleString()}`;
+        const nextNotes = activeRound.notes ? `${activeRound.notes} | ${stamp}` : stamp;
+        ({ error } = await sb
+          .from("golf_rounds")
+          .update({ notes: nextNotes })
+          .eq("id", activeRound.id));
+      }
+
+      if (error) {
+        setGlobalStatus(`Failed to save round: ${error.message}`, true);
+        return;
+      }
+
+      await loadBaseData();
+      switchTab("history");
+      if (typeof window.inspectHistoricRound === "function") {
+        await window.inspectHistoricRound(activeRound.id);
+      }
+      setGlobalStatus(`Round #${activeRound.id} saved and added to Historic Rounds.`);
+    });
+
+    // RE-OPEN ROUND
+    window.reopenRound = async (roundId) => {
+      const targetId = Number(roundId);
+      const round = state.rounds.find((r) => r.id === targetId);
+      if (!round) return;
+
+      setGlobalStatus(`Re-opening Round #${targetId}...`);
+
+      let { error } = await sb
+        .from("golf_rounds")
+        .update({ is_completed: false, completed_at: null })
+        .eq("id", targetId);
+
+      if (error && /is_completed|completed_at|column/i.test(error.message)) {
+        const cleanedNotes = (round.notes || "")
+          .replace(/\s*\|\s*Completed\s+[^|]+/gi, "")
+          .replace(/\bCompleted\b[^|]*/gi, "")
+          .trim();
+        ({ error } = await sb
+          .from("golf_rounds")
+          .update({ notes: cleanedNotes || null })
+          .eq("id", targetId));
+      }
+
+      if (error) {
+        setGlobalStatus(`Failed to re-open round: ${error.message}`, true);
+        return;
+      }
+
+      state.activeRoundId = targetId;
+      await loadBaseData();
+      switchTab("scorecard");
+      setGlobalStatus(`Round #${targetId} is re-opened and active on the scorecard.`);
+    };
+
     function renderSelectors() {
       const roundSel = document.getElementById("round-selector");
       roundSel.innerHTML = state.rounds.length
-        ? state.rounds.map((r) => `<option value="${r.id}" ${r.id === Number(state.activeRoundId) ? "selected" : ""}>Round #${r.id} — ${r.golf_courses?.name || "Course"} (${r.round_date})</option>`).join("")
+        ? state.rounds.map((r) => {
+            const statusTag = isRoundCompleted(r) ? " [Saved]" : " [Active]";
+            return `<option value="${r.id}" ${r.id === Number(state.activeRoundId) ? "selected" : ""}>Round #${r.id} — ${r.golf_courses?.name || "Course"} (${r.round_date})${statusTag}</option>`;
+          }).join("")
         : `<option value="">No rounds yet</option>`;
 
       const courseOptions = state.courses.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
@@ -616,12 +739,30 @@
       updateEditHoleDropdown();
     }
 
+    function syncTeeBoxFields() {
+      const courseId = Number(document.getElementById("tee-course-select").value);
+      const holeNumber = Number(document.getElementById("tee-hole-select").value);
+      const teeName = (document.getElementById("tee-name-input").value.trim() || "Black").toLowerCase();
+
+      const hole = state.holes.find((h) => h.course_id === courseId && h.hole_number === holeNumber);
+      const existingBox = hole
+        ? state.teeBoxes.find(
+            (tb) => tb.hole_id === hole.id && (tb.golf_course_tees?.name || "").toLowerCase() === teeName
+          )
+        : null;
+
+      document.getElementById("tee-yards-input").value = existingBox?.yards ?? hole?.yards ?? "";
+      document.getElementById("tee-lat-input").value = existingBox?.latitude ?? "";
+      document.getElementById("tee-lng-input").value = existingBox?.longitude ?? "";
+    }
+
     function updateTeeHoleDropdown() {
       const courseId = Number(document.getElementById("tee-course-select").value);
       const courseHoles = state.holes.filter((h) => h.course_id === courseId).sort((a, b) => a.hole_number - b.hole_number);
       document.getElementById("tee-hole-select").innerHTML = courseHoles
         .map((h) => `<option value="${h.hole_number}">Hole ${h.hole_number} (Par ${h.par}, ${h.yards}y)</option>`)
         .join("");
+      syncTeeBoxFields();
     }
 
     function updateCourseMediaFields() {
@@ -657,6 +798,8 @@
     });
     document.getElementById("refresh-all-btn").addEventListener("click", loadBaseData);
     document.getElementById("tee-course-select").addEventListener("change", updateTeeHoleDropdown);
+    document.getElementById("tee-hole-select").addEventListener("change", syncTeeBoxFields);
+    document.getElementById("tee-name-input").addEventListener("input", syncTeeBoxFields);
     document.getElementById("edit-course-media-select").addEventListener("change", updateCourseMediaFields);
     document.getElementById("edit-hole-course").addEventListener("change", updateEditHoleDropdown);
     document.getElementById("edit-hole-number").addEventListener("change", syncHoleEditorFields);
@@ -1134,7 +1277,10 @@
       const courseId = Number(document.getElementById("tee-course-select").value);
       const holeNumber = Number(document.getElementById("tee-hole-select").value);
       const teeName = document.getElementById("tee-name-input").value.trim() || "Black";
-      const yards = Number(document.getElementById("tee-yards-input").value) || 150;
+      const hole = state.holes.find((h) => h.course_id === courseId && h.hole_number === holeNumber);
+
+      const yardsInputVal = document.getElementById("tee-yards-input").value;
+      const yards = yardsInputVal !== "" ? Number(yardsInputVal) : (hole?.yards ?? 150);
       const latVal = document.getElementById("tee-lat-input").value;
       const lngVal = document.getElementById("tee-lng-input").value;
 
@@ -1292,20 +1438,23 @@
         return;
       }
       wrap.innerHTML = `<table>
-        <thead><tr><th>Round</th><th>Date</th><th>Course</th><th>Holes</th><th>Notes</th><th>Actions</th></tr></thead>
-        <tbody>${state.rounds.map((r) => `
-          <tr>
+        <thead><tr><th>Round</th><th>Date</th><th>Course</th><th>Status</th><th>Holes</th><th>Notes</th><th>Actions</th></tr></thead>
+        <tbody>${state.rounds.map((r) => {
+          const done = isRoundCompleted(r);
+          return `<tr>
             <td>#${r.id}</td>
             <td>${r.round_date}</td>
             <td>${r.golf_courses?.name || "-"}</td>
+            <td><span class="badge ${done ? "badge-done" : "badge-open"}">${done ? "Saved" : "Active"}</span></td>
             <td>${r.holes_played || 9}</td>
             <td>${r.notes || "-"}</td>
             <td>
               <button onclick="openRoundInScorecard(${r.id})">Open Scorecard</button>
               <button onclick="inspectHistoricRound(${r.id})">View Breakdown</button>
+              ${done ? `<button onclick="reopenRound(${r.id})">Re-open Round</button>` : ""}
             </td>
-          </tr>
-        `).join("")}</tbody>
+          </tr>`;
+        }).join("")}</tbody>
       </table>`;
     }
 
