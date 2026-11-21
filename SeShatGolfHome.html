@@ -29,8 +29,9 @@
       padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.88rem;
     }
     button:hover { border-color: var(--accent); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
     button.primary { background: var(--accent); color: #052e16; border: none; font-weight: 600; }
-    button.primary:hover { background: var(--accent-dark); color: #fff; }
+    button.primary:hover:not(:disabled) { background: var(--accent-dark); color: #fff; }
     button.active { background: var(--accent); color: #052e16; border: none; font-weight: 600; }
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
     .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
@@ -78,7 +79,7 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="scorecard">Scorecard & GPS</button>
     <button class="tab-btn" data-tab="courses">Courses & Tee Boxes</button>
-    <button class="tab-btn" data-tab="players-rounds">Players & Rounds</button>
+    <button class="tab-btn" data-tab="players-rounds">Players, Bag & Rounds</button>
     <button class="tab-btn" data-tab="history">Historic Rounds</button>
   </nav>
 
@@ -142,6 +143,12 @@
         <div>
           <label for="gps-hole-select">Hole</label>
           <select id="gps-hole-select"></select>
+        </div>
+        <div>
+          <label for="gps-club-pick">Pick From Bag (optional)</label>
+          <select id="gps-club-pick">
+            <option value="">-- Custom / None --</option>
+          </select>
         </div>
         <div>
           <label for="gps-club-input">Club Used</label>
@@ -304,7 +311,7 @@
     </div>
   </section>
 
-  <!-- TAB 3: PLAYERS & ROUNDS -->
+  <!-- TAB 3: PLAYERS, BAG & ROUNDS -->
   <section id="tab-players-rounds" class="tab-panel hidden">
     <div class="grid-2">
       <div class="card">
@@ -341,6 +348,63 @@
         <div class="status" id="round-status"></div>
       </div>
     </div>
+
+    <!-- Bag Inventory: Clubs, Balls & Tees -->
+    <div class="card" id="bag-inventory-card">
+      <h2>Golf Bag Inventory (Clubs, Balls &amp; Tees)</h2>
+      <div class="sub">Track balls and tees carried per golfer and manage the clubs in their bag.</div>
+
+      <label for="bag-player-select">Select Golfer</label>
+      <select id="bag-player-select"></select>
+
+      <div class="row" style="margin-top: 12px;">
+        <div style="background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
+          <div class="sub">Golf Balls</div>
+          <div class="row" style="margin-top: 6px; justify-content: space-between;">
+            <button class="stroke-btn" id="balls-minus-btn">-</button>
+            <strong id="bag-balls-count" style="font-size: 1.15rem; text-align: center;">0</strong>
+            <button class="stroke-btn" id="balls-plus-btn">+</button>
+          </div>
+        </div>
+
+        <div style="background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
+          <div class="sub">Tees</div>
+          <div class="row" style="margin-top: 6px; justify-content: space-between;">
+            <button class="stroke-btn" id="tees-minus-btn">-</button>
+            <strong id="bag-tees-count" style="font-size: 1.15rem; text-align: center;">0</strong>
+            <button class="stroke-btn" id="tees-plus-btn">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 12px;">
+        <div>
+          <label for="new-club-name">Club Name</label>
+          <input id="new-club-name" type="text" placeholder="e.g., Driver, 7 Iron, 56° Wedge, Putter" />
+        </div>
+        <div>
+          <label for="new-club-type">Type</label>
+          <select id="new-club-type">
+            <option value="Driver">Driver</option>
+            <option value="Wood">Wood</option>
+            <option value="Hybrid">Hybrid</option>
+            <option value="Iron">Iron</option>
+            <option value="Wedge">Wedge</option>
+            <option value="Putter">Putter</option>
+          </select>
+        </div>
+        <div>
+          <label for="new-club-loft">Loft / Specs (optional)</label>
+          <input id="new-club-loft" type="text" placeholder="e.g., 10.5°, stiff" />
+        </div>
+      </div>
+      <div class="row" style="margin-top: 10px;">
+        <button id="add-club-btn" class="primary">Add Club to Bag</button>
+        <button id="add-starter-set-btn">Add Starter Set</button>
+      </div>
+      <div class="status" id="bag-status"></div>
+      <div class="table-wrap" id="bag-clubs-wrap"></div>
+    </div>
   </section>
 
   <!-- TAB 4: HISTORIC ROUNDS -->
@@ -358,8 +422,8 @@
 
   <script>
     // Replace with your Supabase Project URL and Anon Public Key
-    const SUPABASE_URL = "YOUR_SUPABASE_URL";
-    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const SUPABASE_URL = "https://uzbbwvihkfzdbnowhglc.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf";
     const GOLF_BUCKET = "golf-media";
 
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -374,6 +438,8 @@
       scores: [],
       shots: [],
       gpsPhotos: [],
+      bag: null,
+      clubs: [],
       currentHole: 1
     };
 
@@ -553,13 +619,14 @@
       renderCoursesAndTees();
       renderCourseVisuals();
       renderHistory();
+      await loadBagForPlayer();
       await loadActiveRoundDetails();
     }
 
     async function loadActiveRoundDetails() {
       const endBtn = document.getElementById("end-save-round-btn");
       if (!state.activeRoundId) {
-        document.getElementById("active-round-banner").textContent = "No round yet — start one in Players & Rounds";
+        document.getElementById("active-round-banner").textContent = "No round yet — start one in Players, Bag & Rounds";
         if (endBtn) endBtn.disabled = true;
         state.scores = [];
         state.shots = [];
@@ -719,6 +786,15 @@
       const playerOptions = state.players.map((p) => `<option value="${p.id}">${p.player_name} (HCP ${p.handicap ?? 0})</option>`).join("");
       document.getElementById("gps-player-select").innerHTML = playerOptions || `<option value="">No players</option>`;
       document.getElementById("round-add-player-select").innerHTML = playerOptions || `<option value="">No players</option>`;
+
+      const bagSel = document.getElementById("bag-player-select");
+      if (bagSel) {
+        const prevBagVal = bagSel.value;
+        bagSel.innerHTML = playerOptions || `<option value="">No players</option>`;
+        if (prevBagVal && state.players.some((p) => String(p.id) === String(prevBagVal))) {
+          bagSel.value = prevBagVal;
+        }
+      }
 
       const activeRound = state.rounds.find((r) => r.id === Number(state.activeRoundId));
       const roundHoles = activeRound
@@ -980,6 +1056,34 @@
     }
 
     // GPS Shot Marker
+    async function refreshClubPickerForGpsPlayer() {
+      const playerId = Number(document.getElementById("gps-player-select").value);
+      const pickEl = document.getElementById("gps-club-pick");
+      if (!pickEl) return;
+      if (!playerId) {
+        pickEl.innerHTML = `<option value="">-- Custom / None --</option>`;
+        return;
+      }
+      const { data } = await sb
+        .from("golf_player_clubs")
+        .select("club_name, in_bag")
+        .eq("player_id", playerId)
+        .eq("in_bag", true)
+        .order("sort_order")
+        .order("id");
+
+      const clubs = data || [];
+      pickEl.innerHTML = `<option value="">-- Custom / None --</option>` +
+        clubs.map((c) => `<option value="${c.club_name}">${c.club_name}</option>`).join("");
+    }
+
+    document.getElementById("gps-player-select")?.addEventListener("change", refreshClubPickerForGpsPlayer);
+    document.getElementById("gps-club-pick")?.addEventListener("change", (e) => {
+      if (e.target.value) {
+        document.getElementById("gps-club-input").value = e.target.value;
+      }
+    });
+
     document.getElementById("mark-gps-shot-btn").addEventListener("click", async () => {
       const statusEl = document.getElementById("gps-status");
       const playerId = Number(document.getElementById("gps-player-select").value);
@@ -1375,6 +1479,182 @@
         `).join("")}</tbody>
       </table>`;
     }
+
+    // BAG INVENTORY (CLUBS, BALLS, TEES)
+    async function loadBagForPlayer() {
+      const sel = document.getElementById("bag-player-select");
+      const playerId = Number(sel?.value);
+      await refreshClubPickerForGpsPlayer();
+
+      if (!playerId) {
+        document.getElementById("bag-balls-count").textContent = "0";
+        document.getElementById("bag-tees-count").textContent = "0";
+        document.getElementById("bag-clubs-wrap").innerHTML = `<div class="sub" style="margin-top:10px;">Select or add a player to manage their bag.</div>`;
+        return;
+      }
+
+      let { data: bagRow } = await sb
+        .from("golf_player_bag")
+        .select("*")
+        .eq("player_id", playerId)
+        .maybeSingle();
+
+      if (!bagRow) {
+        const { data: created } = await sb
+          .from("golf_player_bag")
+          .insert({ player_id: playerId, balls_count: 6, tees_count: 15 })
+          .select()
+          .single();
+        bagRow = created;
+      }
+
+      const { data: clubRows } = await sb
+        .from("golf_player_clubs")
+        .select("*")
+        .eq("player_id", playerId)
+        .order("sort_order")
+        .order("id");
+
+      state.bag = bagRow || { player_id: playerId, balls_count: 0, tees_count: 0 };
+      state.clubs = clubRows || [];
+
+      document.getElementById("bag-balls-count").textContent = state.bag.balls_count ?? 0;
+      document.getElementById("bag-tees-count").textContent = state.bag.tees_count ?? 0;
+      renderBagClubs();
+    }
+
+    async function adjustBagSupply(field, delta) {
+      const playerId = Number(document.getElementById("bag-player-select").value);
+      if (!playerId || !state.bag) return;
+
+      const nextVal = Math.max(0, Number(state.bag[field] || 0) + delta);
+      const { data, error } = await sb
+        .from("golf_player_bag")
+        .update({ [field]: nextVal, updated_at: new Date().toISOString() })
+        .eq("player_id", playerId)
+        .select()
+        .single();
+
+      if (!error && data) {
+        state.bag = data;
+        document.getElementById("bag-balls-count").textContent = data.balls_count;
+        document.getElementById("bag-tees-count").textContent = data.tees_count;
+      }
+    }
+
+    function renderBagClubs() {
+      const wrap = document.getElementById("bag-clubs-wrap");
+      if (!wrap) return;
+      if (!state.clubs.length) {
+        wrap.innerHTML = `<div class="sub" style="margin-top:10px;">No clubs in this player's bag yet.</div>`;
+        return;
+      }
+
+      const activeCount = state.clubs.filter((c) => c.in_bag).length;
+      wrap.innerHTML = `<div class="sub" style="margin-top:10px;">Clubs in bag: <strong>${activeCount}</strong> / ${state.clubs.length}</div>
+        <table>
+          <thead><tr><th>Club</th><th>Type</th><th>Loft/Specs</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${state.clubs.map((c) => `
+            <tr>
+              <td><strong>${c.club_name}</strong></td>
+              <td>${c.club_type || "-"}</td>
+              <td>${c.loft || "-"}</td>
+              <td>${c.in_bag ? "In Bag" : "Left Behind"}</td>
+              <td>
+                <button onclick="toggleClubInBag(${c.id}, ${!c.in_bag})">${c.in_bag ? "Mark Out" : "Put In Bag"}</button>
+                <button onclick="deleteBagClub(${c.id})">Remove</button>
+              </td>
+            </tr>
+          `).join("")}</tbody>
+        </table>`;
+    }
+
+    document.getElementById("bag-player-select")?.addEventListener("change", loadBagForPlayer);
+    document.getElementById("balls-minus-btn")?.addEventListener("click", () => adjustBagSupply("balls_count", -1));
+    document.getElementById("balls-plus-btn")?.addEventListener("click", () => adjustBagSupply("balls_count", 1));
+    document.getElementById("tees-minus-btn")?.addEventListener("click", () => adjustBagSupply("tees_count", -1));
+    document.getElementById("tees-plus-btn")?.addEventListener("click", () => adjustBagSupply("tees_count", 1));
+
+    document.getElementById("add-club-btn")?.addEventListener("click", async () => {
+      const statusEl = document.getElementById("bag-status");
+      const playerId = Number(document.getElementById("bag-player-select").value);
+      const club_name = document.getElementById("new-club-name").value.trim();
+      const club_type = document.getElementById("new-club-type").value;
+      const loft = document.getElementById("new-club-loft").value.trim() || null;
+
+      if (!playerId || !club_name) {
+        statusEl.textContent = "Select a golfer and enter a club name.";
+        statusEl.className = "status error";
+        return;
+      }
+
+      const { error } = await sb.from("golf_player_clubs").insert({
+        player_id: playerId,
+        club_name,
+        club_type,
+        loft,
+        in_bag: true,
+        sort_order: state.clubs.length + 1
+      });
+
+      if (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = "status error";
+        return;
+      }
+
+      document.getElementById("new-club-name").value = "";
+      document.getElementById("new-club-loft").value = "";
+      statusEl.textContent = `Added "${club_name}" to bag.`;
+      statusEl.className = "status";
+      await loadBagForPlayer();
+    });
+
+    document.getElementById("add-starter-set-btn")?.addEventListener("click", async () => {
+      const statusEl = document.getElementById("bag-status");
+      const playerId = Number(document.getElementById("bag-player-select").value);
+      if (!playerId) return;
+
+      const starterClubs = [
+        ["Driver", "Wood", null],
+        ["5 Wood", "Wood", null],
+        ["5 Iron", "Iron", null],
+        ["7 Iron", "Iron", null],
+        ["9 Iron", "Iron", null],
+        ["Pitching Wedge", "Wedge", "PW"],
+        ["Sand Wedge", "Wedge", "56°"],
+        ["Putter", "Putter", null]
+      ];
+
+      const rows = starterClubs.map(([club_name, club_type, loft], idx) => ({
+        player_id: playerId,
+        club_name,
+        club_type,
+        loft,
+        in_bag: true,
+        sort_order: state.clubs.length + idx + 1
+      }));
+
+      const { error } = await sb.from("golf_player_clubs").insert(rows);
+      if (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = "status error";
+        return;
+      }
+      statusEl.textContent = "Added starter club set to bag.";
+      statusEl.className = "status";
+      await loadBagForPlayer();
+    });
+
+    window.toggleClubInBag = async (clubId, nextInBag) => {
+      await sb.from("golf_player_clubs").update({ in_bag: nextInBag }).eq("id", clubId);
+      await loadBagForPlayer();
+    };
+
+    window.deleteBagClub = async (clubId) => {
+      await sb.from("golf_player_clubs").delete().eq("id", clubId);
+      await loadBagForPlayer();
+    };
 
     // START NEW ROUND
     document.getElementById("create-round-btn").addEventListener("click", async () => {
