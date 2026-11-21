@@ -243,7 +243,7 @@
     </div>
 
     <div class="card">
-      <h3>Edit Course Media & Individual Hole Details</h3>
+      <h3>Course Media &amp; Individual Hole Editor</h3>
       <div class="row">
         <div>
           <label for="edit-course-media-select">Course for Media</label>
@@ -275,6 +275,7 @@
 
       <hr style="border: 0; border-top: 1px solid var(--border); margin: 16px 0;" />
 
+      <div class="sub" style="margin-bottom: 6px;">Select any course and hole below to customize its Par, Yardage, layout image, and notes. Course Total Par updates automatically.</div>
       <div class="row">
         <div>
           <label for="edit-hole-course">Course</label>
@@ -286,11 +287,11 @@
         </div>
         <div>
           <label for="edit-hole-par">Par</label>
-          <input id="edit-hole-par" type="number" value="4" />
+          <input id="edit-hole-par" type="number" min="3" max="6" value="4" />
         </div>
         <div>
           <label for="edit-hole-yards">Yards</label>
-          <input id="edit-hole-yards" type="number" value="250" />
+          <input id="edit-hole-yards" type="number" min="50" max="800" value="250" />
         </div>
       </div>
       <label for="edit-hole-image-url">Hole Layout Image URL</label>
@@ -852,7 +853,7 @@
       const courseId = Number(document.getElementById("edit-hole-course").value);
       const courseHoles = state.holes.filter((h) => h.course_id === courseId).sort((a, b) => a.hole_number - b.hole_number);
       const sel = document.getElementById("edit-hole-number");
-      sel.innerHTML = courseHoles.map((h) => `<option value="${h.hole_number}">Hole ${h.hole_number}</option>`).join("");
+      sel.innerHTML = courseHoles.map((h) => `<option value="${h.hole_number}">Hole ${h.hole_number} (Par ${h.par}, ${h.yards}y)</option>`).join("");
       syncHoleEditorFields();
     }
 
@@ -1319,7 +1320,7 @@
       }
     });
 
-    // EDIT INDIVIDUAL HOLE
+    // EDIT INDIVIDUAL HOLE (OPTION 3)
     document.getElementById("save-hole-btn").addEventListener("click", async () => {
       const statusEl = document.getElementById("hole-edit-status");
       const courseId = Number(document.getElementById("edit-hole-course").value);
@@ -1352,7 +1353,7 @@
         await sb.from("golf_courses").update({ total_par: updatedTotalPar }).eq("id", courseId);
 
         document.getElementById("edit-hole-image-file").value = "";
-        statusEl.textContent = `Updated Hole ${holeNum} (Par ${par}, ${yards} yds).`;
+        statusEl.textContent = `Updated Hole ${holeNum} (Par ${par}, ${yards} yds). Course Total Par is now ${updatedTotalPar}.`;
         await loadBaseData();
       } catch (err) {
         statusEl.textContent = `Error: ${err.message}`;
