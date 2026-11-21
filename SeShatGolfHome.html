@@ -140,10 +140,10 @@
     <!-- Multi-Golfer GPS Shot Marker -->
     <div class="card">
       <h2>GPS Shot Marker ("Mark Spot on Next Hit")</h2>
-      <div class="sub">Each golfer's shots are tracked independently. Marking a spot records where you're hitting from, logs lie and distance to the green, and calculates shot distance from your prior spot.</div>
+      <div class="sub">Only golfers active in this round appear below. Marking a spot records where you're hitting from, logs lie and distance to the green, and calculates shot distance from your prior spot.</div>
       <div class="row">
         <div>
-          <label for="gps-player-select">Active Golfer</label>
+          <label for="gps-player-select">Active Golfer (In Round)</label>
           <select id="gps-player-select"></select>
         </div>
         <div>
@@ -548,9 +548,6 @@
       return state.holes.find((h) => h.course_id === activeRound.course_id && Number(h.hole_number) === Number(holeNumber)) || null;
     }
 
-    // Estimates distance to green:
-    // 1) If hole has saved green_latitude & green_longitude, compute exact GPS distance to green.
-    // 2) Otherwise, estimate from hole yardage minus cumulative shot distances on that hole.
     function estimateDistanceToGreenYards(playerId, holeNumber, currentLat, currentLng, holeShotsSoFar = []) {
       const hole = getHoleRecordForActiveRound(holeNumber);
       if (hole?.green_latitude != null && hole?.green_longitude != null && currentLat != null && currentLng != null) {
@@ -870,6 +867,7 @@
         state.scores = [];
         state.shots = [];
         state.gpsPhotos = [];
+        updateActiveRoundPlayerSelector();
         renderScorecard();
         renderSingleHole();
         renderShots();
@@ -902,6 +900,7 @@
       }));
       state.gpsPhotos = photosRes.data || [];
 
+      updateActiveRoundPlayerSelector();
       renderScorecard();
       renderSingleHole();
       renderShots();
@@ -1007,6 +1006,27 @@
       setGlobalStatus(`Round #${targetId} is re-opened and active on the scorecard.`);
     };
 
+    function updateActiveRoundPlayerSelector() {
+      const gpsPlayerSel = document.getElementById("gps-player-select");
+      if (!gpsPlayerSel) return;
+
+      const prevVal = gpsPlayerSel.value;
+      const roundPlayerIds = getRoundPlayerIds();
+      const roundPlayers = state.players.filter((p) => roundPlayerIds.includes(p.id));
+
+      gpsPlayerSel.innerHTML = roundPlayers.length
+        ? roundPlayers
+            .map((p) => `<option value="${p.id}">${p.player_name} (HCP ${p.handicap ?? 0})</option>`)
+            .join("")
+        : `<option value="">No players in active round</option>`;
+
+      if (prevVal && roundPlayers.some((p) => String(p.id) === String(prevVal))) {
+        gpsPlayerSel.value = prevVal;
+      }
+
+      refreshClubPickerForGpsPlayer();
+    }
+
     function renderSelectors() {
       const roundSel = document.getElementById("round-selector");
       roundSel.innerHTML = state.rounds.length
@@ -1023,8 +1043,8 @@
       document.getElementById("edit-hole-course").innerHTML = courseOptions || `<option value="">No courses</option>`;
 
       const playerOptions = state.players.map((p) => `<option value="${p.id}">${p.player_name} (HCP ${p.handicap ?? 0})</option>`).join("");
-      document.getElementById("gps-player-select").innerHTML = playerOptions || `<option value="">No players</option>`;
       document.getElementById("round-add-player-select").innerHTML = playerOptions || `<option value="">No players</option>`;
+      updateActiveRoundPlayerSelector();
 
       const bagSel = document.getElementById("bag-player-select");
       if (bagSel) {
@@ -1343,7 +1363,7 @@
       const manualLng = document.getElementById("gps-manual-lng").value;
 
       if (!state.activeRoundId || !playerId) {
-        statusEl.textContent = "Select an active round and a golfer first.";
+        statusEl.textContent = "Select an active round and a golfer in the round first.";
         statusEl.className = "status error";
         return;
       }
@@ -1427,6 +1447,7 @@
     document.getElementById("sync-strokes-btn").addEventListener("click", async () => {
       const playerId = Number(document.getElementById("gps-player-select").value);
       const holeNumber = Number(document.getElementById("gps-hole-select").value);
+      if (!playerId) return;
       const count = state.shots.filter((s) => s.player_id === playerId && s.hole_number === holeNumber).length;
       await setStrokes(playerId, holeNumber, count);
       document.getElementById("gps-status").textContent = `Synced ${count} GPS shot(s) to Hole ${holeNumber} score.`;
