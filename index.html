@@ -1386,14 +1386,29 @@ body {
 
 <script>
 
+window.onerror = function(msg, url, line) {
+    var authMsg = document.getElementById("authMessage");
+    if (authMsg) {
+        authMsg.innerText = "Error (line " + line + "): " + msg;
+    }
+    return false;
+};
+
+function setAuthStatus(text) {
+    var authMsg = document.getElementById("authMessage");
+    if (authMsg) {
+        authMsg.innerText = text;
+    }
+}
+
 function getSB(){
-    return window.seshat?.supabase;
+    return window.seshat && window.seshat.supabase ? window.seshat.supabase : null;
 }
 
 function updateHeroClock(){
-    const clockEl = document.getElementById("heroClock");
-    const dateEl = document.getElementById("heroDate");
-    const now = new Date();
+    var clockEl = document.getElementById("heroClock");
+    var dateEl = document.getElementById("heroDate");
+    var now = new Date();
 
     if(clockEl){
         clockEl.textContent = now.toLocaleTimeString([], {
@@ -1413,7 +1428,7 @@ function updateHeroClock(){
 }
 
 function describeWeatherCode(code){
-    const map = {
+    var map = {
         0: ["☀️", "Clear sky"],
         1: ["🌤️", "Mainly clear"],
         2: ["⛅", "Partly cloudy"],
@@ -1443,58 +1458,100 @@ function describeWeatherCode(code){
 }
 
 // --- LEAFLET FUEL MAP & BASE44 FUELFI PRICES ---
-const FUEL_API_URL = "https://fuel-flow-track-burrowing.base44.app/api/apps/6a24d10e805d1426a813ae28/functions/getNearbyGasPrices";
-const FALLBACK_COORDS = { lat: 50.240535656980164, lng: -119.3354145959252 };
-const FUEL_RADIUS_KM = 15;
+var FUEL_API_URL = "https://fuel-flow-track-burrowing.base44.app/api/apps/6a24d10e805d1426a813ae28/functions/getNearbyGasPrices";
+var FALLBACK_COORDS = { lat: 50.240535656980164, lng: -119.3354145959252 };
+var FUEL_RADIUS_KM = 15;
 
-let fuelMap = null;
-let fuelMarkersLayer = null;
-let cachedFuelStations = [];
-let activeFuelGrade = "regular";
-let currentFuelCoords = { ...FALLBACK_COORDS };
+var fuelMap = null;
+var fuelMarkersLayer = null;
+var cachedFuelStations = [];
+var activeFuelGrade = "regular";
+var currentFuelCoords = { lat: FALLBACK_COORDS.lat, lng: FALLBACK_COORDS.lng };
+
+function firstDefined() {
+    for (var i = 0; i < arguments.length; i++) {
+        if (arguments[i] !== null && arguments[i] !== undefined) {
+            return arguments[i];
+        }
+    }
+    return undefined;
+}
 
 function ensureFuelMap(lat, lng) {
     if (!window.L) return;
     if (!fuelMap) {
         fuelMap = L.map("localMapCanvas", { zoomControl: true }).setView([lat, lng], 12);
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 19
-}).addTo(fuelMap);
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(fuelMap);
         fuelMarkersLayer = L.layerGroup().addTo(fuelMap);
     } else {
         fuelMap.setView([lat, lng], 12);
     }
-    setTimeout(() => fuelMap && fuelMap.invalidateSize(), 60);
+    setTimeout(function() { if (fuelMap) fuelMap.invalidateSize(); }, 60);
 }
 
 function normalizeStations(raw) {
     console.log("FuelFi / Base44 raw payload:", raw);
 
-    const list =
-        Array.isArray(raw) ? raw :
-        Array.isArray(raw?.stations) ? raw.stations :
-        Array.isArray(raw?.prices) ? raw.prices :
-        Array.isArray(raw?.results) ? raw.results :
-        Array.isArray(raw?.data) ? raw.data :
-        Array.isArray(raw?.data?.stations) ? raw.data.stations :
-        [];
+    var list = [];
+    if (Array.isArray(raw)) list = raw;
+    else if (raw && Array.isArray(raw.stations)) list = raw.stations;
+    else if (raw && Array.isArray(raw.prices)) list = raw.prices;
+    else if (raw && Array.isArray(raw.results)) list = raw.results;
+    else if (raw && Array.isArray(raw.data)) list = raw.data;
+    else if (raw && raw.data && Array.isArray(raw.data.stations)) list = raw.data.stations;
 
-    return list.map((st, idx) => {
-        const lat = Number(st.lat ?? st.latitude ?? st.location?.lat ?? st.coords?.lat);
-        const lng = Number(st.lng ?? st.lon ?? st.longitude ?? st.location?.lng ?? st.coords?.lng);
+    return list.map(function(st, idx) {
+        var latVal = firstDefined(
+            st.lat,
+            st.latitude,
+            st.location && st.location.lat,
+            st.coords && st.coords.lat
+        );
+        var lngVal = firstDefined(
+            st.lng,
+            st.lon,
+            st.longitude,
+            st.location && st.location.lng,
+            st.coords && st.coords.lng
+        );
 
-        const regular = Number(st.regular ?? st.regularPrice ?? st.regular_price ?? st.prices?.regular ?? st.price);
-        const premium = Number(st.premium ?? st.premiumPrice ?? st.premium_price ?? st.prices?.premium);
-        const diesel  = Number(st.diesel  ?? st.dieselPrice  ?? st.diesel_price  ?? st.prices?.diesel);
+        var regVal = firstDefined(
+            st.regular,
+            st.regularPrice,
+            st.regular_price,
+            st.prices && st.prices.regular,
+            st.price
+        );
+        var premVal = firstDefined(
+            st.premium,
+            st.premiumPrice,
+            st.premium_price,
+            st.prices && st.prices.premium
+        );
+        var dslVal = firstDefined(
+            st.diesel,
+            st.dieselPrice,
+            st.diesel_price,
+            st.prices && st.prices.diesel
+        );
+        var distVal = firstDefined(st.distanceKm, st.distance_km, st.distance);
+
+        var lat = Number(latVal);
+        var lng = Number(lngVal);
+        var regular = Number(regVal);
+        var premium = Number(premVal);
+        var diesel = Number(dslVal);
 
         return {
-            id: st.id ?? idx,
+            id: firstDefined(st.id, idx),
             name: st.name || st.stationName || st.station_name || st.brand || "Gas Station",
             address: st.address || st.vicinity || st.street || "",
             lat: Number.isFinite(lat) ? lat : null,
             lng: Number.isFinite(lng) ? lng : null,
-            distanceKm: Number(st.distanceKm ?? st.distance_km ?? st.distance),
+            distanceKm: Number(distVal),
             prices: {
                 regular: Number.isFinite(regular) && regular > 0 ? regular : null,
                 premium: Number.isFinite(premium) && premium > 0 ? premium : null,
@@ -1506,11 +1563,11 @@ function normalizeStations(raw) {
 
 function formatFuelPrice(num) {
     if (!Number.isFinite(num) || num <= 0) return null;
-    return num < 10 ? `$${num.toFixed(3)}` : `${num.toFixed(1)}¢`;
+    return num < 10 ? "$" + num.toFixed(3) : num.toFixed(1) + "¢";
 }
 
 function renderFuelWidget() {
-    const listEl = document.getElementById("fuelStationsList");
+    var listEl = document.getElementById("fuelStationsList");
     if (!listEl) return;
 
     if (fuelMarkersLayer) {
@@ -1529,52 +1586,55 @@ function renderFuelWidget() {
         .addTo(fuelMarkersLayer);
     }
 
-    const sorted = [...cachedFuelStations].sort((a, b) => {
-        const pa = a.prices[activeFuelGrade] ?? Infinity;
-        const pb = b.prices[activeFuelGrade] ?? Infinity;
+    var sorted = cachedFuelStations.slice().sort(function(a, b) {
+        var pa = a.prices[activeFuelGrade] !== null ? a.prices[activeFuelGrade] : Infinity;
+        var pb = b.prices[activeFuelGrade] !== null ? b.prices[activeFuelGrade] : Infinity;
         return pa - pb;
     });
 
-    const lowestPrice = sorted.find((s) => s.prices[activeFuelGrade] !== null)?.prices[activeFuelGrade] ?? null;
+    var cheapestStation = sorted.find(function(s) {
+        return s.prices[activeFuelGrade] !== null;
+    });
+    var lowestPrice = cheapestStation ? cheapestStation.prices[activeFuelGrade] : null;
 
     if (!sorted.length) {
-        listEl.innerHTML = `<div style="font-size:0.86rem;color:var(--text-muted);">No stations returned within ${FUEL_RADIUS_KM} km.</div>`;
+        listEl.innerHTML = '<div style="font-size:0.86rem;color:var(--text-muted);">No stations returned within ' + FUEL_RADIUS_KM + ' km.</div>';
         return;
     }
 
-    const bounds = [[currentFuelCoords.lat, currentFuelCoords.lng]];
-    const markerById = new Map();
+    var bounds = [[currentFuelCoords.lat, currentFuelCoords.lng]];
+    var markerById = {};
 
-    sorted.forEach((st) => {
-        const val = st.prices[activeFuelGrade];
-        const priceLabel = formatFuelPrice(val) || "—";
-        const isCheapest = val !== null && val === lowestPrice;
+    sorted.forEach(function(st) {
+        var val = st.prices[activeFuelGrade];
+        var priceLabel = formatFuelPrice(val) || "—";
+        var isCheapest = val !== null && val === lowestPrice;
 
         if (fuelMap && fuelMarkersLayer && st.lat !== null && st.lng !== null) {
             bounds.push([st.lat, st.lng]);
-            const pinHtml = `<div class="fuel-price-pin ${isCheapest ? "cheapest" : ""}">${priceLabel}</div>`;
-            const icon = L.divIcon({
+            var pinHtml = '<div class="fuel-price-pin ' + (isCheapest ? "cheapest" : "") + '">' + priceLabel + '</div>';
+            var icon = L.divIcon({
                 className: "",
                 html: pinHtml,
                 iconSize: [58, 24],
                 iconAnchor: [29, 12]
             });
 
-            const popupLines = [
-                `<strong>${st.name}</strong>`,
-                st.address ? `<div style="font-size:12px;opacity:0.85;">${st.address}</div>` : "",
-                `<div style="margin-top:4px;font-size:12px;">` +
-                    `Reg: <b>${formatFuelPrice(st.prices.regular) || "—"}</b> · ` +
-                    `Prem: <b>${formatFuelPrice(st.prices.premium) || "—"}</b> · ` +
-                    `Diesel: <b>${formatFuelPrice(st.prices.diesel) || "—"}</b>` +
-                `</div>`
+            var popupLines = [
+                "<strong>" + st.name + "</strong>",
+                st.address ? '<div style="font-size:12px;opacity:0.85;">' + st.address + '</div>' : "",
+                '<div style="margin-top:4px;font-size:12px;">' +
+                    "Reg: <b>" + (formatFuelPrice(st.prices.regular) || "—") + "</b> · " +
+                    "Prem: <b>" + (formatFuelPrice(st.prices.premium) || "—") + "</b> · " +
+                    "Diesel: <b>" + (formatFuelPrice(st.prices.diesel) || "—") + "</b>" +
+                "</div>"
             ].join("");
 
-            const marker = L.marker([st.lat, st.lng], { icon })
+            var marker = L.marker([st.lat, st.lng], { icon: icon })
                 .bindPopup(popupLines)
                 .addTo(fuelMarkersLayer);
 
-            markerById.set(st.id, marker);
+            markerById[String(st.id)] = marker;
         }
     });
 
@@ -1582,173 +1642,182 @@ function renderFuelWidget() {
         fuelMap.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
     }
 
-    listEl.innerHTML = sorted.map((st) => {
-        const val = st.prices[activeFuelGrade];
-        const priceLabel = formatFuelPrice(val) || "N/A";
-        const isCheapest = val !== null && val === lowestPrice;
-        const dist = Number.isFinite(st.distanceKm) ? `${st.distanceKm.toFixed(1)} km` : "";
+    listEl.innerHTML = sorted.map(function(st) {
+        var val = st.prices[activeFuelGrade];
+        var priceLabel = formatFuelPrice(val) || "N/A";
+        var isCheapest = val !== null && val === lowestPrice;
+        var dist = Number.isFinite(st.distanceKm) ? st.distanceKm.toFixed(1) + " km" : "";
 
-        return `
-            <div class="fuel-station-row" data-station-id="${st.id}">
-                <div style="min-width:0;">
-                    <div style="font-weight:600;font-size:0.88rem;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                        ${st.name}
-                    </div>
-                    <div style="font-size:0.76rem;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                        ${st.address || "Nearby station"}
-                    </div>
-                </div>
-                <div style="text-align:right;white-space:nowrap;">
-                    <div style="font-weight:700;font-size:0.92rem;color:${isCheapest ? "#34d399" : "#7dd3fc"};">
-                        ${priceLabel}
-                    </div>
-                    ${dist ? `<div style="font-size:0.74rem;color:#94a3b8;">${dist}</div>` : ""}
-                </div>
-            </div>
-        `;
+        return (
+            '<div class="fuel-station-row" data-station-id="' + st.id + '">' +
+                '<div style="min-width:0;">' +
+                    '<div style="font-weight:600;font-size:0.88rem;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+                        st.name +
+                    '</div>' +
+                    '<div style="font-size:0.76rem;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+                        (st.address || "Nearby station") +
+                    '</div>' +
+                '</div>' +
+                '<div style="text-align:right;white-space:nowrap;">' +
+                    '<div style="font-weight:700;font-size:0.92rem;color:' + (isCheapest ? "#34d399" : "#7dd3fc") + ';">' +
+                        priceLabel +
+                    '</div>' +
+                    (dist ? '<div style="font-size:0.74rem;color:#94a3b8;">' + dist + '</div>' : '') +
+                '</div>' +
+            '</div>'
+        );
     }).join("");
 
-    listEl.querySelectorAll(".fuel-station-row").forEach((row) => {
-        row.addEventListener("click", () => {
-            const id = Number(row.dataset.stationId);
-            const marker = markerById.get(id);
-            if (marker && fuelMap) {
-                fuelMap.setView(marker.getLatLng(), 15);
-                marker.openPopup();
-            }
-        });
-    });
+    var rows = listEl.querySelectorAll(".fuel-station-row");
+    for (var i = 0; i < rows.length; i++) {
+        (function(row) {
+            row.addEventListener("click", function() {
+                var id = String(row.getAttribute("data-station-id"));
+                var marker = markerById[id];
+                if (marker && fuelMap) {
+                    fuelMap.setView(marker.getLatLng(), 15);
+                    marker.openPopup();
+                }
+            });
+        })(rows[i]);
+    }
 }
 
 function selectFuelGrade(grade, btnEl) {
     activeFuelGrade = grade;
-    document.querySelectorAll(".fuel-grade-btn").forEach((b) => b.classList.remove("active"));
+    var btns = document.querySelectorAll(".fuel-grade-btn");
+    for (var i = 0; i < btns.length; i++) {
+        btns[i].classList.remove("active");
+    }
     if (btnEl) btnEl.classList.add("active");
     renderFuelWidget();
 }
 
 async function fetchNearbyFuelPrices(lat, lng) {
-    const listEl = document.getElementById("fuelStationsList");
+    var listEl = document.getElementById("fuelStationsList");
     if (listEl) {
-        listEl.innerHTML = `<div style="font-size:0.86rem;color:var(--text-muted);">Fetching local FuelFi prices...</div>`;
+        listEl.innerHTML = '<div style="font-size:0.86rem;color:var(--text-muted);">Fetching local FuelFi prices...</div>';
     }
 
     try {
-        const res = await fetch(FUEL_API_URL, {
+        var res = await fetch(FUEL_API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                lat,
-                lng,
+                lat: lat,
+                lng: lng,
                 radiusKm: FUEL_RADIUS_KM
             })
         });
 
         if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
+            throw new Error("HTTP " + res.status);
         }
 
-        const data = await res.json();
+        var data = await res.json();
         cachedFuelStations = normalizeStations(data);
         renderFuelWidget();
     } catch (err) {
         console.error("Fuel widget error:", err);
         if (listEl) {
-            listEl.innerHTML = `<div style="font-size:0.86rem;color:#fca5a5;">Could not load fuel prices (${err.message}).</div>`;
+            listEl.innerHTML = '<div style="font-size:0.86rem;color:#fca5a5;">Could not load fuel prices (' + err.message + ').</div>';
         }
     }
 }
 
 function refreshFuelWidget() {
-    const coordsLabel = document.getElementById("fuelCoordsLabel");
+    var coordsLabel = document.getElementById("fuelCoordsLabel");
     ensureFuelMap(currentFuelCoords.lat, currentFuelCoords.lng);
     if (coordsLabel) {
-        coordsLabel.textContent = `${currentFuelCoords.lat.toFixed(4)}, ${currentFuelCoords.lng.toFixed(4)}`;
+        coordsLabel.textContent = currentFuelCoords.lat.toFixed(4) + ", " + currentFuelCoords.lng.toFixed(4);
     }
     fetchNearbyFuelPrices(currentFuelCoords.lat, currentFuelCoords.lng);
 }
 
-function updateFuelAndMap(lat, lon, cityLabel = ""){
-    currentFuelCoords = { lat, lng: lon };
-    const coordsLabel = document.getElementById("fuelCoordsLabel");
-    const mainLink = document.getElementById("fuelfiMainLink");
-    const stationsMapLink = document.getElementById("nearbyStationsMapLink");
+function updateFuelAndMap(lat, lon, cityLabel){
+    cityLabel = cityLabel || "";
+    currentFuelCoords = { lat: lat, lng: lon };
+    var coordsLabel = document.getElementById("fuelCoordsLabel");
+    var mainLink = document.getElementById("fuelfiMainLink");
+    var stationsMapLink = document.getElementById("nearbyStationsMapLink");
 
     ensureFuelMap(lat, lon);
 
     if(coordsLabel){
         coordsLabel.textContent = cityLabel
-            ? `${cityLabel} (${lat.toFixed(2)}, ${lon.toFixed(2)})`
-            : `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+            ? cityLabel + " (" + lat.toFixed(2) + ", " + lon.toFixed(2) + ")"
+            : lat.toFixed(3) + ", " + lon.toFixed(3);
     }
 
-    const encodedQuery = encodeURIComponent(cityLabel || `${lat.toFixed(4)},${lon.toFixed(4)}`);
-    const fuelFiBase = `https://fuelfi.ca/?lat=${lat.toFixed(5)}&lng=${lon.toFixed(5)}${cityLabel ? `&q=${encodedQuery}` : ""}`;
+    var encodedQuery = encodeURIComponent(cityLabel || (lat.toFixed(4) + "," + lon.toFixed(4)));
+    var fuelFiBase = "https://fuelfi.ca/?lat=" + lat.toFixed(5) + "&lng=" + lon.toFixed(5) + (cityLabel ? "&q=" + encodedQuery : "");
 
     if(mainLink) mainLink.href = fuelFiBase;
     if(stationsMapLink){
-        stationsMapLink.href = `https://www.google.com/maps/search/gas+stations/@${lat.toFixed(5)},${lon.toFixed(5)},13z`;
+        stationsMapLink.href = "https://www.google.com/maps/search/gas+stations/@" + lat.toFixed(5) + "," + lon.toFixed(5) + ",13z";
     }
 
     fetchNearbyFuelPrices(lat, lon);
 }
 
 async function fetchWeatherForCoords(lat, lon){
-    const locationEl = document.getElementById("weatherLocation");
-    const iconEl = document.getElementById("weatherIcon");
-    const tempEl = document.getElementById("weatherTemp");
-    const descEl = document.getElementById("weatherDesc");
-    const feelsEl = document.getElementById("weatherFeels");
-    const hiLoEl = document.getElementById("weatherHiLo");
-    const windEl = document.getElementById("weatherWind");
+    var locationEl = document.getElementById("weatherLocation");
+    var iconEl = document.getElementById("weatherIcon");
+    var tempEl = document.getElementById("weatherTemp");
+    var descEl = document.getElementById("weatherDesc");
+    var feelsEl = document.getElementById("weatherFeels");
+    var hiLoEl = document.getElementById("weatherHiLo");
+    var windEl = document.getElementById("weatherWind");
 
-    let cityLabel = "";
+    var cityLabel = "";
 
     try {
-        const geoRes = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+        var geoRes = await fetch(
+            "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" + lat + "&longitude=" + lon + "&localityLanguage=en"
         );
         if(geoRes.ok){
-            const geo = await geoRes.json();
-            const place = geo.city || geo.locality || geo.principalSubdivision || "";
-            const region = geo.principalSubdivisionCode ? geo.principalSubdivisionCode.split("-").pop() : "";
+            var geo = await geoRes.json();
+            var place = geo.city || geo.locality || geo.principalSubdivision || "";
+            var region = geo.principalSubdivisionCode ? geo.principalSubdivisionCode.split("-").pop() : "";
             cityLabel = [place, region].filter(Boolean).join(", ");
         }
     } catch (_) {}
 
     if(locationEl){
-        locationEl.textContent = cityLabel || `Lat ${lat.toFixed(2)}, Lon ${lon.toFixed(2)}`;
+        locationEl.textContent = cityLabel || ("Lat " + lat.toFixed(2) + ", Lon " + lon.toFixed(2));
     }
 
     updateFuelAndMap(lat, lon, cityLabel);
 
     try {
-        const weatherUrl =
-            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-            `&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m` +
-            `&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`;
+        var weatherUrl =
+            "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon +
+            "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m" +
+            "&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1";
 
-        const res = await fetch(weatherUrl);
+        var res = await fetch(weatherUrl);
         if(!res.ok) throw new Error("Weather request failed");
-        const data = await res.json();
+        var data = await res.json();
 
-        const current = data.current || {};
-        const daily = data.daily || {};
-        const [icon, label] = describeWeatherCode(current.weather_code);
+        var current = data.current || {};
+        var daily = data.daily || {};
+        var weatherPair = describeWeatherCode(current.weather_code);
+        var icon = weatherPair[0];
+        var label = weatherPair[1];
 
         if(iconEl) iconEl.textContent = icon;
         if(tempEl && Number.isFinite(current.temperature_2m)){
-            tempEl.textContent = `${Math.round(current.temperature_2m)}°C`;
+            tempEl.textContent = Math.round(current.temperature_2m) + "°C";
         }
         if(descEl) descEl.textContent = label;
         if(feelsEl && Number.isFinite(current.apparent_temperature)){
-            feelsEl.textContent = `${Math.round(current.apparent_temperature)}°C`;
+            feelsEl.textContent = Math.round(current.apparent_temperature) + "°C";
         }
         if(hiLoEl && Array.isArray(daily.temperature_2m_max) && Array.isArray(daily.temperature_2m_min)){
-            hiLoEl.textContent = `${Math.round(daily.temperature_2m_max[0])}° / ${Math.round(daily.temperature_2m_min[0])}°`;
+            hiLoEl.textContent = Math.round(daily.temperature_2m_max[0]) + "° / " + Math.round(daily.temperature_2m_min[0]) + "°";
         }
         if(windEl && Number.isFinite(current.wind_speed_10m)){
-            windEl.textContent = `${Math.round(current.wind_speed_10m)} km/h`;
+            windEl.textContent = Math.round(current.wind_speed_10m) + " km/h";
         }
     } catch (error) {
         console.error("Weather fetch error:", error);
@@ -1756,13 +1825,18 @@ async function fetchWeatherForCoords(lat, lon){
     }
 }
 
-function initLocalWidgets(forceRefresh = false){
-    const locationEl = document.getElementById("weatherLocation");
-    const descEl = document.getElementById("weatherDesc");
+function initLocalWidgets(forceRefresh){
+    var locationEl = document.getElementById("weatherLocation");
+    var descEl = document.getElementById("weatherDesc");
 
-    const cached = !forceRefresh
-        ? JSON.parse(localStorage.getItem("seshatLastCoords") || "null")
-        : null;
+    var cached = null;
+    if (!forceRefresh) {
+        try {
+            cached = JSON.parse(localStorage.getItem("seshatLastCoords") || "null");
+        } catch (_) {
+            cached = null;
+        }
+    }
 
     if(cached && Number.isFinite(cached.lat) && Number.isFinite(cached.lon)){
         fetchWeatherForCoords(cached.lat, cached.lon);
@@ -1777,13 +1851,15 @@ function initLocalWidgets(forceRefresh = false){
     }
 
     navigator.geolocation.getCurrentPosition(
-        pos => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            localStorage.setItem("seshatLastCoords", JSON.stringify({ lat, lon }));
+        function(pos) {
+            var lat = pos.coords.latitude;
+            var lon = pos.coords.longitude;
+            try {
+                localStorage.setItem("seshatLastCoords", JSON.stringify({ lat: lat, lon: lon }));
+            } catch (_) {}
             fetchWeatherForCoords(lat, lon);
         },
-        err => {
+        function(err) {
             console.warn("Geolocation blocked or unavailable:", err.message);
             if(!cached){
                 if(locationEl) locationEl.textContent = "Vernon, BC (fallback)";
@@ -1796,31 +1872,31 @@ function initLocalWidgets(forceRefresh = false){
 }
 
 function setupAppFilter(){
-    const input = document.getElementById("appSearchInput");
-    const clearBtn = document.getElementById("appSearchClear");
-    const kbdHint = document.getElementById("appSearchKbd");
-    const emptyState = document.getElementById("emptySearchState");
-    const sections = [...document.querySelectorAll(".category-section")];
+    var input = document.getElementById("appSearchInput");
+    var clearBtn = document.getElementById("appSearchClear");
+    var kbdHint = document.getElementById("appSearchKbd");
+    var emptyState = document.getElementById("emptySearchState");
+    var sections = Array.prototype.slice.call(document.querySelectorAll(".category-section"));
 
     if(!input) return;
 
     function applyFilter(){
-        const query = input.value.trim().toLowerCase();
-        const hasQuery = query.length > 0;
+        var query = input.value.trim().toLowerCase();
+        var hasQuery = query.length > 0;
 
         if(clearBtn) clearBtn.style.display = hasQuery ? "inline-block" : "none";
         if(kbdHint) kbdHint.style.display = hasQuery ? "none" : "inline-block";
 
-        let totalVisibleCards = 0;
+        var totalVisibleCards = 0;
 
-        sections.forEach(section => {
-            const categoryText = (section.dataset.category || "").toLowerCase();
-            const cards = [...section.querySelectorAll(".app-card")];
-            let sectionVisible = 0;
+        sections.forEach(function(section) {
+            var categoryText = (section.getAttribute("data-category") || "").toLowerCase();
+            var cards = Array.prototype.slice.call(section.querySelectorAll(".app-card"));
+            var sectionVisible = 0;
 
-            cards.forEach(card => {
-                const text = `${card.textContent} ${categoryText}`.toLowerCase();
-                const matches = !hasQuery || text.includes(query);
+            cards.forEach(function(card) {
+                var text = (card.textContent + " " + categoryText).toLowerCase();
+                var matches = !hasQuery || text.indexOf(query) !== -1;
                 card.style.display = matches ? "flex" : "none";
                 if(matches){
                     sectionVisible++;
@@ -1838,29 +1914,32 @@ function setupAppFilter(){
 
     input.addEventListener("input", applyFilter);
 
-    input.addEventListener("keydown", event => {
+    input.addEventListener("keydown", function(event) {
         if(event.key === "Escape"){
             input.value = "";
             applyFilter();
             input.blur();
         } else if(event.key === "Enter"){
-            const visibleCards = [...document.querySelectorAll(".app-card")]
-                .filter(card => card.style.display !== "none");
+            var visibleCards = Array.prototype.slice.call(document.querySelectorAll(".app-card"))
+                .filter(function(card) { return card.style.display !== "none"; });
             if(visibleCards.length === 1){
                 visibleCards[0].click();
             }
         }
     });
 
-    clearBtn?.addEventListener("click", () => {
-        input.value = "";
-        applyFilter();
-        input.focus();
-    });
+    if(clearBtn){
+        clearBtn.addEventListener("click", function() {
+            input.value = "";
+            applyFilter();
+            input.focus();
+        });
+    }
 
-    document.addEventListener("keydown", event => {
-        const tag = document.activeElement?.tagName;
-        const isTyping = tag === "INPUT" || tag === "TEXTAREA";
+    document.addEventListener("keydown", function(event) {
+        var activeEl = document.activeElement;
+        var tag = activeEl ? activeEl.tagName : "";
+        var isTyping = tag === "INPUT" || tag === "TEXTAREA";
         if(event.key === "/" && !isTyping){
             event.preventDefault();
             input.focus();
@@ -1870,71 +1949,73 @@ function setupAppFilter(){
 }
 
 async function signup(){
+    setAuthStatus("Creating account...");
+    var sb = getSB();
 
-    const sb = getSB();
-
-    if(!sb){
-        document.getElementById("authMessage").innerText =
-            "Supabase not loaded";
+    if(!sb || !sb.auth){
+        setAuthStatus("Supabase not loaded");
         return;
     }
 
-    const email =
-        document.getElementById("email").value;
+    var email = document.getElementById("email").value.trim();
+    var password = document.getElementById("password").value;
 
-    const password =
-        document.getElementById("password").value;
-
-    const { error } =
-        await sb.auth.signUp({
-            email,
-            password
+    try {
+        var res = await sb.auth.signUp({
+            email: email,
+            password: password
         });
 
-    document.getElementById("authMessage").innerText =
-        error
-        ? error.message
-        : "Check your email for verification.";
+        setAuthStatus(
+            res && res.error
+            ? res.error.message
+            : "Check your email for verification."
+        );
+    } catch (err) {
+        setAuthStatus("Signup error: " + (err && err.message ? err.message : String(err)));
+    }
 }
 
 async function login(){
+    setAuthStatus("Signing in...");
+    var sb = getSB();
 
-    const sb = getSB();
-
-    if(!sb){
-        document.getElementById("authMessage").innerText =
-            "Supabase not loaded";
+    if(!sb || !sb.auth){
+        setAuthStatus("Supabase not loaded");
         return;
     }
 
-    const email =
-        document.getElementById("email").value;
+    var email = document.getElementById("email").value.trim();
+    var password = document.getElementById("password").value;
 
-    const password =
-        document.getElementById("password").value;
+    if(!email || !password){
+        setAuthStatus("Please enter email and password.");
+        return;
+    }
 
-    const { error } =
-        await sb.auth.signInWithPassword({
-            email,
-            password
+    try {
+        var res = await sb.auth.signInWithPassword({
+            email: email,
+            password: password
         });
 
-    if(error){
+        if(res && res.error){
+            setAuthStatus(res.error.message);
+            return;
+        }
 
-        document.getElementById("authMessage").innerText =
-            error.message;
-
-        return;
+        setAuthStatus("Signed in! Loading dashboard...");
+        await showDashboard();
+    } catch (err) {
+        setAuthStatus("Login error: " + (err && err.message ? err.message : String(err)));
     }
-
-    await showDashboard();
 }
 
 async function logout(){
 
-    const sb = getSB();
+    var sb = getSB();
 
-    if(sb){
+    if(sb && sb.auth){
         await sb.auth.signOut();
     }
 
@@ -1943,11 +2024,11 @@ async function logout(){
 
 async function showDashboard(){
 
-    const sb = getSB();
+    var sb = getSB();
+    if(!sb || !sb.auth) return;
 
-    const {
-        data:{user}
-    } = await sb.auth.getUser();
+    var userRes = await sb.auth.getUser();
+    var user = userRes && userRes.data ? userRes.data.user : null;
 
     document.getElementById("loginScreen")
         .style.display = "none";
@@ -1973,40 +2054,42 @@ async function showDashboard(){
 
 async function checkSession(){
 
-    const sb = getSB();
+    var sb = getSB();
 
-    if(!sb){
+    if(!sb || !sb.auth){
         console.error("Supabase not loaded");
         return;
     }
 
-    const {
-        data:{session}
-    } = await sb.auth.getSession();
+    try {
+        var sessionRes = await sb.auth.getSession();
+        var session = sessionRes && sessionRes.data ? sessionRes.data.session : null;
 
-    if(session){
-        showDashboard();
+        if(session){
+            showDashboard();
+        }
+    } catch (err) {
+        setAuthStatus("Session check error: " + (err && err.message ? err.message : String(err)));
     }
 }
 
 async function quickLogHabit(category, quantity, buttonEl){
 
-    const sb = getSB();
-    if(!sb) return;
+    var sb = getSB();
+    if(!sb || !sb.auth) return;
 
-    const {
-        data:{user}
-    } = await sb.auth.getUser();
+    var userRes = await sb.auth.getUser();
+    var user = userRes && userRes.data ? userRes.data.user : null;
 
     if(!user) return;
 
-    const originalLabel = buttonEl ? buttonEl.innerText : "";
+    var originalLabel = buttonEl ? buttonEl.innerText : "";
     if(buttonEl){
         buttonEl.disabled = true;
         buttonEl.innerText = "✓";
     }
 
-    const { error } = await sb
+    var insertRes = await sb
         .from("habit_logs")
         .insert({
             user_id: user.id,
@@ -2015,11 +2098,11 @@ async function quickLogHabit(category, quantity, buttonEl){
             logged_at: new Date().toISOString()
         });
 
-    if(error){
-        console.error("Quick log error:", error);
+    if(insertRes && insertRes.error){
+        console.error("Quick log error:", insertRes.error);
         if(buttonEl){
             buttonEl.innerText = "Error";
-            setTimeout(() => {
+            setTimeout(function() {
                 buttonEl.innerText = originalLabel;
                 buttonEl.disabled = false;
             }, 1200);
@@ -2033,7 +2116,7 @@ async function quickLogHabit(category, quantity, buttonEl){
     ]);
 
     if(buttonEl){
-        setTimeout(() => {
+        setTimeout(function() {
             buttonEl.innerText = originalLabel;
             buttonEl.disabled = false;
         }, 500);
@@ -2042,49 +2125,51 @@ async function quickLogHabit(category, quantity, buttonEl){
 
 async function loadRecentActivity(userId){
 
-    const sb = getSB();
-    const listEl = document.getElementById("activityList");
+    var sb = getSB();
+    var listEl = document.getElementById("activityList");
     if(!sb || !userId || !listEl) return;
 
-    const items = [];
+    var items = [];
 
     try {
-        const { data: recentHabits } = await sb
+        var habitsRes = await sb
             .from("habit_logs")
             .select("category, quantity, logged_at")
             .eq("user_id", userId)
             .order("logged_at", { ascending: false })
             .limit(3);
 
-        recentHabits?.forEach(h => {
-            const timeStr = h.logged_at
+        var recentHabits = habitsRes && habitsRes.data ? habitsRes.data : [];
+        recentHabits.forEach(function(h) {
+            var timeStr = h.logged_at
                 ? new Date(h.logged_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                 : "";
             items.push({
                 ts: h.logged_at ? new Date(h.logged_at).getTime() : 0,
-                text: `Logged ${h.quantity} ${h.category}${timeStr ? ` at ${timeStr}` : ""}`
+                text: "Logged " + h.quantity + " " + h.category + (timeStr ? " at " + timeStr : "")
             });
         });
     } catch (_) {}
 
     try {
-        const { data: recentNotes } = await sb
+        var notesRes = await sb
             .from("notes")
             .select("title, created_at")
             .eq("user_id", userId)
             .order("created_at", { ascending: false })
             .limit(2);
 
-        recentNotes?.forEach(n => {
+        var recentNotes = notesRes && notesRes.data ? notesRes.data : [];
+        recentNotes.forEach(function(n) {
             items.push({
                 ts: n.created_at ? new Date(n.created_at).getTime() : 0,
-                text: `Note: ${n.title || "Untitled"}`
+                text: "Note: " + (n.title || "Untitled")
             });
         });
     } catch (_) {}
 
     try {
-        const { data: recentTasks } = await sb
+        var tasksRes = await sb
             .from("tasks")
             .select("title, created_at")
             .eq("user_id", userId)
@@ -2092,44 +2177,45 @@ async function loadRecentActivity(userId){
             .order("created_at", { ascending: false })
             .limit(2);
 
-        recentTasks?.forEach(t => {
+        var recentTasks = tasksRes && tasksRes.data ? tasksRes.data : [];
+        recentTasks.forEach(function(t) {
             items.push({
                 ts: t.created_at ? new Date(t.created_at).getTime() : 0,
-                text: `Open task: ${t.title || "Task"}`
+                text: "Open task: " + (t.title || "Task")
             });
         });
     } catch (_) {}
 
     if(items.length > 0){
-        items.sort((a, b) => b.ts - a.ts);
+        items.sort(function(a, b) { return b.ts - a.ts; });
         listEl.innerHTML = items
             .slice(0, 5)
-            .map(item => `<li>${item.text}</li>`)
+            .map(function(item) { return "<li>" + item.text + "</li>"; })
             .join("");
     }
 }
 
 async function loadDashboardStats(){
 
-    const sb = getSB();
+    var sb = getSB();
+    if(!sb || !sb.auth) return;
 
-    const {
-        data:{user}
-    } = await sb.auth.getUser();
+    var userRes = await sb.auth.getUser();
+    var user = userRes && userRes.data ? userRes.data.user : null;
 
     if(!user) return;
 
-    const tasks =
+    var tasks =
         await sb
         .from("tasks")
         .select("*",{count:"exact",head:true})
         .eq("user_id",user.id)
         .eq("completed",false);
 
-    const openTaskCount = tasks.count || 0;
+    var openTaskCount = tasks.count || 0;
     document.getElementById("taskCount").innerText = openTaskCount;
 
-    const notes =
+    var notes =
         await sb
         .from("notes")
         .select("*",{count:"exact",head:true})
@@ -2137,7 +2223,7 @@ async function loadDashboardStats(){
 
     document.getElementById("noteCount").innerText = notes.count || 0;
 
-    const passwords =
+    var passwords =
         await sb
         .from("passwords")
         .select("*",{count:"exact",head:true})
@@ -2145,7 +2231,7 @@ async function loadDashboardStats(){
 
     document.getElementById("passwordCount").innerText = passwords.count || 0;
 
-    const documents =
+    var documents =
         await sb
         .from("documents")
         .select("*",{count:"exact",head:true})
@@ -2153,7 +2239,7 @@ async function loadDashboardStats(){
 
     document.getElementById("documentCount").innerText = documents.count || 0;
 
-    const maintenance =
+    var maintenance =
         await sb
         .from("maintenance_items")
         .select("*",{count:"exact",head:true})
@@ -2161,72 +2247,74 @@ async function loadDashboardStats(){
 
     document.getElementById("maintenanceCount").innerText = maintenance.count || 0;
 
-    const today =
+    var today =
         new Date()
         .toISOString()
         .split("T")[0];
 
-    const events =
+    var events =
         await sb
         .from("calendar_events")
         .select("*",{count:"exact",head:true})
         .eq("user_id",user.id)
         .gte("event_date",today);
 
-    const upcomingEventCount = events.count || 0;
+    var upcomingEventCount = events.count || 0;
     document.getElementById("eventCount").innerText = upcomingEventCount;
 
-    const startOfDay = new Date();
+    var startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    const { data: habits, error: habitError } = await sb
+    var habitRes = await sb
         .from("habit_logs")
         .select("category, quantity")
         .eq("user_id", user.id)
         .gte("logged_at", startOfDay.toISOString());
 
-    if (habitError) {
-        console.error("Habit logs error:", habitError);
+    if (habitRes.error) {
+        console.error("Habit logs error:", habitRes.error);
         return;
     }
 
-    const waterTotal = habits
-        ?.filter(h => h.category?.toLowerCase() === "water")
-        .reduce((sum, row) => sum + (Number(row.quantity) || 0), 0) || 0;
+    var habits = Array.isArray(habitRes.data) ? habitRes.data : [];
 
-    const coffeeTotal = habits
-        ?.filter(h => h.category?.toLowerCase() === "coffee")
-        .reduce((sum, row) => sum + (Number(row.quantity) || 0), 0) || 0;
+    var waterTotal = habits
+        .filter(function(h) { return h.category && h.category.toLowerCase() === "water"; })
+        .reduce(function(sum, row) { return sum + (Number(row.quantity) || 0); }, 0);
 
-    const cigarettes = habits
-        ?.filter(h => h.category?.toLowerCase() === "cigarette").length || 0;
+    var coffeeTotal = habits
+        .filter(function(h) { return h.category && h.category.toLowerCase() === "coffee"; })
+        .reduce(function(sum, row) { return sum + (Number(row.quantity) || 0); }, 0);
 
-    const joints = habits
-        ?.filter(h => h.category?.toLowerCase() === "joint").length || 0;
+    var cigarettes = habits
+        .filter(function(h) { return h.category && h.category.toLowerCase() === "cigarette"; }).length;
+
+    var joints = habits
+        .filter(function(h) { return h.category && h.category.toLowerCase() === "joint"; }).length;
 
     document.getElementById("waterCount").innerText = waterTotal.toFixed(2);
     document.getElementById("coffeeCount").innerText = coffeeTotal;
     document.getElementById("cigaretteCount").innerText = cigarettes;
     document.getElementById("jointCount").innerText = joints;
 
-    const heroSummary = document.getElementById("heroSummary");
+    var heroSummary = document.getElementById("heroSummary");
     if(heroSummary){
         heroSummary.textContent =
-            `${openTaskCount} open task${openTaskCount === 1 ? "" : "s"} • ` +
-            `${upcomingEventCount} upcoming event${upcomingEventCount === 1 ? "" : "s"} • ` +
-            `${waterTotal.toFixed(2)} L water logged today`;
+            openTaskCount + " open task" + (openTaskCount === 1 ? "" : "s") + " • " +
+            upcomingEventCount + " upcoming event" + (upcomingEventCount === 1 ? "" : "s") + " • " +
+            waterTotal.toFixed(2) + " L water logged today";
     }
 
 }
 
-window.addEventListener("load", () => {
+window.addEventListener("load", function() {
     updateHeroClock();
     setInterval(updateHeroClock, 30000);
     setupAppFilter();
     checkSession();
 });
 
-document.addEventListener("visibilitychange", () => {
+document.addEventListener("visibilitychange", function() {
     if (document.visibilityState === "visible") {
         updateHeroClock();
         loadDashboardStats();
