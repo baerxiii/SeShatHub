@@ -471,17 +471,117 @@
       ? window.GOLF_BUCKET
       : "golf-media";
 
-    function createFallbackGolfClient(url, anonKey) {
-      var storageKey = "sb-uzbbwvihkfzdbnowhglc-auth-token";
-      var session = null;
+    var AUTH_STORAGE_KEY = "sb-uzbbwvihkfzdbnowhglc-auth-token";
+    var refreshInFlight = null;
+
+    function readStoredSession() {
       try {
-        var raw = localStorage.getItem(storageKey);
-        if (raw) session = JSON.parse(raw);
+        var rawSess = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (!rawSess) return null;
+        var parsed = JSON.parse(rawSess);
+        if (parsed && parsed.currentSession) return parsed.currentSession;
+        return parsed;
       } catch (_) {
-        session = null;
+        return null;
+      }
+    }
+
+    function writeStoredSession(sess) {
+      if (!sess) return;
+      try {
+        var existingRaw = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (existingRaw) {
+          var existingParsed = JSON.parse(existingRaw);
+          if (existingParsed && existingParsed.currentSession) {
+            existingParsed.currentSession = sess;
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(existingParsed));
+            return;
+          }
+        }
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(sess));
+      } catch (_) {}
+    }
+
+    function isJwtExpiredError(errObj, statusCode, rawText) {
+      if (statusCode === 401) return true;
+      var msg = (errObj && errObj.message) ? String(errObj.message) : "";
+      var code = (errObj && errObj.code) ? String(errObj.code) : "";
+      var hay = (code + " " + msg + " " + (rawText || "")).toLowerCase();
+      return hay.indexOf("pgrst303") !== -1 || hay.indexOf("jwt expired") !== -1;
+    }
+
+    function refreshSupabaseSession(force) {
+      if (refreshInFlight) return refreshInFlight;
+
+      var sess = readStoredSession();
+      var nowSec = Math.floor(Date.now() / 1000);
+      if (!force && sess && sess.expires_at && (Number(sess.expires_at) - 60) > nowSec && sess.access_token) {
+        return Promise.resolve(sess);
       }
 
+      var sdkAuth = (window.seshat && window.seshat.supabase && window.seshat.supabase.auth)
+        ? window.seshat.supabase.auth
+        : null;
+
+      refreshInFlight = (function() {
+        if (sdkAuth && typeof sdkAuth.refreshSession === "function") {
+          return sdkAuth.refreshSession().then(function(res) {
+            if (res && !res.error && res.data && res.data.session) {
+              writeStoredSession(res.data.session);
+              return res.data.session;
+            }
+            return readStoredSession();
+          }).catch(function() {
+            return readStoredSession();
+          });
+        }
+
+        if (!sess || !sess.refresh_token) {
+          return Promise.resolve(sess);
+        }
+
+        return fetch(SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify({ refresh_token: sess.refresh_token })
+        }).then(function(r) {
+          return r.text().then(function(txt) {
+            if (!r.ok) return null;
+            try {
+              var nextSess = JSON.parse(txt);
+              if (nextSess && nextSess.access_token) {
+                if (!nextSess.expires_at && nextSess.expires_in) {
+                  nextSess.expires_at = Math.floor(Date.now() / 1000) + Number(nextSess.expires_in);
+                }
+                writeStoredSession(nextSess);
+                return nextSess;
+              }
+            } catch (_) {}
+            return null;
+          });
+        }).catch(function() {
+          return null;
+        });
+      })().then(function(res) {
+        refreshInFlight = null;
+        return res;
+      }, function(err) {
+        refreshInFlight = null;
+        throw err;
+      });
+
+      return refreshInFlight;
+    }
+
+    function createFallbackGolfClient(url, anonKey) {
+      var session = readStoredSession();
+
       function headers() {
+        var latest = readStoredSession();
+        if (latest) session = latest;
         var token = (session && session.access_token) ? session.access_token : anonKey;
         return {
           "Content-Type": "application/json",
@@ -497,7 +597,7 @@
         var limitVal = null;
         var wantSingle = false;
 
-        function run(method, body) {
+        function executeOnce(method, body) {
           var qs = ["select=" + encodeURIComponent(cols)];
           for (var i = 0; i < filters.length; i++) qs.push(filters[i]);
           if (orders.length) qs.push("order=" + encodeURIComponent(orders.join(",")));
@@ -519,7 +619,12 @@
                 try { parsed = JSON.parse(txt); } catch (_) { parsed = null; }
               }
               if (!res.ok) {
-                return { data: null, error: { message: (parsed && parsed.message) || txt || ("HTTP " + res.status) } };
+                var errObj = {
+                  code: (parsed && parsed.code) || null,
+                  message: (parsed && parsed.message) || txt || ("HTTP " + res.status),
+                  status: res.status
+                };
+                return { data: null, error: errObj, _rawText: txt, _status: res.status };
               }
               if (wantSingle) {
                 var row = Array.isArray(parsed) ? (parsed[0] || null) : parsed;
@@ -529,6 +634,28 @@
             });
           }).catch(function(err) {
             return { data: null, error: { message: err && err.message ? err.message : String(err) } };
+          });
+        }
+
+        function run(method, body) {
+          return refreshSupabaseSession(false).then(function() {
+            return executeOnce(method, body).then(function(firstRes) {
+              if (firstRes && firstRes.error && isJwtExpiredError(firstRes.error, firstRes._status, firstRes._rawText)) {
+                return refreshSupabaseSession(true).then(function(refreshed) {
+                  if (!refreshed || !refreshed.access_token) {
+                    setGlobalStatus("Session expired (JWT expired). Please sign in again on SeShat Hub.", true);
+                    return { data: null, error: firstRes.error };
+                  }
+                  return executeOnce(method, body).then(function(retryRes) {
+                    if (retryRes && retryRes.error && isJwtExpiredError(retryRes.error, retryRes._status, retryRes._rawText)) {
+                      setGlobalStatus("Session expired (JWT expired). Please sign in again on SeShat Hub.", true);
+                    }
+                    return retryRes;
+                  });
+                });
+              }
+              return firstRes;
+            });
           });
         }
 
@@ -605,23 +732,48 @@
       return {
         from: function(table) { return makeBuilder(table); },
         rpc: function(fnName, params) {
-          return fetch(url + "/rest/v1/rpc/" + encodeURIComponent(fnName), {
-            method: "POST",
-            headers: headers(),
-            body: JSON.stringify(params || {})
-          }).then(function(res) {
-            return res.text().then(function(txt) {
-              var parsed = null;
-              if (txt) {
-                try { parsed = JSON.parse(txt); } catch (_) { parsed = null; }
-              }
-              if (!res.ok) {
-                return { data: null, error: { message: (parsed && parsed.message) || txt || ("HTTP " + res.status) } };
-              }
-              return { data: parsed, error: null };
+          function callRpcOnce() {
+            return fetch(url + "/rest/v1/rpc/" + encodeURIComponent(fnName), {
+              method: "POST",
+              headers: headers(),
+              body: JSON.stringify(params || {})
+            }).then(function(res) {
+              return res.text().then(function(txt) {
+                var parsed = null;
+                if (txt) {
+                  try { parsed = JSON.parse(txt); } catch (_) { parsed = null; }
+                }
+                if (!res.ok) {
+                  return {
+                    data: null,
+                    error: {
+                      code: (parsed && parsed.code) || null,
+                      message: (parsed && parsed.message) || txt || ("HTTP " + res.status)
+                    },
+                    _rawText: txt,
+                    _status: res.status
+                  };
+                }
+                return { data: parsed, error: null };
+              });
+            }).catch(function(err) {
+              return { data: null, error: { message: err && err.message ? err.message : String(err) } };
             });
-          }).catch(function(err) {
-            return { data: null, error: { message: err && err.message ? err.message : String(err) } };
+          }
+
+          return refreshSupabaseSession(false).then(function() {
+            return callRpcOnce().then(function(firstRes) {
+              if (firstRes && firstRes.error && isJwtExpiredError(firstRes.error, firstRes._status, firstRes._rawText)) {
+                return refreshSupabaseSession(true).then(function(refreshed) {
+                  if (!refreshed || !refreshed.access_token) {
+                    setGlobalStatus("Session expired (JWT expired). Please sign in again on SeShat Hub.", true);
+                    return { data: null, error: firstRes.error };
+                  }
+                  return callRpcOnce();
+                });
+              }
+              return firstRes;
+            });
           });
         },
         storage: {
@@ -647,6 +799,21 @@
       var fallbackClient = createFallbackGolfClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       sb.rpc = fallbackClient.rpc;
     }
+
+    if (window.seshat && window.seshat.supabase && window.seshat.supabase.auth && typeof window.seshat.supabase.auth.onAuthStateChange === "function") {
+      window.seshat.supabase.auth.onAuthStateChange(function(_event, nextSession) {
+        if (nextSession) writeStoredSession(nextSession);
+      });
+    }
+
+    document.addEventListener("visibilitychange", function() {
+      if (!document.hidden) {
+        refreshSupabaseSession(false);
+      }
+    });
+    window.addEventListener("focus", function() {
+      refreshSupabaseSession(false);
+    });
 
     var state = {
       courses: [],
