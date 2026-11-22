@@ -450,6 +450,8 @@
   </section>
 
   <script>
+(function() {
+
     window.onerror = function(msg, url, line) {
       var el = document.getElementById("global-status");
       if (el) {
@@ -459,9 +461,15 @@
       return false;
     };
 
-    var SUPABASE_URL = "https://uzbbwvihkfzdbnowhglc.supabase.co";
-    var SUPABASE_ANON_KEY = "sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf";
-    var GOLF_BUCKET = "golf-media";
+    var SUPABASE_URL = (typeof window.SUPABASE_URL !== "undefined")
+      ? window.SUPABASE_URL
+      : "https://uzbbwvihkfzdbnowhglc.supabase.co";
+    var SUPABASE_ANON_KEY = (typeof window.SUPABASE_ANON_KEY !== "undefined")
+      ? window.SUPABASE_ANON_KEY
+      : "sb_publishable_a6YEwdDOpkZ6BI8pHXVPnQ_WlFMlHmf";
+    var GOLF_BUCKET = (typeof window.GOLF_BUCKET !== "undefined")
+      ? window.GOLF_BUCKET
+      : "golf-media";
 
     function createFallbackGolfClient(url, anonKey) {
       var storageKey = "sb-uzbbwvihkfzdbnowhglc-auth-token";
@@ -2845,6 +2853,8 @@
 
     window.setStrokes = setStrokes;
     loadBaseData();
-  </script>
+  
+})();
+</script>
 </body>
 </html>
