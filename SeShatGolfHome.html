@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:," />
   <title>Seshat Golf Course & Scorecard Manager</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="seshat-core.js"></script>
@@ -668,7 +669,7 @@
     function isRoundCompleted(round) {
       if (!round) return false;
       if (typeof round.is_completed === "boolean") return round.is_completed;
-      return /completed/i.test(round.notes || "");
+      return /\bcompleted\b/i.test(round.notes || "");
     }
 
     function setGlobalStatus(msg, isError) {
@@ -1303,7 +1304,7 @@
         if (err && /is_completed|completed_at|column/i.test(err.message)) {
           var cleanedNotes = (round.notes || "")
             .replace(/\s*\|\s*Completed\s+[^|]+/gi, "")
-            .replace(/Completed[^|]*/gi, "")
+            .replace(/\bCompleted\b[^|]*/gi, "")
             .replace(/^\s*\|\s*|\s*\|\s*$/g, "")
             .trim();
           return sb.from("golf_rounds").update({ notes: cleanedNotes || null }).eq("id", targetId);
@@ -2065,7 +2066,7 @@
       var lower = line.toLowerCase();
       for (var i = 0; i < COMMON_TEE_NAMES.length; i++) {
         var name = COMMON_TEE_NAMES[i];
-        var regex = new RegExp("\b" + name.toLowerCase() + "\b", "i");
+        var regex = new RegExp("\\b" + name.toLowerCase() + "\\b", "i");
         if (regex.test(lower)) return name;
       }
       return null;
@@ -2103,15 +2104,13 @@
 
         Tesseract.recognize(source, "eng").then(function(result) {
           var data = result && result.data ? result.data : {};
-          var lines = (data.text || "").split(/
-?
-/).map(function(l) { return l.trim(); }).filter(Boolean);
+          var lines = (data.text || "").split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
           var holeCount = Math.max(1, Number(document.getElementById("course-holes-count").value) || 9);
           var parsedHoles = [];
 
           for (var i = 0; i < lines.length; i++) {
             var line = lines[i];
-            var nums = (line.match(/\d+/g) || []).map(Number);
+            var nums = (line.match(/\b\d+\b/g) || []).map(Number);
             var teeName = detectTeeNameFromLine(line);
 
             if (teeName && nums.length > 0) {
