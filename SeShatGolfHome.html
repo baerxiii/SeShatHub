@@ -471,34 +471,67 @@
       ? window.GOLF_BUCKET
       : "golf-media";
 
-    var AUTH_STORAGE_KEY = "sb-uzbbwvihkfzdbnowhglc-auth-token";
+    var projectRefMatch = SUPABASE_URL.match(/https?:\/\/([^.]+)\./);
+    var PROJECT_REF = projectRefMatch ? projectRefMatch[1] : "uzbbwvihkfzdbnowhglc";
+    var AUTH_STORAGE_KEY = "sb-" + PROJECT_REF + "-auth-token";
+    var memorySessionFallback = null;
     var refreshInFlight = null;
 
-    function readStoredSession() {
+    function findAuthStorageKey() {
       try {
-        var rawSess = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (!rawSess) return null;
-        var parsed = JSON.parse(rawSess);
-        if (parsed && parsed.currentSession) return parsed.currentSession;
-        return parsed;
-      } catch (_) {
-        return null;
-      }
+        if (localStorage.getItem(AUTH_STORAGE_KEY)) return AUTH_STORAGE_KEY;
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf("sb-") === 0 && k.indexOf("-auth-token") !== -1) {
+            return k;
+          }
+        }
+      } catch (_) {}
+      return AUTH_STORAGE_KEY;
+    }
+
+    function normalizeSessionShape(obj) {
+      if (!obj || typeof obj !== "object") return null;
+      if (obj.currentSession && typeof obj.currentSession === "object") return obj.currentSession;
+      if (obj.session && obj.session.access_token) return obj.session;
+      if (obj.data && obj.data.session && obj.data.session.access_token) return obj.data.session;
+      return obj;
+    }
+
+    function readStoredSession() {
+      var key = findAuthStorageKey();
+      try {
+        var rawSess = localStorage.getItem(key);
+        if (rawSess) {
+          var parsed = normalizeSessionShape(JSON.parse(rawSess));
+          if (parsed && (parsed.access_token || parsed.refresh_token)) {
+            memorySessionFallback = parsed;
+            return parsed;
+          }
+        }
+      } catch (_) {}
+      return memorySessionFallback;
     }
 
     function writeStoredSession(sess) {
-      if (!sess) return;
+      var cleanSess = normalizeSessionShape(sess);
+      if (!cleanSess) return;
+      if (!cleanSess.expires_at && cleanSess.expires_in) {
+        cleanSess.expires_at = Math.floor(Date.now() / 1000) + Number(cleanSess.expires_in);
+      }
+      memorySessionFallback = cleanSess;
+      var key = findAuthStorageKey();
       try {
-        var existingRaw = localStorage.getItem(AUTH_STORAGE_KEY);
+        var existingRaw = localStorage.getItem(key);
         if (existingRaw) {
           var existingParsed = JSON.parse(existingRaw);
           if (existingParsed && existingParsed.currentSession) {
-            existingParsed.currentSession = sess;
-            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(existingParsed));
+            existingParsed.currentSession = cleanSess;
+            localStorage.setItem(key, JSON.stringify(existingParsed));
             return;
           }
         }
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(sess));
+        localStorage.setItem(key, JSON.stringify(cleanSess));
       } catch (_) {}
     }
 
@@ -507,7 +540,7 @@
       var msg = (errObj && errObj.message) ? String(errObj.message) : "";
       var code = (errObj && errObj.code) ? String(errObj.code) : "";
       var hay = (code + " " + msg + " " + (rawText || "")).toLowerCase();
-      return hay.indexOf("pgrst303") !== -1 || hay.indexOf("jwt expired") !== -1;
+      return hay.indexOf("pgrst303") !== -1 || hay.indexOf("jwt expired") !== -1 || hay.indexOf("jwt") !== -1 && hay.indexOf("exp") !== -1;
     }
 
     function refreshSupabaseSession(force) {
@@ -515,7 +548,7 @@
 
       var sess = readStoredSession();
       var nowSec = Math.floor(Date.now() / 1000);
-      if (!force && sess && sess.expires_at && (Number(sess.expires_at) - 60) > nowSec && sess.access_token) {
+      if (!force && sess && sess.expires_at && (Number(sess.expires_at) - 90) > nowSec && sess.access_token) {
         return Promise.resolve(sess);
       }
 
@@ -523,49 +556,33 @@
         ? window.seshat.supabase.auth
         : null;
 
-      refreshInFlight = (function() {
+      var promise = (function() {
+        var refreshToken = sess && sess.refresh_token ? sess.refresh_token : null;
+
         if (sdkAuth && typeof sdkAuth.refreshSession === "function") {
-          return sdkAuth.refreshSession().then(function(res) {
+          return sdkAuth.refreshSession(refreshToken ? { refresh_token: refreshToken } : undefined).then(function(res) {
             if (res && !res.error && res.data && res.data.session) {
               writeStoredSession(res.data.session);
               return res.data.session;
             }
+            if (refreshToken) {
+              return directTokenRefresh(refreshToken);
+            }
             return readStoredSession();
           }).catch(function() {
+            if (refreshToken) return directTokenRefresh(refreshToken);
             return readStoredSession();
           });
         }
 
-        if (!sess || !sess.refresh_token) {
-          return Promise.resolve(sess);
+        if (refreshToken) {
+          return directTokenRefresh(refreshToken);
         }
 
-        return fetch(SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": SUPABASE_ANON_KEY
-          },
-          body: JSON.stringify({ refresh_token: sess.refresh_token })
-        }).then(function(r) {
-          return r.text().then(function(txt) {
-            if (!r.ok) return null;
-            try {
-              var nextSess = JSON.parse(txt);
-              if (nextSess && nextSess.access_token) {
-                if (!nextSess.expires_at && nextSess.expires_in) {
-                  nextSess.expires_at = Math.floor(Date.now() / 1000) + Number(nextSess.expires_in);
-                }
-                writeStoredSession(nextSess);
-                return nextSess;
-              }
-            } catch (_) {}
-            return null;
-          });
-        }).catch(function() {
-          return null;
-        });
-      })().then(function(res) {
+        return Promise.resolve(sess);
+      })();
+
+      refreshInFlight = promise.then(function(res) {
         refreshInFlight = null;
         return res;
       }, function(err) {
@@ -574,6 +591,36 @@
       });
 
       return refreshInFlight;
+    }
+
+    function directTokenRefresh(refreshToken) {
+      if (!refreshToken) return Promise.resolve(null);
+      return fetch(SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      }).then(function(r) {
+        return r.text().then(function(txt) {
+          if (!r.ok) return null;
+          try {
+            var nextSess = normalizeSessionShape(JSON.parse(txt));
+            if (nextSess && nextSess.access_token) {
+              if (!nextSess.refresh_token) nextSess.refresh_token = refreshToken;
+              if (!nextSess.expires_at && nextSess.expires_in) {
+                nextSess.expires_at = Math.floor(Date.now() / 1000) + Number(nextSess.expires_in);
+              }
+              writeStoredSession(nextSess);
+              return nextSess;
+            }
+          } catch (_) {}
+          return null;
+        });
+      }).catch(function() {
+        return null;
+      });
     }
 
     function createFallbackGolfClient(url, anonKey) {
@@ -643,12 +690,12 @@
               if (firstRes && firstRes.error && isJwtExpiredError(firstRes.error, firstRes._status, firstRes._rawText)) {
                 return refreshSupabaseSession(true).then(function(refreshed) {
                   if (!refreshed || !refreshed.access_token) {
-                    setGlobalStatus("Session expired (JWT expired). Please sign in again on SeShat Hub.", true);
+                    setGlobalStatus("Session expired (PGRST303). Tap Refresh or sign in again on SeShat Hub.", true);
                     return { data: null, error: firstRes.error };
                   }
                   return executeOnce(method, body).then(function(retryRes) {
                     if (retryRes && retryRes.error && isJwtExpiredError(retryRes.error, retryRes._status, retryRes._rawText)) {
-                      setGlobalStatus("Session expired (JWT expired). Please sign in again on SeShat Hub.", true);
+                      setGlobalStatus("Session expired (PGRST303). Tap Refresh or sign in again on SeShat Hub.", true);
                     }
                     return retryRes;
                   });
@@ -766,7 +813,7 @@
               if (firstRes && firstRes.error && isJwtExpiredError(firstRes.error, firstRes._status, firstRes._rawText)) {
                 return refreshSupabaseSession(true).then(function(refreshed) {
                   if (!refreshed || !refreshed.access_token) {
-                    setGlobalStatus("Session expired (JWT expired). Please sign in again on SeShat Hub.", true);
+                    setGlobalStatus("Session expired (PGRST303). Tap Refresh or sign in again on SeShat Hub.", true);
                     return { data: null, error: firstRes.error };
                   }
                   return callRpcOnce();
@@ -800,19 +847,28 @@
       sb.rpc = fallbackClient.rpc;
     }
 
-    if (window.seshat && window.seshat.supabase && window.seshat.supabase.auth && typeof window.seshat.supabase.auth.onAuthStateChange === "function") {
-      window.seshat.supabase.auth.onAuthStateChange(function(_event, nextSession) {
-        if (nextSession) writeStoredSession(nextSession);
-      });
+    if (window.seshat && window.seshat.supabase && window.seshat.supabase.auth) {
+      if (typeof window.seshat.supabase.auth.getSession === "function") {
+        window.seshat.supabase.auth.getSession().then(function(sRes) {
+          if (sRes && sRes.data && sRes.data.session) {
+            writeStoredSession(sRes.data.session);
+          }
+        }).catch(function() {});
+      }
+      if (typeof window.seshat.supabase.auth.onAuthStateChange === "function") {
+        window.seshat.supabase.auth.onAuthStateChange(function(_event, nextSession) {
+          if (nextSession) writeStoredSession(nextSession);
+        });
+      }
     }
 
     document.addEventListener("visibilitychange", function() {
       if (!document.hidden) {
-        refreshSupabaseSession(false);
+        refreshSupabaseSession(true);
       }
     });
     window.addEventListener("focus", function() {
-      refreshSupabaseSession(false);
+      refreshSupabaseSession(true);
     });
 
     var state = {
@@ -1672,7 +1728,7 @@
       state.activeRoundId = Number(e.target.value) || null;
       loadActiveRoundDetails();
     });
-    document.getElementById("refresh-all-btn").addEventListener("click", loadBaseData);
+    document.getElementById("refresh-all-btn").addEventListener("click", function() { refreshSupabaseSession(true).then(function() { return loadBaseData(); }); });
     document.getElementById("tee-course-select").addEventListener("change", updateTeeHoleDropdown);
     document.getElementById("tee-hole-select").addEventListener("change", syncTeeBoxFields);
     document.getElementById("tee-name-input").addEventListener("input", syncTeeBoxFields);
